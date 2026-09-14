@@ -1,3 +1,4 @@
+import { chunkDocument } from '../import/chunker'
 import { db } from '../db/schema'
 import { generateWorkspaceUid } from '../memory/identity'
 import { generateWorkspaceScopeCode, generateWorldCode } from './identity'
@@ -30,6 +31,8 @@ export interface CreateWorkspaceOptions {
   initialChapterSummary?: string
   /** Optional author-provided prose imported into the first short-novel chapter. */
   initialChapterContent?: string
+  /** Author import into an independent long novel; preserved as ordered source chapters. */
+  importedNovelText?: string
   /** World identity options belong to the World root, never the Project shell root. */
   world?: {
     code?: string
@@ -135,6 +138,8 @@ export async function createWorkspace(
   if ((initialChapterSummary || initialChapterContent) && (options.kind !== 'novel' || options.novelProfile !== 'short')) throw new Error('首章创意种子或导入正文只适用于短篇小说工作区')
   if (initialChapterSummary && initialChapterSummary.length > 4_000) throw new Error('首章创意种子不得超过 4000 字符')
   if (initialChapterContent && (initialChapterContent.length > 200_000 || countWords(initialChapterContent) > 25_000)) throw new Error('导入正文不得超过 20 万字符或 25,000 字')
+  const importedNovelText = options.importedNovelText
+  if (importedNovelText != null && (options.kind !== 'novel' || options.novelProfile !== 'long' || !importedNovelText.trim() || importedNovelText.length > 5_000_000)) throw new Error('导入原作需为非空长篇文本，最多 500 万字符')
   const now = Date.now()
   const preparedProject = projectRoot(input, options, now)
   const genres = input.genres.length ? [...input.genres] : ['other']
@@ -187,6 +192,16 @@ export async function createWorkspace(
     if (work.kind === 'novel' && work.novelProfile === 'short') {
       await createShortNovelSkeleton(scope, work.targetWordCount, options.preferredChapterCount, initialChapterSummary, initialChapterContent, now)
       await db.shortNovelProductions.add(buildShortNovelProductionRecordV1(scope, now))
+    }
+    if (importedNovelText) {
+      const chunks = chunkDocument(importedNovelText, { targetChars: 20_000, overlapChars: 0 })
+      for (let index = 0; index < chunks.length; index++) {
+        // Use original offsets to retain paragraph separators and any preface exactly once.
+        const content = importedNovelText.slice(index === 0 ? 0 : chunks[index].startChar, index + 1 < chunks.length ? chunks[index + 1].startChar : importedNovelText.length)
+        const title = chunks[index].label || `原作第 ${index + 1} 部分`
+        const outlineNodeId = await db.outlineNodes.add(stampNewRecord(scope, 'outlineNodes', { projectId, parentId: null, type: 'chapter', title, summary: '', order: index, createdAt: now, updatedAt: now }, { owner: 'work' })) as number
+        await db.chapters.add(stampNewRecord(scope, 'chapters', { projectId, outlineNodeId, title, content: plainTextToHtml(content), wordCount: countWords(content), status: 'draft', order: index, notes: '', createdAt: now, updatedAt: now }, { owner: 'work' }))
+      }
     }
     const createdWorld = { ...world, id: worldId }
     const createdWork = { ...work, id: workId }

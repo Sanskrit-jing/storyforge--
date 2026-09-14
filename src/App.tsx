@@ -6,6 +6,7 @@ import { PRODUCT_NAVIGATION } from './components/navigation/product-navigation'
 const PreviewRoutePage = lazy(() => import('./pages/PreviewRoutePage'))
 const MistHarborPage = lazy(() => import('./pages/MistHarborPage'))
 const ProductHubPage = lazy(() => import('./pages/ProductHubPage'))
+const ScreenplayPage = lazy(() => import('./pages/ScreenplayPage'))
 const ShortformPage = lazy(() => import('./pages/ShortformPage'))
 const LongformLibraryPage = lazy(() => import('./pages/LongformLibraryPage'))
 const WorkspacePage = lazy(() => import('./pages/WorkspacePage'))
@@ -26,7 +27,8 @@ function HomeRoute() {
 export default function App() {
   return (
     <Routes>
-      {[...PRODUCT_NAVIGATION.filter(item => !['long', 'short'].includes(item.id)), { id: 'community' }].map(item => <Route key={item.id} path={`/${item.id}/:pageId?`} element={<Suspense fallback={<RouteFallback />}><PreviewRoutePage productId={item.id}/></Suspense>}/>)}
+      {[...PRODUCT_NAVIGATION.filter(item => !['long', 'short', 'script'].includes(item.id)), { id: 'community' }].map(item => <Route key={item.id} path={`/${item.id}/:pageId?`} element={<Suspense fallback={<RouteFallback />}><PreviewRoutePage productId={item.id}/></Suspense>}/>)}
+      <Route path="/script/:pageId?" element={<Suspense fallback={<RouteFallback />}><ScreenplayPage /></Suspense>}/>
       <Route path="/" element={<Suspense fallback={<RouteFallback />}><HomeRoute /></Suspense>} />
       <Route path="/play" element={<Suspense fallback={<RouteFallback />}><TtrpgCommunityPage /></Suspense>} />
       <Route path="/play/session/:sessionId" element={<Suspense fallback={<RouteFallback />}><TtrpgSessionPage /></Suspense>} />

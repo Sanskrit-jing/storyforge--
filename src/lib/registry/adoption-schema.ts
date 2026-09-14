@@ -716,17 +716,17 @@ export const ADOPTION_EXTENSIONS: readonly AdoptionExtensionSpec[] = Object.free
   {
     id: 'screenplay-scene-card-lifecycle',
     target: 'screenplaySceneCards',
-    entrypoints: ['src/lib/screenplay/production.ts'],
+    entrypoints: ['src/lib/screenplay/production.ts', 'src/lib/screenplay/service.ts'],
     policyRegistry: 'PROJECT_TABLES + FIELD_REGISTRY + closed Scene Card contract + Beat/source CAS',
-    reason: 'Scene Card 是场景 AST 之前的独立因果合同；场号、Beat、来源和状态必须整批校验。',
+    reason: '作者复制、拆分和合并场景时，在同一事务维护对应卡片和审查生命周期；Scene Card 是场景 AST 之前的独立因果合同；场号、Beat、来源和状态必须整批校验。',
     reviewAfter: '2027-09-01',
   },
   {
     id: 'screenplay-review-issue-lifecycle',
     target: 'screenplayReviewIssues',
-    entrypoints: ['src/lib/screenplay/production.ts'],
+    entrypoints: ['src/lib/screenplay/production.ts', 'src/lib/screenplay/service.ts'],
     policyRegistry: 'PROJECT_TABLES + FIELD_REGISTRY + scene/block/revision evidence validator',
-    reason: '审查问题必须定位到目标场景当前 revision；定点改写只能处理作者选择的开放问题。',
+    reason: '作者复制、拆分和合并场景时，在同一事务维护对应卡片和审查生命周期；审查问题必须定位到目标场景当前 revision；定点改写只能处理作者选择的开放问题。',
     reviewAfter: '2027-09-01',
   },
   {

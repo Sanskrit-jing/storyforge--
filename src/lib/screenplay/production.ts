@@ -174,6 +174,7 @@ export async function adoptScreenplaySceneCardsV1(input: {
       db.screenplayBeats.where('[adaptationProjectId+manifestVersion]').equals(key).toArray(),
       db.screenplayScenes.where('adaptationProjectId').equals(root.id).toArray(),
     ])
+    if (root.planSourceManifestVersion !== root.activeSourceManifestVersion) throw new Error('上游改编内容已变化，请先重新确认结构规划')
     if (!beats.length) throw new Error('[screenplay-production] 请先确认 Beat Sheet')
     if (scenes.length && !input.allowReplaceDownstream) throw new Error('[screenplay-production] 重做 Scene Card 会清除场景与审查，必须显式确认')
     const unitKeys = new Set(units.map(row => row.sourceUnitKey)); const beatByKey = new Map(beats.map(row => [row.stableKey, row]))
@@ -327,33 +328,36 @@ export async function inspectScreenplayCompletionV1(scopeInput: WorkspaceScope):
     db.workCharacterBindings.where('workId').equals(root.workId).toArray(),
   ])
   const blockers: string[] = []; const warnings: string[] = []
+  const pending = await db.agentRuns.where('workId').equals(root.workId).filter(run => !['completed', 'cancelled', 'failed'].includes(run.status) && (run.contractJson ?? '').includes('screenplay-professional:')).count()
+  if (pending) blockers.push('仍有未处理的剧本生成或采纳任务，请先在任务面板恢复或结束。')
   if (root.briefSourceManifestVersion !== root.activeSourceManifestVersion) blockers.push('改编 Brief 尚未按当前来源确认。')
   if (!facts.some(row => row.authorStatus === 'confirmed')) blockers.push('缺少作者确认的来源事实。')
   if (!decisions.some(row => row.authorStatus === 'confirmed')) blockers.push('缺少作者确认的改编决定。')
+  if (root.planSourceManifestVersion !== root.activeSourceManifestVersion) blockers.push('上游改编内容已变化，请重新确认结构与场次规划；已有稿件保留。')
   if (!beats.length) blockers.push('Beat Sheet 为空。')
   if (!cards.length) blockers.push('Scene Cards 为空。')
   const sceneByKey = new Map(scenes.map(scene => [scene.stableKey, scene]))
   const cardByKey = new Map(cards.map(card => [card.stableKey, card]))
   const beatByKey = new Map(beats.map(beat => [beat.stableKey, beat]))
   const unitKeyById = new Map(units.flatMap(unit => unit.id == null ? [] : [[unit.id, unit.sourceUnitKey] as const]))
-  for (const card of cards) if (!sceneByKey.has(card.stableKey)) blockers.push(`Scene Card ${card.stableKey} 尚未写成场景。`)
+  for (const card of cards) if (!sceneByKey.has(card.stableKey)) blockers.push(`第 ${card.episodeNumber} 集第 ${card.sceneNumber} 场尚未写成场景。`)
   const unitIds = new Set(units.map(row => row.id!))
   for (const scene of scenes) {
     const card = cardByKey.get(scene.stableKey)
     const beat = card ? beatByKey.get(card.beatKey) : undefined
-    if (!card || !beat) blockers.push(`场景 ${scene.stableKey} 没有当前版本的 Scene Card。`)
+    if (!card || !beat) blockers.push(`第 ${scene.episodeNumber} 集第 ${scene.sceneNumber} 场 没有当前版本的 Scene Card。`)
     else {
-      if (scene.planSectionKey !== beat.sectionKey || scene.episodeNumber !== card.episodeNumber || scene.sceneNumber !== card.sceneNumber) blockers.push(`场景 ${scene.stableKey} 偏离 Scene Card 身份。`)
+      if (scene.planSectionKey !== beat.sectionKey || scene.episodeNumber !== card.episodeNumber || scene.sceneNumber !== card.sceneNumber) blockers.push(`第 ${scene.episodeNumber} 集第 ${scene.sceneNumber} 场 偏离 Scene Card 身份。`)
       const sourceKeys = scene.sourceUnitIds.map(id => unitKeyById.get(id))
-      if (sourceKeys.some(key => !key || !card.sourceUnitKeys.includes(key))) blockers.push(`场景 ${scene.stableKey} 引用了 Scene Card 之外的来源。`)
+      if (sourceKeys.some(key => !key || !card.sourceUnitKeys.includes(key))) blockers.push(`第 ${scene.episodeNumber} 集第 ${scene.sceneNumber} 场 引用了 Scene Card 之外的来源。`)
     }
     const report = validateScreenplayBlocksV1(scene.blocks)
-    if (!report.valid) blockers.push(`场景 ${scene.stableKey} 格式不合法。`)
-    try { assertValidScreenplaySceneV1({ scene, adaptation: root, sourceUnitIds: unitIds, bindings }) } catch (error) { blockers.push(error instanceof Error ? error.message : `场景 ${scene.stableKey} 非法`) }
-    if (!['reviewed', 'locked'].includes(scene.status)) blockers.push(`场景 ${scene.stableKey} 尚未审定。`)
-    if (scene.sourceReviewManifestVersion !== root.activeSourceManifestVersion) blockers.push(`场景 ${scene.stableKey} 来源审查版本已过期。`)
-    if (scene.groundingReviewRevision !== scene.revision) blockers.push(`场景 ${scene.stableKey} 尚未按当前内容完成来源审查。`)
-    if (scene.dramaturgyReviewRevision !== scene.revision) blockers.push(`场景 ${scene.stableKey} 尚未按当前内容完成戏剧审查。`)
+    if (!report.valid) blockers.push(`第 ${scene.episodeNumber} 集第 ${scene.sceneNumber} 场 格式不合法。`)
+    try { assertValidScreenplaySceneV1({ scene, adaptation: root, sourceUnitIds: unitIds, bindings }) } catch (error) { blockers.push(error instanceof Error ? error.message : `第 ${scene.episodeNumber} 集第 ${scene.sceneNumber} 场 非法`) }
+    if (!['reviewed', 'locked'].includes(scene.status)) blockers.push(`第 ${scene.episodeNumber} 集第 ${scene.sceneNumber} 场 尚未审定。`)
+    if (scene.sourceReviewManifestVersion !== root.activeSourceManifestVersion) blockers.push(`第 ${scene.episodeNumber} 集第 ${scene.sceneNumber} 场 来源审查版本已过期。`)
+    if (scene.groundingReviewRevision !== scene.revision) blockers.push(`第 ${scene.episodeNumber} 集第 ${scene.sceneNumber} 场 尚未按当前内容完成来源审查。`)
+    if (scene.dramaturgyReviewRevision !== scene.revision) blockers.push(`第 ${scene.episodeNumber} 集第 ${scene.sceneNumber} 场 尚未按当前内容完成戏剧审查。`)
   }
   const open = issues.filter(issue => issue.status === 'open')
   if (open.some(issue => issue.severity === 'critical' || issue.severity === 'major')) blockers.push('仍有开放的 critical/major 审查问题。')

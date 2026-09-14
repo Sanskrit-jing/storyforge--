@@ -283,8 +283,8 @@ AI 输出经 `adopt({ target, data })` 写回,只有这里登记的字段可写(
 | `adaptation-decision-lifecycle` | `adaptationDecisions` | `PROJECT_TABLES + FIELD_REGISTRY + closed adaptation-decision contract + adaptation manifest CAS` | `src/lib/adaptation/analysis.ts` | 2027-09-01 |
 | `screenplay-scene-lifecycle` | `screenplayScenes` | `PROJECT_TABLES + FIELD_REGISTRY + ADOPTION_SCHEMAS + screenplay block validator + adaptation freshness CAS` | `src/lib/screenplay/service.ts`<br/>`src/lib/screenplay/adoption.ts`<br/>`src/lib/screenplay/production.ts` | 2027-08-01 |
 | `screenplay-beat-lifecycle` | `screenplayBeats` | `PROJECT_TABLES + FIELD_REGISTRY + closed Beat contract + adaptation/source/decision CAS` | `src/lib/screenplay/production.ts` | 2027-09-01 |
-| `screenplay-scene-card-lifecycle` | `screenplaySceneCards` | `PROJECT_TABLES + FIELD_REGISTRY + closed Scene Card contract + Beat/source CAS` | `src/lib/screenplay/production.ts` | 2027-09-01 |
-| `screenplay-review-issue-lifecycle` | `screenplayReviewIssues` | `PROJECT_TABLES + FIELD_REGISTRY + scene/block/revision evidence validator` | `src/lib/screenplay/production.ts` | 2027-09-01 |
+| `screenplay-scene-card-lifecycle` | `screenplaySceneCards` | `PROJECT_TABLES + FIELD_REGISTRY + closed Scene Card contract + Beat/source CAS` | `src/lib/screenplay/production.ts`<br/>`src/lib/screenplay/service.ts` | 2027-09-01 |
+| `screenplay-review-issue-lifecycle` | `screenplayReviewIssues` | `PROJECT_TABLES + FIELD_REGISTRY + scene/block/revision evidence validator` | `src/lib/screenplay/production.ts`<br/>`src/lib/screenplay/service.ts` | 2027-09-01 |
 | `comic-page-panel-lifecycle` | `comicPages` | `PROJECT_TABLES + FIELD_REGISTRY + ADOPTION_SCHEMAS + comic geometry/lettering validator + adaptation freshness CAS` | `src/lib/comic/service.ts`<br/>`src/lib/comic/production.ts` | 2027-08-01 |
 | `comic-script-beat-lifecycle` | `comicScriptBeats` | `PROJECT_TABLES + FIELD_REGISTRY + closed comic beat contract + source/decision CAS` | `src/lib/comic/production.ts` | 2027-09-01 |
 | `comic-page-plan-lifecycle` | `comicPagePlans` | `PROJECT_TABLES + FIELD_REGISTRY + closed page rhythm contract + script beat CAS` | `src/lib/comic/production.ts` | 2027-09-01 |
@@ -406,7 +406,7 @@ AI 输出经 `adopt({ target, data })` 写回,只有这里登记的字段可写(
 - `src/lib/open-world/evolution-harness.ts:246 · chat`
 - `src/lib/open-world/harness.ts:139 · chat`
 - `src/lib/product-production/capabilities.ts:158 · chat`
-- `src/lib/screenplay/durable-production.ts:446 · chat`
+- `src/lib/screenplay/durable-production.ts:449 · chat`
 - `src/lib/ttrpg/gm-actor-harness.ts:481 · chat`
 - `src/lib/ttrpg/gm-harness.ts:542 · chat`
 
@@ -455,4 +455,4 @@ AI 输出经 `adopt({ target, data })` 写回,只有这里登记的字段可写(
 
 ---
 
-生成时间基准:commit `452ed323`
+生成时间基准:commit `ca4fd9aa`

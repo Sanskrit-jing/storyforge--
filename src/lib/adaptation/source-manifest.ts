@@ -853,3 +853,16 @@ async function updateAdaptationRootContent(
     return next
   })
 }
+
+
+/** Author-only screenplay settings; changes invalidate Brief confirmation and pending candidates. */
+export async function updateScreenplayTargetSpecV1(input: { scope: WorkspaceScope; expectedRevision: number; targetSpec: ScreenplayTargetSpecV1 }): Promise<AdaptationProject> {
+  assertScreenplayTargetSpecV1(input.targetSpec)
+  const scope = await resolveScope({ scope: input.scope })
+  const root = await db.adaptationProjects.where('workId').equals(scope.workId).first()
+  if (!root || root.medium !== 'screenplay' || root.projectId !== scope.projectId || root.worldId !== scope.worldId) throw new Error('目标剧本不存在或越界')
+  return updateAdaptationRootContent(root.id!, input.expectedRevision, current => {
+    if (current.medium !== 'screenplay' || current.status === 'complete') throw new Error('请先重新打开剧本审校')
+    return { ...current, targetSpec: structuredClone(input.targetSpec), briefSourceManifestVersion: null, status: 'brief-review' }
+  })
+}

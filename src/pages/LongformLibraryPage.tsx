@@ -4,6 +4,9 @@ import { liveQuery } from 'dexie'
 import { useNavigate, useSearchParams } from 'react-router'
 import { db } from '../lib/db/schema'
 import type { Project, Work } from '../lib/types'
+import { switchActiveWork } from '../lib/workspace/works'
+import { deleteWork } from '../lib/workspace/lifecycle'
+import { requireBackupBefore } from '../lib/safety/require-backup-before'
 import { createWorkspace } from '../lib/workspace/create-workspace'
 import { effectiveNovelProfile, effectiveWorkKind } from '../lib/workspace/work-kind'
 import { useProjectStore } from '../stores/project'
@@ -44,9 +47,9 @@ export default function LongformLibraryPage() {
       const projects = await db.projects.toArray()
       const result: { project: Project; work: Work }[] = []
       for (const project of projects) {
-        if (project.workspacePurpose !== 'independent-work' || !project.activeWorkId) continue
-        const work = await db.works.get(project.activeWorkId)
-        if (work && work.projectId === project.id && effectiveWorkKind(work) === 'novel' && effectiveNovelProfile(work) === 'long') result.push({ project, work })
+        if (project.workspacePurpose !== 'independent-work') continue
+        const works = await db.works.where('projectId').equals(project.id!).toArray()
+        for (const work of works) if (effectiveWorkKind(work) === 'novel' && effectiveNovelProfile(work) === 'long') result.push({ project, work })
       }
       return result.sort((a, b) => b.work.updatedAt - a.work.updatedAt)
     }).subscribe({ next: value => { setRows(value); setLoading(false) }, error: cause => { setError(String(cause)); setLoading(false) } })
@@ -65,11 +68,18 @@ export default function LongformLibraryPage() {
   const rename = async (project: Project, work: Work) => {
     const value = await dialog.prompt({ title: '重命名长篇', defaultValue: work.title, confirmText: '保存名称' })
     if (!value?.trim()) return
-    try { await useProjectStore.getState().updateActiveWork(project.id!, { title: value.trim() }) }
+    try { await switchActiveWork(project.id!, work.id!); await useProjectStore.getState().updateActiveWork(project.id!, { title: value.trim() }) }
     catch (cause) { setError(String(cause)) }
   }
-  const remove = async (project: Project) => {
-    try { await useProjectStore.getState().deleteProject(project.id!) }
+  const open = async (project: Project, work: Work, path = destination(project.id!)) => {
+    try { await switchActiveWork(project.id!, work.id!); navigate(path) }
+    catch (cause) { setError(String(cause)) }
+  }
+  const remove = async (project: Project, work: Work) => {
+    try {
+      if (await db.works.where('projectId').equals(project.id!).count() === 1) await useProjectStore.getState().deleteProject(project.id!)
+      else if (await requireBackupBefore({ operation: '删除长篇作品', projectId: project.id!, details: '删除这部长篇及其正文，保留同一工作区的剧本等其他作品。已有改编会失去原作读取来源。' })) { await deleteWork(work.id!); await useProjectStore.getState().loadProjects() }
+    }
     catch (cause) { setError(String(cause)) }
   }
   return <LongformLayout section={section} mode={mode} module={module} onHome={() => navigate('/')}
@@ -78,7 +88,7 @@ export default function LongformLibraryPage() {
     onModule={next => browse(sectionForModule(next), next)}>
     {section !== 'library' && choosing && <section ref={chooserRef} className="lf-paper" aria-label="选择操作的作品">
       <h3>选择或创建一部作品</h3><p role="status">这个操作需要一部作品。选择后会进入当前功能页，由你继续操作。</p>
-      {rows.length > 0 && <div className="flex flex-wrap gap-3 mb-4"><select aria-label="选择长篇作品" value={selectedProjectId} onChange={event => setSelectedProjectId(event.target.value)}><option value="">请选择作品</option>{rows.map(row => <option key={row.project.id} value={row.project.id}>{row.work.title}</option>)}</select><button className="lf-action lf-action-primary" disabled={!selectedProjectId || !rows.some(row => String(row.project.id) === selectedProjectId)} onClick={() => navigate(destination(Number(selectedProjectId)))}>使用这部作品</button></div>}
+      {rows.length > 0 && <div className="flex flex-wrap gap-3 mb-4"><select aria-label="选择长篇作品" value={selectedProjectId} onChange={event => setSelectedProjectId(event.target.value)}><option value="">请选择作品</option>{rows.map(row => <option key={row.work.id} value={row.work.id}>{row.work.title}</option>)}</select><button className="lf-action lf-action-primary" disabled={!selectedProjectId || !rows.some(row => String(row.work.id) === selectedProjectId)} onClick={() => { const row = rows.find(item => String(item.work.id) === selectedProjectId); if (row) void open(row.project, row.work) }}>使用这部作品</button></div>}
       <form onSubmit={event => { event.preventDefault(); void create() }} className="flex flex-wrap gap-3"><input aria-label="新长篇名称" value={title} onChange={event => setTitle(event.target.value)} placeholder="新长篇名称" maxLength={200}/><button className="lf-action lf-action-primary" disabled={busy || loading || !title.trim()}>{busy ? '创建中…' : '创建并进入当前页面'}</button><button className="lf-action" type="button" onClick={() => setChoosing(false)}>继续浏览</button></form>
       {error && <p role="alert">{error}</p>}
     </section>}
@@ -87,7 +97,7 @@ export default function LongformLibraryPage() {
       {creating && <form className="mt-5 flex flex-wrap gap-3" onSubmit={event => { event.preventDefault(); void create() }}><input aria-label="新长篇名称" autoFocus value={title} onChange={event => setTitle(event.target.value)} placeholder="为这部作品起个名字" maxLength={200}/><button className="lf-action lf-action-primary" disabled={busy || !title.trim()}>{busy ? '创建中…' : '创建并进入工作台'}</button></form>}
       {error && <p role="alert">{error}</p>}
     </section>
-    {loading ? <p role="status">正在读取作品库…</p> : !rows.length ? <section className="lf-paper"><h3>从你的第一个故事开始</h3><p>在这里创建长篇，随后自由完善世界、故事和人物，直至写出正文。</p></section> : <div className="lf-library-grid">{rows.filter(({work}) => `${work.title} ${work.description}`.toLowerCase().includes(search.toLowerCase())).map(({ project, work }) => <article className="lf-paper" key={work.id}><h3>{work.title}</h3><p>{work.description || '尚未填写作品简介'}</p><p>{work.currentWordCount.toLocaleString()} 字 · 最近编辑 {new Date(work.updatedAt).toLocaleDateString()}</p><button className="lf-action" onClick={() => navigate(`/workspace/${project.id}?module=info`)}>进入长篇工作台</button><div className="mt-3 flex flex-wrap gap-3"><button className="lf-action" onClick={() => void rename(project, work)}>重命名</button><button className="lf-action" onClick={() => navigate(`/workspace/${project.id}?module=export`)}>导出与备份</button><button className="lf-action" onClick={() => void remove(project)}>删除作品</button></div></article>)}</div>}
+    {loading ? <p role="status">正在读取作品库…</p> : !rows.length ? <section className="lf-paper"><h3>从你的第一个故事开始</h3><p>在这里创建长篇，随后自由完善世界、故事和人物，直至写出正文。</p></section> : <div className="lf-library-grid">{rows.filter(({work}) => `${work.title} ${work.description}`.toLowerCase().includes(search.toLowerCase())).map(({ project, work }) => <article className="lf-paper" key={work.id}><h3>{work.title}</h3><p>{work.description || '尚未填写作品简介'}</p><p>{work.currentWordCount.toLocaleString()} 字 · 最近编辑 {new Date(work.updatedAt).toLocaleDateString()}</p><button className="lf-action" onClick={() => void open(project, work, `/workspace/${project.id}?module=info`)}>进入长篇工作台</button><div className="mt-3 flex flex-wrap gap-3"><button className="lf-action" onClick={() => void rename(project, work)}>重命名</button><button className="lf-action" onClick={() => void open(project, work, `/workspace/${project.id}?module=export`)}>导出与备份</button><button className="lf-action" onClick={() => void remove(project, work)}>删除作品</button></div></article>)}</div>}
     </> }
   </LongformLayout>
 }

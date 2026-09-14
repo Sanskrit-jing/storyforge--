@@ -607,6 +607,7 @@ export default function WorkspacePage() {
     }
   }
 
+  if (activeWork && effectiveWorkKind(activeWork)==='screenplay') return <Navigate replace to={`/script/editor?work=${activeWork.id}`}/>
   if (project.workspacePurpose === 'independent-work' && activeWork && effectiveWorkKind(activeWork) === 'novel' && effectiveNovelProfile(activeWork) === 'short') return <Navigate replace to={`/short/${activeModule === 'chapters-list' ? 'editor' : activeModule === 'version-history' || activeModule === 'export' ? 'versions' : 'intent'}?project=${project.id}`}/>
 
   const Layout = isLongform ? LongformLayout : Fragment

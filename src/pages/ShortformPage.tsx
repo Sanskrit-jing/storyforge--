@@ -9,7 +9,9 @@ import { db } from '../lib/db/schema'
 import type { Project, Work } from '../lib/types'
 import { createWorkspace } from '../lib/workspace/create-workspace'
 import { effectiveNovelProfile, effectiveWorkKind } from '../lib/workspace/work-kind'
-import { switchNovelProfile } from '../lib/workspace/works'
+import { deleteWork } from '../lib/workspace/lifecycle'
+import { requireBackupBefore } from '../lib/safety/require-backup-before'
+import { switchActiveWork, switchNovelProfile } from '../lib/workspace/works'
 import { useProjectStore } from '../stores/project'
 import { useDialog } from '../components/shared/Dialog'
 import { PRODUCT_NAVIGATION } from '../components/navigation/product-navigation'
@@ -56,6 +58,7 @@ export default function ShortformPage() {
   const [search,setSearch] = useState('')
   const [selected,setSelected] = useState('')
   const row = rows.find(item=>item.project.id===projectId)
+  const [readyWorkId,setReadyWorkId] = useState<number|null>(null)
   useAutoBackup(row?.project.id ?? null)
   useGistAutoBackup(row?.project.id ?? null)
   const selectedWorkId = row?.work.id
@@ -66,12 +69,18 @@ export default function ShortformPage() {
       const projects = await db.projects.toArray()
       const works = await db.works.toArray()
       return projects.flatMap(project=>{
-        const work=works.find(item=>item.id===project.activeWorkId&&item.projectId===project.id)
+        const work=works.find(item=>item.projectId===project.id&&effectiveWorkKind(item)==='novel'&&effectiveNovelProfile(item)==='short')
         return project.workspacePurpose==='independent-work'&&work&&effectiveWorkKind(work)==='novel'&&effectiveNovelProfile(work)==='short' ? [{project,work}] : []
       }).sort((a,b)=>b.work.updatedAt-a.work.updatedAt)
     }).subscribe({next:value=>{setRows(value);setLoading(false)},error:cause=>{setError(String(cause));setLoading(false)}})
     return ()=>subscription.unsubscribe()
   },[])
+  useEffect(()=>{
+    let cancelled=false
+    if(projectId&&selectedWorkId)void switchActiveWork(projectId,selectedWorkId).then(()=>{if(!cancelled)setReadyWorkId(selectedWorkId)}).catch(cause=>{if(!cancelled)setError(String(cause))})
+    else setReadyWorkId(null)
+    return ()=>{cancelled=true}
+  },[projectId,selectedWorkId])
   const go = useCallback(async(path:string)=>{
     try { await flushPendingEditsV1();setChoosing(false);setMenu(false);setError('');navigate(path) }
     catch(cause){setError(String(cause))}
@@ -89,6 +98,7 @@ export default function ShortformPage() {
     }catch(cause){setError(String(cause))}finally{setBusy(false)}
   }
   const openDraft = async(project:Project,work:Work)=>{
+    await switchActiveWork(project.id!,work.id!)
     const targetScope={projectId:project.id!,workId:work.id!,worldId:work.worldId}
     const production=await ensureShortNovelProductionV1(targetScope)
     if(production.phase==='complete')await reopenShortNovelProductionV1({scope:targetScope,expectedRevision:production.revision})
@@ -101,7 +111,10 @@ export default function ShortformPage() {
     const value=await dialog.prompt({title:'编辑短篇简介',message:'简介会作为 AI 创作的作品背景，正式创作意图仍需在表单中确认。',defaultValue:work.description,confirmText:'保存简介'})
     if(value!==null)try{await flushPendingEditsV1();await openDraft(project,work);await useProjectStore.getState().updateActiveWork(project.id!,{description:value.trim()});setMetadataRevision(value=>value+1)}catch(cause){setError(String(cause))}
   }
-  const remove = async(project:Project)=>{try{await useProjectStore.getState().deleteProject(project.id!)}catch(cause){setError(String(cause))}}
+  const remove = async(project:Project,work:Work)=>{try{
+    if(await db.works.where('projectId').equals(project.id!).count()===1)await useProjectStore.getState().deleteProject(project.id!)
+    else if(await requireBackupBefore({operation:'删除短篇作品',projectId:project.id!,details:'删除这部短篇及其正文，保留同一工作区的剧本等其他作品。已有改编会失去原作读取来源。'})){await deleteWork(work.id!);await useProjectStore.getState().loadProjects()}
+  }catch(cause){setError(String(cause))}}
   const expand = async()=>{
     if(!row||busy)return
     if(!await dialog.confirm({title:'扩写为长篇？',message:'保留这部作品的正文和短篇历史版本，记录转换来源，并下载转换前备份；后续进入长篇工作台。',confirmText:'备份并扩写'}))return
@@ -121,7 +134,7 @@ export default function ShortformPage() {
     <section className="lf-main"><header className="lf-heading"><small>短篇创作 › {pages.find(([id])=>id===current)?.[1]}</small><h2>{pages.find(([id])=>id===current)?.[1]}</h2><div className="lf-mobile-controls"><button onClick={()=>setMenu(!menu)}>短篇导航</button></div></header><div className="lf-body"><div className="lf-content">
       {error&&<p className="short-error" role="alert">{error}</p>}
       {choosing&&<section className="lf-paper" aria-label="选择或创建短篇"><h3>这个操作需要一部短篇</h3>{rows.length>0&&<div className="short-choose"><select aria-label="选择短篇作品" value={selected} onChange={event=>setSelected(event.target.value)}><option value="">请选择作品</option>{rows.map(item=><option key={item.project.id} value={item.project.id}>{item.work.title}</option>)}</select><button className="lf-action" disabled={!rows.some(item=>String(item.project.id)===selected)} onClick={()=>void go(pagePath(current==='library'?'intent':current,Number(selected)))}>使用这部短篇</button></div>}<form onSubmit={event=>{event.preventDefault();void create()}}><div className="short-fields"><label>作品名称<input aria-label="新短篇名称" value={title} onChange={event=>setTitle(event.target.value)} maxLength={200}/></label><label>目标字数<input aria-label="新短篇目标字数" type="number" value={target} onChange={event=>setTarget(Number(event.target.value))}/></label><label>章节数<input aria-label="新短篇章节数" type="number" value={count} onChange={event=>setCount(Number(event.target.value))}/></label></div><button className="lf-action lf-action-primary" disabled={busy||!title.trim()}>{busy?'创建中…':'创建并进入当前页面'}</button><button type="button" className="lf-action" onClick={()=>setChoosing(false)}>继续浏览</button></form></section>}
-      {loading?<p role="status">正在读取短篇作品…</p>:current==='library'?<><section className="lf-paper"><div className="short-between"><h3>我的短篇</h3><button className="lf-action lf-action-primary" onClick={()=>setChoosing(true)}>新建短篇</button></div><input aria-label="搜索短篇" placeholder="搜索作品名称或简介" value={search} onChange={event=>setSearch(event.target.value)}/></section><div className="lf-library-grid">{rows.filter(item=>`${item.work.title} ${item.work.description}`.includes(search)).map(item=><article className="lf-paper" key={item.work.id}><h3>{item.work.title}</h3><p>{item.work.description||'尚未填写故事简介'}</p><p>{item.work.currentWordCount} 字 · {item.work.status==='completed'?'已完成':'创作中'}</p><button className="lf-action lf-action-primary" onClick={()=>void go(pagePath('intent',item.project.id!))}>继续创作</button><div className="short-row-actions"><button onClick={()=>void rename(item.project,item.work)}>重命名</button><button onClick={()=>void go(pagePath('versions',item.project.id!))}>版本与备份</button><button onClick={()=>void remove(item.project)}>删除作品</button></div></article>)}</div>{rows.length===0&&<section className="lf-paper"><h3>从一个念头开始</h3><p>先浏览创作页面，准备好时再新建短篇。</p></section>}<details className="lf-paper"><summary>短篇创作示例</summary><Suspense fallback={<p>加载示例…</p>}><Showcase/></Suspense></details></>:current==='settings'?<Suspense fallback={<p>加载设置…</p>}><Settings project={row?.project}/></Suspense>:!row||!scope?<section className="lf-paper" aria-label="未选择短篇的功能页"><h3>{pages.find(([id])=>id===current)?.[1]}</h3><p>{descriptions[current]}</p><p>{projectId?'这部短篇不存在或已转换为其他作品。':'尚未选择作品，可以先浏览各个功能页。'}</p><button className="lf-action lf-action-primary" onClick={()=>setChoosing(true)}>选择或创建短篇</button></section>:<Suspense fallback={<p role="status">正在打开短篇功能…</p>}>
+      {(loading||(current!=='library'&&row&&readyWorkId!==row.work.id))?<p role="status">正在读取短篇作品…</p>:current==='library'?<><section className="lf-paper"><div className="short-between"><h3>我的短篇</h3><button className="lf-action lf-action-primary" onClick={()=>setChoosing(true)}>新建短篇</button></div><input aria-label="搜索短篇" placeholder="搜索作品名称或简介" value={search} onChange={event=>setSearch(event.target.value)}/></section><div className="lf-library-grid">{rows.filter(item=>`${item.work.title} ${item.work.description}`.includes(search)).map(item=><article className="lf-paper" key={item.work.id}><h3>{item.work.title}</h3><p>{item.work.description||'尚未填写故事简介'}</p><p>{item.work.currentWordCount} 字 · {item.work.status==='completed'?'已完成':'创作中'}</p><button className="lf-action lf-action-primary" onClick={()=>void go(pagePath('intent',item.project.id!))}>继续创作</button><div className="short-row-actions"><button onClick={()=>void rename(item.project,item.work)}>重命名</button><button onClick={()=>void go(pagePath('versions',item.project.id!))}>版本与备份</button><button onClick={()=>void remove(item.project,item.work)}>删除作品</button></div></article>)}</div>{rows.length===0&&<section className="lf-paper"><h3>从一个念头开始</h3><p>先浏览创作页面，准备好时再新建短篇。</p></section>}<details className="lf-paper"><summary>短篇创作示例</summary><Suspense fallback={<p>加载示例…</p>}><Showcase/></Suspense></details></>:current==='settings'?<Suspense fallback={<p>加载设置…</p>}><Settings project={row?.project}/></Suspense>:!row||!scope?<section className="lf-paper" aria-label="未选择短篇的功能页"><h3>{pages.find(([id])=>id===current)?.[1]}</h3><p>{descriptions[current]}</p><p>{projectId?'这部短篇不存在或已转换为其他作品。':'尚未选择作品，可以先浏览各个功能页。'}</p><button className="lf-action lf-action-primary" onClick={()=>setChoosing(true)}>选择或创建短篇</button></section>:<Suspense fallback={<p role="status">正在打开短篇功能…</p>}>
         {current==='intent'&&<section className="lf-paper"><h3>作品信息</h3><p>{row.work.title} · {row.work.description||'尚未填写简介'}</p><button className="lf-action" onClick={()=>void rename(row.project,row.work)}>修改作品名称</button><button className="lf-action" onClick={()=>void describe(row.project,row.work)}>编辑作品简介</button></section>}
         {stages[current]&&<Studio key={`${scope.workId}:${metadataRevision}`} project={row.project} scope={scope} activeStage={stages[current]} onStageChange={onStageChange} structured/>}
         {current==='versions'&&<details className="lf-paper"><summary>完整备份、导入与恢复</summary><DataManagement project={row.project} onImported={async id=>{const imported=await db.projects.get(id);const work=imported?.activeWorkId?await db.works.get(imported.activeWorkId):null;navigate(work&&effectiveWorkKind(work)==='novel'&&effectiveNovelProfile(work)==='short'?`/short/intent?project=${id}`:`/workspace/${id}`)}} onOpenStorageSettings={()=>void go(pagePath('settings'))}/></details>}

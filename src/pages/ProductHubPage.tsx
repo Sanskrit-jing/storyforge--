@@ -98,7 +98,6 @@ const MarketplacePanel = lazy(() => import('../components/community/MarketplaceP
 const CommunityPrototypeGallery = lazy(() => import('../components/community/CommunityPrototypeGallery'))
 const OutlinePanel = lazy(() => import('../components/outline/OutlinePanel'))
 const ChaptersListPanel = lazy(() => import('../components/editor/ChaptersListPanel'))
-const ScreenplayStudio = lazy(() => import('../components/screenplay/ScreenplayStudio'))
 const ComicStudio = lazy(() => import('../components/comic/ComicStudio'))
 const MotionDramaStudio = lazy(() => import('../components/motion-drama/MotionDramaStudio'))
 
@@ -499,8 +498,9 @@ function NovelPage({ project, onCreate, onDerived }: { project?: Project; onCrea
   if (!isNovel && activeWork) {
     const scope = scopeForProject(project)
     const kind = effectiveWorkKind(activeWork)
-    const title = kind === 'screenplay' ? '正规剧本工作台' : kind === 'comic' ? '漫画工作台' : '漫剧工坊'
-    return <><PageHeading eyebrow="AUTHORING / WORKS" title={title} description={kind === 'motion-drama' ? '从冻结小说到可交付 AI 视频工具的逐镜生产包；不在本产品内生成视频成片。' : '派生作品拥有独立结构、来源证据和导出链；不会修改源小说。'} action={<WorkKindBadge work={activeWork} />} />{scope ? <Suspense fallback={<FeaturePanelFallback />}>{kind === 'screenplay' ? <ScreenplayStudio scope={scope} /> : kind === 'comic' ? <ComicStudio scope={scope} /> : <MotionDramaStudio scope={scope} project={project} />}</Suspense> : <section className="sf-product-empty"><BookOpenText className="h-8 w-8" /><h2>作品工作区归属尚未就绪</h2><p>请先完成目标 Work 初始化。</p></section>}</>
+    if(kind === 'screenplay')return <Navigate replace to={`/script/source?work=${activeWork.id}`}/>
+    const title = kind === 'comic' ? '漫画工作台' : '漫剧工坊'
+    return <><PageHeading eyebrow="AUTHORING / WORKS" title={title} description={kind === 'motion-drama' ? '从冻结小说到可交付 AI 视频工具的逐镜生产包；不在本产品内生成视频成片。' : '派生作品拥有独立结构、来源证据和导出链；不会修改源小说。'} action={<WorkKindBadge work={activeWork} />} />{scope ? <Suspense fallback={<FeaturePanelFallback />}>{kind === 'comic' ? <ComicStudio scope={scope} /> : <MotionDramaStudio scope={scope} project={project} />}</Suspense> : <section className="sf-product-empty"><BookOpenText className="h-8 w-8" /><h2>作品工作区归属尚未就绪</h2><p>请先完成目标 Work 初始化。</p></section>}</>
   }
   if (profile === 'short') return <Navigate replace to={`/short/intent?project=${project.id}`}/>
   return <><PageHeading eyebrow="AUTHORING / STEP BY STEP" title="长篇小说创作" description="独立运行完整的分步骤长篇创作流程；世界引擎不是前置条件。" action={<div className="flex flex-wrap items-center justify-end gap-2">{activeWork && <WorkKindBadge work={activeWork} />}<MaturityBadge productId={activeProductId} /><WorldDerivationActions project={project} onDerived={onDerived} /><Button variant="primary" icon={ArrowRight} onClick={() => navigate(`/workspace/${project.id}?module=info`)}>进入完整长篇工作台</Button><Button icon={ArrowRight} onClick={() => setView('chapters')}>打开正文</Button></div>} /><div className="sf-subnav"><button className={view === 'outline' ? 'active' : ''} onClick={() => setView('outline')}><BookOpenText className="h-4 w-4" />卷纲与章纲</button><button className={view === 'chapters' ? 'active' : ''} onClick={() => setView('chapters')}><BookOpenText className="h-4 w-4" />章节与正文</button><span className="sf-subnav-spacer" /><span className="sf-subnav-note">{activeWork?.title ?? '当前作品'}</span></div><section className="sf-product-panel sf-novel-panel"><Suspense fallback={<FeaturePanelFallback />}>{view === 'outline' ? <OutlinePanel project={project} onOpenChapter={id => { setNodeId(id); setView('chapters') }} /> : <ChaptersListPanel project={project} initialNodeId={nodeId} />}</Suspense></section></>
@@ -680,6 +680,7 @@ function motionDramaTargetSpec(input: { episodeCount: number; seconds: number; a
 
 function CreatePanel({ projects, onClose, onCreated }: { projects: Project[]; onClose: () => void; onCreated: (kind: 'worlds' | 'novel' | 'shortform' | 'screenplay' | 'comic' | 'motion-drama', id: number) => void }) {
   const { createWorkspace, loadProjects } = useProjectStore()
+  const navigateToProduct = useNavigate()
   const [kind, setKind] = useState<'choose' | 'worlds' | 'long-novel' | 'short-novel' | 'screenplay' | 'comic' | 'motion-drama'>('choose')
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -796,7 +797,7 @@ function CreatePanel({ projects, onClose, onCreated }: { projects: Project[]; on
         <button onClick={() => setKind('worlds')}><span className="sf-create-option-icon"><Globe2 className="h-5 w-5" /></span><span><strong>世界引擎</strong><small>从零创建可被其他功能引用的世界</small></span><ArrowRight className="h-4 w-4" /></button>
         {canCreateShort && <button onClick={() => setKind('short-novel')}><span className="sf-create-option-icon"><BookOpenText className="h-5 w-5" /></span><span><strong>短篇小说 <MaturityBadge productId="independent.shortform" /></strong><small>5,000～25,000 字，动态单卷结构</small></span><ArrowRight className="h-4 w-4" /></button>}
         {canCreateLong && <button onClick={() => setKind('long-novel')}><span className="sf-create-option-icon"><BookOpenText className="h-5 w-5" /></span><span><strong>长篇小说</strong><small>保留熟悉的完整分步骤工作流</small></span><ArrowRight className="h-4 w-4" /></button>}
-        {canCreateScreenplay && <button onClick={() => setKind('screenplay')}><span className="sf-create-option-icon"><Sparkles className="h-5 w-5" /></span><span><strong>小说转剧本 <MaturityBadge productId="independent.screenplay" /></strong><small>冻结本地小说来源，进入十步专业改编流程</small></span><ArrowRight className="h-4 w-4" /></button>}
+        {canCreateScreenplay && <button onClick={() => { onClose(); navigateToProduct('/script/library?create=1') }}><span className="sf-create-option-icon"><Sparkles className="h-5 w-5" /></span><span><strong>小说转剧本 <MaturityBadge productId="independent.screenplay" /></strong><small>冻结本地小说来源，进入十步专业改编流程</small></span><ArrowRight className="h-4 w-4" /></button>}
         {canCreateComic && <button onClick={() => setKind('comic')}><span className="sf-create-option-icon"><Images className="h-5 w-5" /></span><span><strong>小说转漫画 <MaturityBadge productId="independent.comic" /></strong><small>冻结本地小说来源，进入十二步页漫生产流程</small></span><ArrowRight className="h-4 w-4" /></button>}
         {canCreateMotionDrama && <button onClick={() => setKind('motion-drama')}><span className="sf-create-option-icon"><Clapperboard className="h-5 w-5" /></span><span><strong>漫剧工坊 <MaturityBadge productId="independent.motion-drama" /></strong><small>一句话或小说 → 剧本、物料、分镜与视频工具提示词包</small></span><ArrowRight className="h-4 w-4" /></button>}
       </div> : <div className="sf-create-form">
