@@ -132,7 +132,7 @@ export async function switchNovelProfile(input: {
   profile: NovelWorkflowProfile
   targetWordCount?: number
 }): Promise<Work> {
-  return db.transaction('rw', scopeTransactionTables(db.chapters), async () => {
+  return db.transaction('rw', scopeTransactionTables(db.chapters, db.shortNovelProductions, db.agentRuns), async () => {
     const work = await db.works.get(input.workId)
     if (!work || work.projectId !== input.projectId) {
       throw new Error('[works] Work 不属于当前工作区')
@@ -156,6 +156,12 @@ export async function switchNovelProfile(input: {
     }
 
     const updatedAt = Date.now()
+    if (effectiveNovelProfile(work) === 'short' && input.profile === 'long') {
+      const tasks = await readOwnedRows<any>({projectId: work.projectId, worldId: work.worldId, workId: work.id!}, 'agentRuns', {owner: 'work'})
+      if (tasks.some(task => ['running', 'paused', 'awaiting_confirmation'].includes(task.status) && task.contractJson?.includes('short:'))) throw new Error('[works] 请先采纳或结束待处理短篇任务，再扩写为长篇')
+      const production = await db.shortNovelProductions.where('workId').equals(work.id!).first()
+      if (production) await db.shortNovelProductions.update(production.id!, {expandedFromShort: {convertedAt: updatedAt, targetWordCount: work.targetWordCount, productionRevision: production.revision}, updatedAt})
+    }
     const nextWork: Work = {
       ...work,
       kind: 'novel',

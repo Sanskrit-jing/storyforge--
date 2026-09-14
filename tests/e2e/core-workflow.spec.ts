@@ -1,3 +1,4 @@
+import { fillShortFields } from './helpers/shortform-navigation'
 import { openLongformLeaf } from './helpers/longform-navigation'
 import { expect, test, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
@@ -60,14 +61,12 @@ test('短篇小说使用独立创作基座，世界页不暴露可变作品改�
   await page.getByLabel('目标字数（5,000～25,000）').fill('12000')
   await page.getByLabel('建议章节数（可空）').fill('4')
   await page.getByRole('button', { name: '创建短篇小说', exact: true }).click()
-  await expect(page).toHaveURL(/\/storyforge\/\?tab=home$/)
-  await expect(page.getByRole('heading', { name: '短篇小说创作', exact: true })).toBeVisible()
-  await expect(page.getByText('小说 · 短篇', { exact: true })).toBeVisible()
+  await expect(page).toHaveURL(/short\/intent\?project=\d+$/)
   await expect(page.getByTestId('short-novel-studio')).toBeVisible()
-  for (const stage of ['创作意图', '故事设计', '章节卡', '正文', '全篇审校', '发布']) {
-    await expect(page.locator('.short-stage-nav').getByText(stage, { exact: true })).toBeVisible()
+  for (const stage of ['创作意图', '故事设计', '章节卡', '正文', '全篇审校', '版本与导出']) {
+    await expect(page.getByRole('navigation', {name:'短篇页面导航'}).getByText(stage, {exact:true})).toBeVisible()
   }
-  await page.locator('.short-json-editor textarea').fill(JSON.stringify({
+  await fillShortFields(page, JSON.stringify({
     version: 1,
     premise: '暴雨封锁旧站，返乡者必须在真相与亲情之间作出选择。',
     coreChange: '她从替家人隐瞒，变为承担说出真相的后果。',
@@ -84,11 +83,10 @@ test('短篇小说使用独立创作基座，世界页不暴露可变作品改�
   await page.getByRole('button', { name: '校验并确认本步', exact: true }).click()
   await expect(page.locator('.short-stage-heading').getByRole('heading', { name: '故事设计', exact: true })).toBeVisible()
   await page.reload()
-  await page.getByTestId('product-tab-novel').click()
   await expect(page.getByTestId('short-novel-studio')).toBeVisible()
   await expect(page.locator('.short-stage-heading').getByRole('heading', { name: '故事设计', exact: true })).toBeVisible()
 
-  await page.locator('.short-json-editor textarea').fill(JSON.stringify({
+  await fillShortFields(page, JSON.stringify({
     version: 1,
     protagonist: '返乡记者林岚',
     desire: '在封站前查明父亲当年的事故责任',
@@ -115,7 +113,7 @@ test('短篇小说使用独立创作基座，世界页不暴露可变作品改�
     exitState: '林岚更接近真相，也失去一条退路',
     targetWordCount: 3000,
   }))
-  await page.locator('.short-json-editor textarea').fill(JSON.stringify(shortPlan, null, 2))
+  await fillShortFields(page, JSON.stringify(shortPlan, null, 2))
   await page.getByRole('button', { name: '校验并确认本步', exact: true }).click()
   await expect(page.locator('.short-stage-heading').getByRole('heading', { name: '正文', exact: true })).toBeVisible()
 
@@ -130,9 +128,9 @@ test('短篇小说使用独立创作基座，世界页不暴露可变作品改�
     await expect(page.getByRole('button', { name: '已保存', exact: true })).toBeVisible()
   }
 
-  await page.locator('.short-stage-nav button').filter({ hasText: '全篇审校' }).click()
+  await page.getByRole('navigation', {name:'短篇页面导航'}).getByText('全篇审校', {exact:true}).click()
   await expect(page.locator('.short-stage-heading').getByRole('heading', { name: '全篇审校', exact: true })).toBeVisible()
-  await page.locator('.short-json-editor textarea').fill(JSON.stringify({
+  await fillShortFields(page, JSON.stringify({
     version: 1,
     summary: '人物目标、事故因果、视角与结尾承诺已逐章核对。',
     strengths: ['倒计时清楚', '结尾兑现开篇承诺'],
@@ -153,11 +151,28 @@ test('短篇小说使用独立创作基座，世界页不暴露可变作品改�
   expect(shortMarkdownText).toContain('## 封站')
 
   await page.reload()
-  await page.getByTestId('product-tab-novel').click()
   await expect(page.getByText(/v1 · E2E 短篇改编源 v1/)).toBeVisible()
 
+  const shortNav=page.getByRole('navigation',{name:'短篇页面导航'})
+  await shortNav.getByText('正文',{exact:true}).click()
+  await expect(page.locator('.short-frozen-prose')).toContainText(chapterBodies[0])
+  await expect(page.locator('.tiptap-editor')).toHaveCount(0)
+  await page.getByRole('button',{name:'继续修改草稿',exact:true}).click()
+  await expect(page.locator('.tiptap-editor')).toBeVisible()
+  await shortNav.getByText('扩展与派生',{exact:true}).click()
+  await page.getByRole('button',{name:'扩写为长篇',exact:true}).click()
+  const conversionDownload=page.waitForEvent('download')
+  await page.getByRole('button',{name:'备份并扩写',exact:true}).click()
+  expect((await conversionDownload).suggestedFilename()).toContain('短篇转换前备份')
+  await expect(page).toHaveURL(/workspace\/\d+\?module=info/)
+  await page.getByRole('navigation',{name:'长篇一级导航'}).getByRole('button',{name:'版本与导出',exact:true}).click()
+  await page.getByText('扩写前的短篇版本',{exact:true}).click()
+  const historyDownload=page.waitForEvent('download')
+  await page.getByRole('button',{name:'下载 MD',exact:true}).click()
+  expect(await readFile((await (await historyDownload).path())!,'utf8')).toBe(shortMarkdownText)
+
   // 世界引擎不能把可变作品直接送进改编产品；改编拥有自己的冻结来源契约。
-  await page.getByTestId('product-tab-worlds').click()
+  await page.goto('./?tab=worlds')
   await expect(page.getByRole('button', { name: '把当前小说改成剧本或漫画', exact: true })).toHaveCount(0)
 })
 

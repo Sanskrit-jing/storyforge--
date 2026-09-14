@@ -172,9 +172,16 @@ async function validateIndependentCreationBackup(value: Record<string, any>): Pr
   const releaseAssets = portableRows(value, 'creationReleaseAssets')
   const releaseVersions = new Set<string>()
 
+  const validConversion = (production: Record<string, any> | undefined, work: Record<string, any>) => {
+    const source = production?.expandedFromShort
+    return work.novelProfile === 'long' && source && Number.isFinite(source.convertedAt) && source.convertedAt > 0
+      && Number.isInteger(source.productionRevision) && source.productionRevision === production.revision
+      && Number.isInteger(source.targetWordCount) && source.targetWordCount >= 5000 && source.targetWordCount <= 25000
+      && production._workExportId === work._exportId && production._worldExportId === work._worldExportId
+  }
   for (const production of productions.values()) {
     const work = works.get(production._workExportId)
-    if (!work || work.kind !== 'novel' || work.novelProfile !== 'short'
+    if (!work || work.kind !== 'novel' || (work.novelProfile !== 'short' && !validConversion(production, work))
       || production._worldExportId !== work._worldExportId
       || !Number.isInteger(production.revision) || production.revision < 1) {
       throw new Error('[deriveImport] v12 ShortNovelProduction 身份、owner 或 revision 无效')
@@ -192,7 +199,7 @@ async function validateIndependentCreationBackup(value: Record<string, any>): Pr
     const expectedKind = release.productKind === 'short-novel' ? 'novel' : release.productKind
     if (!work || !['short-novel', 'screenplay', 'comic', 'motion-drama'].includes(release.productKind)
       || work.kind !== expectedKind
-      || (release.productKind === 'short-novel' && work.novelProfile !== 'short')
+      || (release.productKind === 'short-novel' && work.novelProfile !== 'short' && ![...productions.values()].some(production => validConversion(production, work)))
       || release._worldExportId !== work._worldExportId
       || !Number.isInteger(release.version) || release.version < 1
       || !Number.isInteger(release.sourceRevision) || release.sourceRevision < 1

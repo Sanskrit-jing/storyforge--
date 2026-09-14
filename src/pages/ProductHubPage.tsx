@@ -1,3 +1,4 @@
+import { Navigate } from 'react-router'
 import MistHarborShelf from '../components/text-game/MistHarborShelf'
 import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
@@ -69,8 +70,7 @@ import {
 import { importProjectJSON } from '../lib/export/json-export'
 import { useActiveWork } from '../hooks/useActiveWork'
 import WorkKindBadge from '../components/work/WorkKindBadge'
-import { effectiveNovelProfile, effectiveWorkKind, SHORT_NOVEL_DEFAULT_WORDS } from '../lib/workspace/work-kind'
-import { switchNovelProfile } from '../lib/workspace/works'
+import { effectiveNovelProfile, effectiveWorkKind } from '../lib/workspace/work-kind'
 import { createAdaptation } from '../lib/adaptation/source-manifest'
 import { createWorkspace as createWorkspaceDomain } from '../lib/workspace/create-workspace'
 import { countWords } from '../lib/utils/html'
@@ -100,7 +100,6 @@ const OutlinePanel = lazy(() => import('../components/outline/OutlinePanel'))
 const ChaptersListPanel = lazy(() => import('../components/editor/ChaptersListPanel'))
 const ScreenplayStudio = lazy(() => import('../components/screenplay/ScreenplayStudio'))
 const ComicStudio = lazy(() => import('../components/comic/ComicStudio'))
-const ShortNovelStudio = lazy(() => import('../components/short-novel/ShortNovelStudio'))
 const MotionDramaStudio = lazy(() => import('../components/motion-drama/MotionDramaStudio'))
 
 type TabId = 'home' | 'worlds' | 'novel' | 'nodes' | 'ttrpg' | 'chat' | 'town' | 'text-games' | 'market'
@@ -485,9 +484,6 @@ function NovelPage({ project, onCreate, onDerived }: { project?: Project; onCrea
   const [view, setView] = useState<'outline' | 'chapters'>('outline')
   const [nodeId, setNodeId] = useState<number | null>(null)
   const activeWork = useActiveWork(project)
-  const loadProjects = useProjectStore(state => state.loadProjects)
-  const [profileBusy, setProfileBusy] = useState(false)
-  const [profileError, setProfileError] = useState('')
   if (!project) return <><PageHeading eyebrow="AUTHORING / WORKS" title="作品创作" description="在独立创作产品中完成短篇、长篇与改编作品。" /><EmptyProjectState onCreate={onCreate} /></>
   const isNovel = !activeWork || effectiveWorkKind(activeWork) === 'novel'
   const profile = activeWork ? effectiveNovelProfile(activeWork) : 'long'
@@ -497,26 +493,6 @@ function NovelPage({ project, onCreate, onDerived }: { project?: Project; onCrea
       ? 'independent.screenplay'
       : effectiveWorkKind(activeWork) === 'comic' ? 'independent.comic' : 'independent.motion-drama'
   const activeProductDecision = productDecision(activeProductId)
-  const changeProfile = async (next: 'short' | 'long') => {
-    if (!activeWork?.id || !project.id || profileBusy) return
-    setProfileBusy(true)
-    setProfileError('')
-    try {
-      await switchNovelProfile({
-        projectId: project.id,
-        workId: activeWork.id,
-        profile: next,
-        targetWordCount: next === 'short'
-          ? (activeWork.targetWordCount >= 5_000 && activeWork.targetWordCount <= 25_000 ? activeWork.targetWordCount : SHORT_NOVEL_DEFAULT_WORDS)
-          : Math.max(activeWork.targetWordCount, 100_000),
-      })
-      await loadProjects()
-    } catch (cause) {
-      setProfileError(cause instanceof Error ? cause.message : 'Profile 切换失败')
-    } finally {
-      setProfileBusy(false)
-    }
-  }
   if (!activeProductDecision.enterable) {
     return <><PageHeading eyebrow="AUTHORING / WORKS" title={activeProductDecision.entry.label} description={activeProductDecision.entry.maturityNote} action={<MaturityBadge productId={activeProductId} />} /><section className="sf-product-empty"><ShieldCheck className="h-8 w-8" /><h2>该独立产品尚未开放</h2><p>{activeProductDecision.blockers.join('；')}</p></section></>
   }
@@ -526,13 +502,8 @@ function NovelPage({ project, onCreate, onDerived }: { project?: Project; onCrea
     const title = kind === 'screenplay' ? '正规剧本工作台' : kind === 'comic' ? '漫画工作台' : '漫剧工坊'
     return <><PageHeading eyebrow="AUTHORING / WORKS" title={title} description={kind === 'motion-drama' ? '从冻结小说到可交付 AI 视频工具的逐镜生产包；不在本产品内生成视频成片。' : '派生作品拥有独立结构、来源证据和导出链；不会修改源小说。'} action={<WorkKindBadge work={activeWork} />} />{scope ? <Suspense fallback={<FeaturePanelFallback />}>{kind === 'screenplay' ? <ScreenplayStudio scope={scope} /> : kind === 'comic' ? <ComicStudio scope={scope} /> : <MotionDramaStudio scope={scope} project={project} />}</Suspense> : <section className="sf-product-empty"><BookOpenText className="h-8 w-8" /><h2>作品工作区归属尚未就绪</h2><p>请先完成目标 Work 初始化。</p></section>}</>
   }
-  const alternateProductId: StoryForgeProductIdV1 = profile === 'short' ? 'independent.longform' : 'independent.shortform'
-  const canSwitchProfile = productDecision(alternateProductId).enterable
-  if (profile === 'short') {
-    const scope = scopeForProject(project)
-    return <><PageHeading eyebrow="AUTHORING / SHORT FICTION" title="短篇小说创作" description="从创作意图、故事设计、章节卡、正文到全篇审校与冻结发布的独立生产流程。" action={<div className="flex flex-wrap items-center justify-end gap-2">{activeWork && <WorkKindBadge work={activeWork} />}<MaturityBadge productId={activeProductId} /><WorldDerivationActions project={project} onDerived={onDerived} />{canSwitchProfile && <Button onClick={() => void changeProfile('long')} disabled={profileBusy}>{profileBusy ? '切换中…' : '扩写为长篇'}</Button>}</div>} />{profileError && <p className="mb-3 text-sm text-red-600" role="alert">{profileError}</p>}{scope ? <Suspense fallback={<FeaturePanelFallback />}><ShortNovelStudio project={project} scope={scope} /></Suspense> : <section className="sf-product-empty"><BookOpenText className="h-8 w-8" /><h2>短篇工作区归属尚未就绪</h2><p>请先完成目标 Work 初始化。</p></section>}</>
-  }
-  return <><PageHeading eyebrow="AUTHORING / STEP BY STEP" title="长篇小说创作" description="独立运行完整的分步骤长篇创作流程；世界引擎不是前置条件。" action={<div className="flex flex-wrap items-center justify-end gap-2">{activeWork && <WorkKindBadge work={activeWork} />}<MaturityBadge productId={activeProductId} /><WorldDerivationActions project={project} onDerived={onDerived} /><Button variant="primary" icon={ArrowRight} onClick={() => navigate(`/workspace/${project.id}?module=info`)}>进入完整长篇工作台</Button><Button icon={ArrowRight} onClick={() => setView('chapters')}>打开正文</Button></div>} />{profileError && <p className="mb-3 text-sm text-red-600" role="alert">{profileError}</p>}<div className="sf-subnav"><button className={view === 'outline' ? 'active' : ''} onClick={() => setView('outline')}><BookOpenText className="h-4 w-4" />卷纲与章纲</button><button className={view === 'chapters' ? 'active' : ''} onClick={() => setView('chapters')}><BookOpenText className="h-4 w-4" />章节与正文</button><span className="sf-subnav-spacer" /><span className="sf-subnav-note">{activeWork?.title ?? '当前作品'}</span></div><section className="sf-product-panel sf-novel-panel"><Suspense fallback={<FeaturePanelFallback />}>{view === 'outline' ? <OutlinePanel project={project} onOpenChapter={id => { setNodeId(id); setView('chapters') }} /> : <ChaptersListPanel project={project} initialNodeId={nodeId} />}</Suspense></section></>
+  if (profile === 'short') return <Navigate replace to={`/short/intent?project=${project.id}`}/>
+  return <><PageHeading eyebrow="AUTHORING / STEP BY STEP" title="长篇小说创作" description="独立运行完整的分步骤长篇创作流程；世界引擎不是前置条件。" action={<div className="flex flex-wrap items-center justify-end gap-2">{activeWork && <WorkKindBadge work={activeWork} />}<MaturityBadge productId={activeProductId} /><WorldDerivationActions project={project} onDerived={onDerived} /><Button variant="primary" icon={ArrowRight} onClick={() => navigate(`/workspace/${project.id}?module=info`)}>进入完整长篇工作台</Button><Button icon={ArrowRight} onClick={() => setView('chapters')}>打开正文</Button></div>} /><div className="sf-subnav"><button className={view === 'outline' ? 'active' : ''} onClick={() => setView('outline')}><BookOpenText className="h-4 w-4" />卷纲与章纲</button><button className={view === 'chapters' ? 'active' : ''} onClick={() => setView('chapters')}><BookOpenText className="h-4 w-4" />章节与正文</button><span className="sf-subnav-spacer" /><span className="sf-subnav-note">{activeWork?.title ?? '当前作品'}</span></div><section className="sf-product-panel sf-novel-panel"><Suspense fallback={<FeaturePanelFallback />}>{view === 'outline' ? <OutlinePanel project={project} onOpenChapter={id => { setNodeId(id); setView('chapters') }} /> : <ChaptersListPanel project={project} initialNodeId={nodeId} />}</Suspense></section></>
 }
 
 function NodesPage({ project, onCreate }: { project?: Project; onCreate: () => void }) {

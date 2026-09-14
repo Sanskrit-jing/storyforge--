@@ -1,3 +1,4 @@
+import Dexie from 'dexie'
 import { db } from '../db/schema'
 import { hashCanonicalValue, canonicalStringify } from '../agent/run/hash'
 import { walkOutlineChaptersInCanonicalOrder } from '../outline/canonical-outline-walk'
@@ -163,17 +164,33 @@ export async function buildShortNovelManuscriptSnapshotV1(scope: WorkspaceScope)
   }
 }
 
+export async function shortNovelPlanHashV1(production: ShortNovelProductionV1, snapshot: ShortNovelManuscriptSnapshotV1): Promise<string> {
+  return hashCanonicalValue({ targetWordCount: snapshot.work.targetWordCount, brief: production.brief, design: production.storyDesign,
+    cards: snapshot.chapters.map(chapter => ({ key: chapter.stableKey, summary: chapter.summary })) })
+}
+
+export async function assertShortNovelPlanV1(scope: WorkspaceScope): Promise<void> {
+  const production = await ensureShortNovelProductionV1(scope)
+  const snapshot = await buildShortNovelManuscriptSnapshotV1(scope)
+  if (!production.planConfirmedHash || production.planConfirmedHash !== await shortNovelPlanHashV1(production, snapshot)) {
+    throw new Error('[short-novel] 章节卡尚未确认或已经失效，请在章节卡页面重新确认；原有正文仍保留')
+  }
+}
+
 async function updateProductionV1(input: {
   scope: WorkspaceScope
   expectedRevision: number
   patch: Partial<ShortNovelProductionV1>
 }): Promise<ShortNovelProductionV1 & { id: number }> {
   return db.transaction('rw', db.shortNovelProductions, db.works, db.worlds, async () => {
+    const work = await db.works.get(input.scope.workId); assertShortWork(work, input.scope)
+    if (input.patch.brief && input.patch.brief.targetWordCount !== work.targetWordCount) throw new Error('[short-novel] 作品目标已变化，请刷新后重新确认')
     const current = await db.shortNovelProductions.where('workId').equals(input.scope.workId).first()
     if (!current?.id || current.projectId !== input.scope.projectId || current.worldId !== input.scope.worldId) throw new Error('[short-novel] 生产根不存在或越界')
     if (current.revision !== input.expectedRevision) throw new Error('[short-novel] 生产状态已变化，请刷新后重试')
     const next = { ...input.patch, revision: current.revision + 1, updatedAt: Date.now() }
     await db.shortNovelProductions.update(current.id, next)
+    if (input.patch.phase && input.patch.phase !== 'complete') await db.works.update(input.scope.workId, { status: 'drafting', updatedAt: next.updatedAt })
     return { ...current, ...next } as ShortNovelProductionV1 & { id: number }
   })
 }
@@ -182,13 +199,15 @@ export async function confirmShortNovelBriefV1(input: { scope: WorkspaceScope; e
   const brief = parseShortNovelBriefV1(input.brief)
   const work = await db.works.get(input.scope.workId); assertShortWork(work, input.scope)
   if (brief.targetWordCount !== work.targetWordCount) throw new Error('[short-novel] Brief 目标字数必须与当前 Work 一致')
-  return updateProductionV1({ scope: input.scope, expectedRevision: input.expectedRevision, patch: { brief, briefConfirmedAt: Date.now(), storyDesign: null, designConfirmedAt: null, latestReview: null, reviewedManuscriptHash: null, phase: 'design' } })
+  const snapshot = await buildShortNovelManuscriptSnapshotV1(input.scope)
+  if (brief.chapterCount !== snapshot.chapters.length) throw new Error('[short-novel] Brief 章节数必须与当前骨架一致')
+  return updateProductionV1({ scope: input.scope, expectedRevision: input.expectedRevision, patch: { planConfirmedHash: null, brief, briefConfirmedAt: Date.now(), storyDesign: null, designConfirmedAt: null, latestReview: null, reviewedManuscriptHash: null, phase: 'design' } })
 }
 
 export async function confirmShortNovelStoryDesignV1(input: { scope: WorkspaceScope; expectedRevision: number; storyDesign: ShortNovelStoryDesignV1 }): Promise<ShortNovelProductionV1 & { id: number }> {
   const production = await db.shortNovelProductions.where('workId').equals(input.scope.workId).first()
   if (!production?.briefConfirmedAt) throw new Error('[short-novel] 请先确认创作 Brief')
-  return updateProductionV1({ scope: input.scope, expectedRevision: input.expectedRevision, patch: { storyDesign: parseShortNovelStoryDesignV1(input.storyDesign), designConfirmedAt: Date.now(), latestReview: null, reviewedManuscriptHash: null, phase: 'planning' } })
+  return updateProductionV1({ scope: input.scope, expectedRevision: input.expectedRevision, patch: { planConfirmedHash: null, storyDesign: parseShortNovelStoryDesignV1(input.storyDesign), designConfirmedAt: Date.now(), latestReview: null, reviewedManuscriptHash: null, phase: 'planning' } })
 }
 
 export async function adoptShortNovelChapterPlanV1(input: { scope: WorkspaceScope; expectedRevision: number; plan: ShortNovelChapterPlanV1[] }): Promise<ShortNovelProductionV1 & { id: number }> {
@@ -198,6 +217,8 @@ export async function adoptShortNovelChapterPlanV1(input: { scope: WorkspaceScop
   if (Math.abs(totalBudget - before.work.targetWordCount) > Math.max(500, before.work.targetWordCount * 0.1)) throw new Error('[short-novel] 章节预算总和必须接近作品目标字数')
   if (plan.length !== before.chapters.length) throw new Error('[short-novel] 章节计划数量必须与当前短篇骨架一致')
   return db.transaction('rw', scopeTransactionTables(db.shortNovelProductions, db.outlineNodes, db.chapters), async () => {
+    const work = await db.works.get(input.scope.workId); assertShortWork(work, input.scope)
+    if (work.targetWordCount !== before.work.targetWordCount) throw new Error('[short-novel] 作品目标已变化，请刷新后重新确认')
     const production = await db.shortNovelProductions.where('workId').equals(input.scope.workId).first()
     if (!production?.id || production.revision !== input.expectedRevision || !production.designConfirmedAt) throw new Error('[short-novel] 生产状态已变化或故事设计尚未确认')
     const nodes = await readOwnedRows<OutlineNode>(input.scope, 'outlineNodes', { owner: 'work' })
@@ -214,8 +235,10 @@ export async function adoptShortNovelChapterPlanV1(input: { scope: WorkspaceScop
       const chapter = chapterByOutline.get(outline.id!)
       if (chapter?.id) await db.chapters.update(chapter.id, { title: item.title, order: item.order, updatedAt: now })
     }
-    const next = { phase: 'drafting' as const, latestReview: null, reviewedManuscriptHash: null, revision: production.revision + 1, updatedAt: now }
+    const planConfirmedHash = await Dexie.waitFor((async () => shortNovelPlanHashV1(production, await buildShortNovelManuscriptSnapshotV1(input.scope)))())
+    const next = { planConfirmedHash, phase: 'drafting' as const, latestReview: null, reviewedManuscriptHash: null, revision: production.revision + 1, updatedAt: now }
     await db.shortNovelProductions.update(production.id, next)
+    await db.works.update(input.scope.workId, { status: 'drafting', updatedAt: now })
     return { ...production, ...next } as ShortNovelProductionV1 & { id: number }
   })
 }
@@ -223,6 +246,7 @@ export async function adoptShortNovelChapterPlanV1(input: { scope: WorkspaceScop
 export async function adoptShortNovelChapterDraftV1(input: { scope: WorkspaceScope; expectedRevision: number; draft: ShortNovelChapterDraftV1; rewrite?: boolean }): Promise<ShortNovelProductionV1 & { id: number }> {
   const draft = parseShortNovelChapterDraftV1(input.draft)
   return db.transaction('rw', scopeTransactionTables(db.shortNovelProductions, db.outlineNodes, db.chapters), async () => {
+    await Dexie.waitFor(assertShortNovelPlanV1(input.scope))
     const production = await db.shortNovelProductions.where('workId').equals(input.scope.workId).first()
     if (!production?.id || production.revision !== input.expectedRevision || !production.designConfirmedAt) throw new Error('[short-novel] 生产状态已变化或故事设计尚未确认')
     const nodes = await readOwnedRows<OutlineNode>(input.scope, 'outlineNodes', { owner: 'work' })
@@ -238,6 +262,9 @@ export async function adoptShortNovelChapterDraftV1(input: { scope: WorkspaceSco
     await db.chapters.update(chapter.id, { title: draft.title, content, wordCount: countWords(draft.content), status: 'draft', updatedAt: now })
     const next = { phase: input.rewrite ? 'review' as const : 'drafting' as const, latestReview: null, reviewedManuscriptHash: null, revision: production.revision + 1, updatedAt: now }
     await db.shortNovelProductions.update(production.id, next)
+    const best = buildBestChapterByOutlineMap(chapters)
+    const currentWordCount = walk.chapters.reduce((total, item) => { const row = best.get(item.outlineNode.id!); return total + (row?.id === chapter.id ? countWords(draft.content) : row ? chapterContentWordCount(row) : 0) }, 0)
+    await db.works.update(input.scope.workId, { status: 'drafting', currentWordCount, updatedAt: now })
     return { ...production, ...next } as ShortNovelProductionV1 & { id: number }
   })
 }
@@ -304,13 +331,14 @@ export async function inspectShortNovelCompletionV1(scope: WorkspaceScope): Prom
   const wordCount = snapshot.chapters.reduce((sum, chapter) => sum + chapter.wordCount, 0)
   if (!production.briefConfirmedAt || !production.brief) blockers.push('创作 Brief 尚未确认')
   if (!production.designConfirmedAt || !production.storyDesign) blockers.push('故事设计尚未确认')
+  if (!production.planConfirmedHash || production.planConfirmedHash !== await shortNovelPlanHashV1(production, snapshot)) blockers.push('章节卡尚未确认或已失效')
   if (snapshot.anomalies.length) blockers.push(`大纲结构异常：${snapshot.anomalies.join('；')}`)
   if (snapshot.chapters.length < 3 || snapshot.chapters.length > 8) blockers.push('短篇必须包含 3～8 个章节')
   if (snapshot.chapters.some(chapter => !chapter.summary.trim())) blockers.push('仍有章节缺少结构卡')
   if (snapshot.chapters.some(chapter => chapter.wordCount === 0)) blockers.push('仍有章节缺少正文')
   if (wordCount < SHORT_NOVEL_MIN_WORDS || wordCount > SHORT_NOVEL_MAX_WORDS) blockers.push(`实际正文须为 ${SHORT_NOVEL_MIN_WORDS}～${SHORT_NOVEL_MAX_WORDS} 字；当前 ${wordCount} 字`)
   if (!production.latestReview || production.reviewedManuscriptHash !== snapshot.manuscriptHash) blockers.push('当前手稿尚未完成有效的全篇审校')
-  const pendingCandidates = runs.filter(row => ['running', 'awaiting_confirmation'].includes(row.status) && row.contractJson?.includes('short:'))
+  const pendingCandidates = runs.filter(row => ['running', 'paused', 'awaiting_confirmation'].includes(row.status) && row.contractJson?.includes('short:'))
   if (pendingCandidates.length) blockers.push(`仍有 ${pendingCandidates.length} 个短篇候选等待处理`)
   const openCritical = production.latestReview?.issues.filter(issue => issue.severity === 'critical' && issue.status === 'open') ?? []
   if (openCritical.length) blockers.push(`仍有 ${openCritical.length} 个 critical 问题未解决`)

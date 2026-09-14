@@ -919,6 +919,7 @@ export const ADOPTION_EXTENSIONS: readonly AdoptionExtensionSpec[] = Object.free
     target: 'shortNovelProductions',
     entrypoints: [
       'src/lib/workspace/create-workspace.ts',
+      'src/lib/workspace/works.ts',
       'src/lib/short-novel/service.ts',
       'src/lib/agent/run/short-novel-durable.ts',
     ],

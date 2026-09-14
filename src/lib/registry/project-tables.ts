@@ -117,7 +117,7 @@ const PROJECT_TABLE_REGISTRATIONS: ProjectTableRegistration[] = [
       { field: 'currentReleaseId', remapVia: 'creationReleases', exportAs: '_currentReleaseExportId', deferred: true },
     ],
     defaults: {
-      phase: 'intent', revision: 1, brief: null, briefConfirmedAt: null,
+      phase: 'intent', revision: 1, brief: null, briefConfirmedAt: null, planConfirmedHash: null, expandedFromShort: null,
       storyDesign: null, designConfirmedAt: null, latestReview: null,
       reviewedManuscriptHash: null, currentReleaseId: null,
     },

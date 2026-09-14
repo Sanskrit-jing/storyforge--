@@ -98,6 +98,9 @@ export interface ShortNovelProductionV1 {
   latestReview: ShortNovelReviewV1 | null
   reviewedManuscriptHash: string | null
   currentReleaseId: number | null
+  /** Deterministic hash of confirmed brief/design and ordered chapter cards. Older drafts require reconfirmation. */
+  planConfirmedHash?: string | null
+  expandedFromShort?: { convertedAt: number; targetWordCount: number; productionRevision: number } | null
   createdAt: number
   updatedAt: number
 }
