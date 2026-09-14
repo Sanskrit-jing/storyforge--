@@ -39,4 +39,13 @@ describe('HEALTH-5 · 构建产物体积预算', () => {
 
     expect(result.violations.map(item => item.filename)).toContain('index-test.js')
   })
+  it('独立预览样式预算不放宽正式应用样式，且仍有明确上限', () => {
+    const distDir = makeDist('console.log("ok")')
+    const justOverApp = 'x'.repeat(BUNDLE_BUDGETS.stylesheet.raw + 1)
+    fs.writeFileSync(path.join(distDir, 'assets/app-test.css'), justOverApp)
+    fs.writeFileSync(path.join(distDir, 'assets/ui-preview-test.css'), justOverApp)
+    expect(checkBundleBudget(distDir).violations.map(item => item.filename)).toEqual(['app-test.css'])
+    fs.writeFileSync(path.join(distDir, 'assets/ui-preview-test.css'), 'x'.repeat(BUNDLE_BUDGETS.previewStylesheet.raw + 1))
+    expect(checkBundleBudget(distDir).violations.map(item => item.filename)).toEqual(['app-test.css', 'ui-preview-test.css'])
+  })
 })

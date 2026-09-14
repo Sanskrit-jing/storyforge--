@@ -10,6 +10,9 @@ export const BUNDLE_BUDGETS = {
   entryScript: { raw: 700 * KIB, gzip: 230 * KIB },
   scriptChunk: { raw: 600 * KIB, gzip: 180 * KIB },
   stylesheet: { raw: 100 * KIB, gzip: 25 * KIB },
+  // The separate 199-page design preview shares one stylesheet; it is never
+  // loaded by the production homepage. Keep the existing app budget intact.
+  previewStylesheet: { raw: 120 * KIB, gzip: 25 * KIB },
   pdfWorker: { raw: 2.4 * MIB, gzip: 550 * KIB },
 }
 
@@ -36,6 +39,7 @@ function classifyAsset(filename, entryScript) {
   if (filename === entryScript) return 'entryScript'
   if (/^pdf\.worker-.*\.mjs$/.test(filename)) return 'pdfWorker'
   if (/\.(?:js|mjs)$/.test(filename)) return 'scriptChunk'
+  if (/^ui-preview-.*\.css$/.test(filename)) return 'previewStylesheet'
   if (filename.endsWith('.css')) return 'stylesheet'
   return null
 }

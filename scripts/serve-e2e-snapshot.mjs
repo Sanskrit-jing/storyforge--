@@ -18,6 +18,7 @@ const snapshotEntries = [
   'showcase/comic/before-the-gun/art/final/community-preview-ui.jpg',
   'showcase/comic/moon-buys-bread/art/final/community-preview-ui.jpg',
   'index.html',
+  'ui-preview',
   'package.json',
   'postcss.config.js',
   'public',

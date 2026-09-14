@@ -414,3 +414,6 @@
 .product-runtime-empty { display: grid; min-height: 280px; place-items: center; align-content: center; gap: 10px; padding: 40px; color: var(--accent); text-align: center; }
 .product-runtime-empty h2 { margin: 5px 0 0; color: var(--text-primary); font-family: var(--font-serif); font-size: 24px; font-weight: 500; }
 .product-runtime-empty p { max-width: 480px; margin: 0; color: var(--text-muted); font-size: 11px; line-height: 1.65; }
+
+/* Public design preview stays separate from author workspaces. */
+.sf-ui-preview-card{display:flex;align-items:center;justify-content:space-between;gap:24px;margin:0 0 24px;padding:24px 28px;border:1px solid #c7d8ce;border-radius:18px;background:linear-gradient(115deg,#f4f6ed,#e2eee7);color:#234b42}.sf-ui-preview-card h2{font-size:23px;line-height:1.5;margin:5px 0}.sf-ui-preview-card p{max-width:760px;font-size:13px;line-height:1.8;color:#586f65}.sf-ui-preview-card a{display:inline-flex;align-items:center;gap:10px;flex-shrink:0;white-space:nowrap;padding:12px 20px;border-radius:999px;background:#2c6a59;color:#fff;font-size:13px;text-decoration:none}.sf-ui-preview-card a:hover{background:#215443}.sf-ui-preview-card a:focus-visible{outline:3px solid #85aa96;outline-offset:4px}@media(max-width:760px){.sf-ui-preview-card{align-items:flex-start;flex-direction:column;padding:20px;gap:16px}.sf-ui-preview-card h2{font-size:21px}}
