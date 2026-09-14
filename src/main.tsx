@@ -68,7 +68,7 @@ async function bootstrap() {
     <React.StrictMode>
       <DialogProvider>
         <ErrorBoundary>
-          <BrowserRouter basename="/storyforge">
+          <BrowserRouter basename="/storyforge/">
             <ToastProvider>
               <App />
             </ToastProvider>

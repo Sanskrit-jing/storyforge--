@@ -7,7 +7,7 @@ async function openCleanHome(page: Page) {
   await page.addInitScript(() => {
     localStorage.setItem('storyforge_guide_completed', 'e2e')
   })
-  await page.goto('./', { waitUntil: 'domcontentloaded' })
+  await page.goto('./?tab=home', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: '你的创作与游玩空间', exact: true }))
     .toBeVisible({ timeout: 15_000 })
 }
@@ -36,7 +36,7 @@ test('产品综合首页提供并列功能入口和真实世界基座', async ({
   await page.addInitScript(() => {
     localStorage.setItem('storyforge_guide_completed', 'e2e')
   })
-  await page.goto('./')
+  await page.goto('./?tab=home')
   await expect(page.getByRole('heading', { name: '你的创作与游玩空间', exact: true })).toBeVisible()
   await expect(page.getByRole('navigation', { name: '产品页签' })).toBeVisible()
   for (const tab of ['worlds', 'novel', 'nodes', 'ttrpg', 'chat', 'text-games']) {
@@ -48,7 +48,7 @@ test('短篇小说使用独立创作基座，世界页不暴露可变作品改�
   await page.addInitScript(() => {
     localStorage.setItem('storyforge_guide_completed', 'e2e')
   })
-  await page.goto('./')
+  await page.goto('./?tab=home')
 
   // 短篇是独立作品中的受约束小说规格，HTML 提示之外仍有领域校验。
   await page.getByRole('banner').getByRole('button', { name: '新建', exact: true }).click()
@@ -60,7 +60,7 @@ test('短篇小说使用独立创作基座，世界页不暴露可变作品改�
   await page.getByLabel('目标字数（5,000～25,000）').fill('12000')
   await page.getByLabel('建议章节数（可空）').fill('4')
   await page.getByRole('button', { name: '创建短篇小说', exact: true }).click()
-  await expect(page).toHaveURL(/\/storyforge\/$/)
+  await expect(page).toHaveURL(/\/storyforge\/\?tab=home$/)
   await expect(page.getByRole('heading', { name: '短篇小说创作', exact: true })).toBeVisible()
   await expect(page.getByText('小说 · 短篇', { exact: true })).toBeVisible()
   await expect(page.getByTestId('short-novel-studio')).toBeVisible()
@@ -165,7 +165,7 @@ test('产品综合首页可从零创建世界引擎并分配稳定编号', async
   await page.addInitScript(() => {
     localStorage.setItem('storyforge_guide_completed', 'e2e')
   })
-  await page.goto('./')
+  await page.goto('./?tab=home')
   await page.getByRole('banner').getByRole('button', { name: '新建', exact: true }).click()
   await page.getByRole('button', { name: /世界引擎.*从零创建/ }).click()
   await page.getByPlaceholder('例如：潮汐之后').fill('潮汐之后')
@@ -198,14 +198,14 @@ test('独立长篇保持独立，并可由作者显式派生且封存为世界 v
   await page.addInitScript(() => {
     localStorage.setItem('storyforge_guide_completed', 'e2e')
   })
-  await page.goto('./')
+  await page.goto('./?tab=home')
   await page.getByRole('banner').getByRole('button', { name: '新建', exact: true }).click()
   await page.getByRole('button', { name: /长篇小说/ }).click()
   await page.getByPlaceholder('例如：《幽都遗闻》').fill('分步骤世界基线')
   await page.getByRole('button', { name: '创建长篇小说', exact: true }).click()
   await expect(page).toHaveURL(/\/storyforge\/workspace\/\d+\?module=outline$/)
 
-  await page.goto('./')
+  await page.goto('./?tab=home')
   await page.getByTestId('product-tab-novel').click()
   await expect(page.getByRole('heading', { name: '长篇小说创作', exact: true })).toBeVisible()
   await page.getByRole('button', { name: '派生并封存 v1', exact: true }).click()
@@ -237,7 +237,7 @@ test('世界引擎可在同一 World 创建并切换两部隔离作品', async (
   await page.addInitScript(() => {
     localStorage.setItem('storyforge_guide_completed', 'e2e')
   })
-  await page.goto('./')
+  await page.goto('./?tab=home')
   await page.getByRole('banner').getByRole('button', { name: '新建', exact: true }).click()
   await page.getByRole('button', { name: /世界引擎.*从零创建/ }).click()
   await page.getByPlaceholder('例如：潮汐之后').fill('双作品世界')
@@ -260,7 +260,7 @@ test('世界引擎只封存纯语义 Release，并显式交给上层产品生产
   await page.addInitScript(() => {
     localStorage.setItem('storyforge_guide_completed', 'e2e')
   })
-  await page.goto('./')
+  await page.goto('./?tab=home')
   await page.getByRole('banner').getByRole('button', { name: '新建', exact: true }).click()
   await page.getByRole('button', { name: /世界引擎.*从零创建/ }).click()
   await page.getByPlaceholder('例如：潮汐之后').fill('发布实例世界')
@@ -273,7 +273,7 @@ test('世界引擎只封存纯语义 Release，并显式交给上层产品生产
   await page.getByRole('button', { name: '添加阶段', exact: true }).click()
   await expect(page.getByText('阶段列表（2）', { exact: true })).toBeVisible()
 
-  await page.goto('./')
+  await page.goto('./?tab=home')
   await page.getByTestId('product-tab-worlds').click()
   const pipeline = await publishCurrentWorldRelease(page, 'E2E 纯语义首发')
   await expect(pipeline.getByLabel('互动实例类型')).toHaveCount(0)
@@ -297,7 +297,7 @@ test('世界修订与产品交接在窄屏纵向排列且没有横向溢出', as
   await page.addInitScript(() => {
     localStorage.setItem('storyforge_guide_completed', 'e2e')
   })
-  await page.goto('./')
+  await page.goto('./?tab=home')
   await page.getByRole('main').getByRole('button', { name: '新建内容', exact: true }).first().click()
   await page.getByRole('button', { name: /世界引擎.*从零创建/ }).click()
   await page.getByPlaceholder('例如：潮汐之后').fill('窄屏世界')
@@ -326,7 +326,7 @@ test('世界引擎可生成并预检本地世界分享包，再导入为新编�
   await page.addInitScript(() => {
     localStorage.setItem('storyforge_guide_completed', 'e2e')
   })
-  await page.goto('./')
+  await page.goto('./?tab=home')
   await page.getByRole('banner').getByRole('button', { name: '新建', exact: true }).click()
   await page.getByRole('button', { name: /世界引擎.*从零创建/ }).click()
   await page.getByPlaceholder('例如：潮汐之后').fill('分享包测试世界')
@@ -552,7 +552,7 @@ test('上层产品只暴露独立制作与玩家入口，不存在通用互动�
   await openCleanHome(page)
   await createProject(page, 'E2E 互动运行时')
   await expect(sidebarButton(page, '互动运行时')).toHaveCount(0)
-  await page.goto('./')
+  await page.goto('./?tab=home')
   await expect(page.getByTestId('product-tab-chat')).toBeVisible()
   await expect(page.getByTestId('product-tab-ttrpg')).toBeVisible()
   await expect(page.getByTestId('product-tab-text-games')).toBeVisible()
@@ -1106,6 +1106,7 @@ test('完整 JSON 导出后可重新导入且正文不丢', async ({ page }) => 
   await page.getByRole('button', { name: '导入 JSON', exact: true }).click()
   await (await fileChooser).setFiles(backupPath!)
   await expect(page).toHaveURL(/\/storyforge\/workspace\/\d+$/)
+  await expect(page.locator('[data-workspace-ready=longform]')).toBeVisible()
   await openWorkspaceLeaf(page, '章节')
   await expect(page.locator('.tiptap-editor')).toContainText(chapterText)
 })
@@ -1124,6 +1125,8 @@ test('手动快照可恢复为新项目且不覆盖原项目', async ({ page }) 
   await expect(page).not.toHaveURL(originalWorkspaceUrl)
   await expect(page).toHaveURL(/\/storyforge\/workspace\/\d+$/)
   await page.getByRole('button', { name: '返回首页', exact: true }).click()
+  await expect(page.getByRole('heading', { name: /天地为炉/ })).toBeVisible()
+  await page.goto('./?tab=home')
   const library = page.getByTestId('workspace-library')
   await expect(library.locator('article')).toHaveCount(2)
   await expect(library.locator('article').filter({ hasText: projectName })).toHaveCount(2)
@@ -1135,8 +1138,12 @@ test('删除项目经过双重安全门且不影响其它项目', async ({ page 
   const keptProject = 'E2E 保留项目'
   await createBookWithSavedChapter(page, deletedProject, '删除项目时应由注册表级联清理的正文。')
   await page.getByRole('button', { name: '返回首页', exact: true }).click()
+  await expect(page.getByRole('heading', { name: /天地为炉/ })).toBeVisible()
+  await page.goto('./?tab=home')
   await createProject(page, keptProject)
   await page.getByRole('button', { name: '返回首页', exact: true }).click()
+  await expect(page.getByRole('heading', { name: /天地为炉/ })).toBeVisible()
+  await page.goto('./?tab=home')
 
   const library = page.getByTestId('workspace-library')
   const deletedRow = library.locator('article').filter({ hasText: deletedProject })
@@ -1160,6 +1167,8 @@ test('取消删除安全门后项目与正文都保留', async ({ page }) => {
   const chapterText = '取消危险操作后这段正文必须仍然存在。'
   await createBookWithSavedChapter(page, projectName, chapterText)
   await page.getByRole('button', { name: '返回首页', exact: true }).click()
+  await expect(page.getByRole('heading', { name: /天地为炉/ })).toBeVisible()
+  await page.goto('./?tab=home')
 
   const library = page.getByTestId('workspace-library')
   const projectRow = library.locator('article').filter({ hasText: projectName })

@@ -24,3 +24,5 @@
   .lf-content>div>main>div:first-child>div{flex-wrap:wrap}
   .lf-agent-page{min-height:0}
 }
+
+.lf-top{min-width:0;gap:28px}.lf-brand{flex-shrink:0}.lf-top nav{min-width:0;flex:1;gap:22px;overflow-x:auto;scrollbar-width:thin}.lf-top nav>*{white-space:nowrap;flex-shrink:0;font-size:14px}

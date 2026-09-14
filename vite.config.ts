@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type ViteDevServer, type PreviewServer } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import { execSync } from 'node:child_process'
@@ -39,6 +39,18 @@ function manualChunkFor(moduleId: string): string | undefined {
   return undefined
 }
 
+// Existing bookmarks may omit the final slash; normalize before Vite's base middleware.
+function installBaseRedirect(server: ViteDevServer | PreviewServer) {
+  server.middlewares.use((request, response, next) => {
+    if (request.url === '/storyforge' || request.url?.startsWith('/storyforge?')) {
+      response.writeHead(302, { Location: request.url.replace('/storyforge', '/storyforge/') })
+      response.end()
+      return
+    }
+    next()
+  })
+}
+
 export default defineConfig({
   // 冻结 E2E 工作区通过符号链接复用 node_modules，但必须使用自己的
   // Vite optimizer 缓存，避免与作者正在运行的预览互相改写预构建依赖。
@@ -49,6 +61,7 @@ export default defineConfig({
     __STORYFORGE_BUILD_SHA__: JSON.stringify(resolveBuildSha()),
   },
   plugins: [
+    { name: 'storyforge-base-redirect', configureServer: installBaseRedirect, configurePreviewServer: installBaseRedirect },
     react(),
     VitePWA({
       injectRegister: null,

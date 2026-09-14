@@ -12,7 +12,7 @@ async function seedFormalTtrpgCampaign(page: Page) {
 }
 
 async function seedEvolutionCompatibilityCampaign(page: Page) {
-  await page.goto('./')
+  await page.goto('./?tab=home')
   return page.evaluate(async () => {
     const importer = new Function('path', 'return import(path)') as (path: string) => Promise<any>
     const [
@@ -279,7 +279,7 @@ test('世界到游戏只进入统一制作中心并自动复用全局 AI 配置'
       maxTokens: 0,
     }))
   })
-  await page.goto('./')
+  await page.goto('./?tab=home')
   await page.getByRole('banner').getByRole('button', { name: '新建', exact: true }).click()
   await page.getByRole('button', { name: /世界引擎.*从零创建/ }).click()
   await page.getByPlaceholder('例如：潮汐之后').fill('上层产品生产入口验收世界')
@@ -290,7 +290,7 @@ test('世界到游戏只进入统一制作中心并自动复用全局 AI 配置'
   await page.getByRole('button', { name: '添加阶段', exact: true }).click()
   await page.getByRole('button', { name: '添加阶段', exact: true }).click()
 
-  await page.goto('./')
+  await page.goto('./?tab=home')
   await page.getByTestId('product-tab-worlds').click()
   const pipeline = await publishCurrentWorldRelease(page, '生产入口修订')
   await expect(pipeline.getByRole('button', { name: /主 Agent 生成游戏候选|快速映射|直接发布/ })).toHaveCount(0)

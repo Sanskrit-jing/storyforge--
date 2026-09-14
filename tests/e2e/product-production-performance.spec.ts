@@ -92,7 +92,7 @@ async function createPerformanceBuild(page: Page) {
     })
   })
 
-  await page.goto('./')
+  await page.goto('./?tab=home')
   await page.getByRole('banner').getByRole('button', { name: '新建', exact: true }).click()
   await page.getByRole('button', { name: /世界引擎.*从零创建/ }).click()
   await page.getByPlaceholder('例如：潮汐之后').fill('浏览器性能隔离世界')
@@ -101,7 +101,7 @@ async function createPerformanceBuild(page: Page) {
   await page.getByTitle('新增主线').click()
   await page.getByRole('button', { name: '添加阶段', exact: true }).click()
   await page.getByRole('button', { name: '添加阶段', exact: true }).click()
-  await page.goto('./')
+  await page.goto('./?tab=home')
   await page.getByTestId('product-tab-worlds').click()
   const pipeline = await publishCurrentWorldRelease(page, '性能验收来源')
   await pipeline.getByRole('button', { name: '交给文字游戏', exact: true }).click()
