@@ -67,7 +67,7 @@
 | E-CHAT-01 | partial | 单/多角色互动已接入专用需求适配器、统一 Production/Build/ProductRelease v1、玩家 runtime 与 runtime Skill | 主 Agent 会谈、多人导演、长期记忆/可见性和完整发布运行体验需验收 |
 | E-TOWN-01 | partial | 已有专属 Brief/SourceSelection/adapter、Production/Build/ProductRelease、六时段语义地图、居民日程、知识隔离、证据化对话记忆、关系/轻经营、离线演化、检查点/分支、14 日回放、重大变化确认、durable 自治导演、产品专属地点/肖像/表情/环境音媒资 lane、玩家界面与冻结 Build 浏览器旅程 E2E | 真实模型长期角色一致性、真实媒体 provider 的肖像/音频质量、权利/成本/性能回执及非 fixture 浏览器商业验收仍需继续 |
 | E-TEXTADV-01 | partial | 文字冒险已接入专用需求适配器、统一 Production/Build/ProductRelease v1 和独立玩家面 | 可玩内容、规则、媒资、结局和真实 E2E 仍需专项封板 |
-| E-AVG-01 | partial | AVG 已接入专用需求适配器、统一 Production/Build/ProductRelease v1、演出与独立玩家面 | 真实视觉/声音资产、演出绑定和完整体验未验收 |
+| E-AVG-01 | partial | `/avg/:pageId?` 已接真实作品库、无世界可保存的 S2 草稿、主 Agent 会谈候选回填、冻结版本引用、统一 Production/Build/Release、作者剧情/演出/媒资修订及玩家存档；schema v7 草稿与素材参与备份生命周期 | 通用外部模型生成的完整文学/视听质量与商业标准仍需逐作品验收；原型与内部评审不得冒充商业完成 |
 | E-OPENWORLD-01 | partial | 文字开放世界已接入专用需求适配器、统一 Production/Build/ProductRelease v1、专用运行 API 和独立玩家面；状态演化仅是该产品的内部能力 | 区域按需演化、角色自治、长期任务演化与性能门未完整 |
 | E-MIST-HARBOR | implemented | 内置《雾港：失潮钟声》：文字冒险与 AVG 两种玩法、原稿 18 节点/158 节拍/三结局、17 项原版美术；从明确开始经世界版本、正式生产发布到独立存档，支持完整备份恢复 | 预写作品，无运行时模型对话或配音；不提升通用产品成熟度 |
 

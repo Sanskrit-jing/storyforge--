@@ -418,8 +418,21 @@ async function applyCommand(input: {
   const baseRef = command.base.kind === 'build'
     ? `game-build:${command.base.buildNumber}:${command.base.manifestHash}`
     : `product-release:${command.base.productReleaseId}:${command.base.contentHash}`
+  // Manual assembly uses a zero-call budget; later AI evolution restores the
+  // last governed generative budget from this production's own Brief lineage.
+  let generationPolicy = priorBrief
+  if (priorBrief.avgRevision) {
+    const history = (await db.productProductionBriefs.where('productionId').equals(production.id!).toArray())
+      .filter(row=>row.revision<=previous.revision).sort((a,b)=>b.revision-a.revision)
+    const original = history.map(row=>parseProductProductionBriefV3(row.briefJson)).find(brief=>!brief.avgRevision)
+    if (!original) throw new Error('AVG 修订缺少原始生成方案，不能推断新的模型预算')
+    generationPolicy = original
+  }
   const nextBrief = parseProductProductionBriefV3({
-    ...priorBrief,
+    ...Object.fromEntries(Object.entries(priorBrief).filter(([key])=>key!=='avgRevision')),
+    productionBudget: generationPolicy.productionBudget,
+    capabilityRequirements: generationPolicy.capabilityRequirements,
+    completionContract: generationPolicy.completionContract,
     source: contentAffected ? {
       ...priorBrief.source,
       startingPoint: {

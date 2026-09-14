@@ -8,9 +8,10 @@ import { flushPendingEditsV1 } from '../authoring/pending-edit-coordinator'
 import { useProjectStore } from '../../stores/project'
 
 export type HomeWork = {work: Work; project: Project; world: World}
-export const workLabel = (w: Work) => w.kind === 'novel' ? effectiveNovelProfile(w) === 'short' ? '短篇' : '长篇' : ({screenplay:'剧本',comic:'漫画','motion-drama':'漫剧'}[w.kind])
+export const workLabel = (w: Work) => w.kind === 'novel' ? effectiveNovelProfile(w) === 'short' ? '短篇' : '长篇' : ({screenplay:'剧本',comic:'漫画','motion-drama':'漫剧',avg:'AVG'}[w.kind])
 export function workPath(row: HomeWork, module = 'info'): string {
  const {work:w,project:p}=row
+ if(w.kind==='avg')return `/avg/${module==='versions'?'release':'vision'}?project=${p.id}`
  if(p.workspacePurpose==='world-engine')return worldModulePath(p.id!,module)
  if(effectiveWorkKind(w)==='screenplay')return `/script/${module==='versions'?'versions':'editor'}?work=${w.id}`
  if(w.kind==='novel'&&effectiveNovelProfile(w)==='short')return `/short/${module==='versions'?'versions':module==='info'?'intent':'editor'}?project=${p.id}`
@@ -43,6 +44,7 @@ export function validWorkPath(row:HomeWork,path:string){
  const u=new URL(path,'https://storyforge.local')
  if(u.origin!=='https://storyforge.local')return false
  const w=row.work
+ if(w.kind==='avg')return /^\/avg\//.test(u.pathname)&&u.searchParams.get('project')===String(w.projectId)
  if(w.kind==='novel'&&effectiveNovelProfile(w)==='long')return u.pathname===`/workspace/${w.projectId}`
  if(w.kind==='novel')return /^\/short\/(intent|story|chapters|editor|review|versions|derive)$/.test(u.pathname)&&u.searchParams.get('project')===String(w.projectId)
  if(w.kind==='screenplay')return /^\/script\/(source|brief|structure|scenes|editor|grounding|review|versions)$/.test(u.pathname)&&u.searchParams.get('work')===String(w.id)

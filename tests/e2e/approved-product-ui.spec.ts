@@ -18,6 +18,7 @@ test('approved home, every product and live longform share complete navigation',
     else if (product.id === 'world') await expect(page.getByTestId('world-engine-page')).toBeVisible()
     else if (product.id === 'long') await expect(page.getByRole('navigation', { name: '长篇一级导航' })).toBeVisible()
     else if (product.id === 'short') await expect(page.getByRole('navigation', {name:'短篇页面导航'})).toBeVisible()
+    else if(product.id==='avg') await expect(page.getByTestId('avg-page')).toBeVisible()
     else if(product.id==='script') await expect(page.getByRole('navigation',{name:'剧本页面导航'})).toBeVisible()
     else await expect(page.getByTestId('approved-product-ui')).toBeVisible()
     const url = page.url()

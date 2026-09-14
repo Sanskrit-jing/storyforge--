@@ -126,6 +126,10 @@ async function createShortNovelSkeleton(
   }
 }
 
+export function workspaceCreationTransactionTablesV1() {
+  return scopeTransactionTables(db.outlineNodes, db.chapters, db.shortNovelProductions)
+}
+
 /**
  * Creates a new LocalWorkspace and its initial World/Work roots atomically.
  */
@@ -143,7 +147,7 @@ export async function createWorkspace(
   const now = Date.now()
   const preparedProject = projectRoot(input, options, now)
   const genres = input.genres.length ? [...input.genres] : ['other']
-  return db.transaction('rw', scopeTransactionTables(db.outlineNodes, db.chapters, db.shortNovelProductions), async () => {
+  return db.transaction('rw', workspaceCreationTransactionTablesV1(), async () => {
     const projectId = await db.projects.add(preparedProject) as number
     const world: World = {
       projectId,

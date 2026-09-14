@@ -3369,6 +3369,14 @@ export const AGENT_SKILLS = [
     regressionTests: ['R-HARNESS-RUNTIME3-ttrpg-skills'],
   },
   {
+    version: 1, id: 'avg.consult.v1', agentId: 'outline', defaultForAgent: false,
+    label: 'AVG 制作方案会谈', owner: 'outline-agent', promptVersion: 'avg-consult-v1',
+    executionMode: 'product-production', contextTaskKind: 'agent-outline', readToolNames: [],
+    contextSourceKeys: ['avg.authoring'], optionalContextSourceKeys: [],
+    inputPolicy: productProductionInputPolicy(['avg.authoring']), contextCompression: compressionPolicy(['avg.authoring']),
+    maxOutputTokens: 8000, writeTargets: [], lastVerifiedAt: '2026-09-15', regressionTests: ['R-AVG4-consultation'],
+  },
+  {
     version: 1,
     id: 'product-production.consult.v1',
     agentId: 'outline',

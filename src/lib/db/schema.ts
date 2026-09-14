@@ -1,3 +1,4 @@
+import type { AvgAuthoringDraftV1, AvgDraftMediaV1 } from '../avg/authoring-contract'
 import Dexie, { type Table } from 'dexie'
 import type {
   AdaptationProject,
@@ -121,7 +122,7 @@ import type { RetrievalChunk } from '../types/retrieval-chunk'
 import type { TemporalFact } from '../types/temporal-fact'
 
 export const STORYFORGE_DATABASE_NAME = 'storyforge-core'
-export const STORYFORGE_SCHEMA_VERSION = 6
+export const STORYFORGE_SCHEMA_VERSION = 7
 
 /** The hard-cutover baseline released before independent creation releases. */
 export const STORYFORGE_STORES_V1 = {
@@ -254,7 +255,7 @@ export const STORYFORGE_STORES_V5 = {
 } as const satisfies Record<string, string>
 
 /** The only writable current schema. V6 adds the independent motion-drama preproduction stores. */
-export const STORYFORGE_STORES = {
+export const STORYFORGE_STORES_V6 = {
   ...STORYFORGE_STORES_V5,
   motionDramaProductions: '++id, projectId, worldId, &workId, adaptationProjectId, phase, currentEpisodeNumber, currentReleaseId, updatedAt',
   motionDramaSeriesBibles: '++id, projectId, workId, adaptationProjectId, &[adaptationProjectId+version], sourceManifestVersion, contentHash, createdAt',
@@ -268,6 +269,12 @@ export const STORYFORGE_STORES = {
   motionDramaPromptOverrides: '++id, projectId, workId, stage, scope, episodeNumber, &[workId+stage+scope+episodeNumber], updatedAt',
   motionDramaPromptPacks: '++id, projectId, workId, adaptationProjectId, episodeNumber, provider, &[adaptationProjectId+episodeNumber+provider+version], maturity, contentHash, createdAt',
   motionDramaReviewIssues: '++id, projectId, workId, adaptationProjectId, &[adaptationProjectId+manifestVersion+stableKey], manifestVersion, episodeNumber, sceneKey, shotKey, category, severity, status, updatedAt',
+} as const satisfies Record<string, string>
+
+export const STORYFORGE_STORES = {
+  ...STORYFORGE_STORES_V6,
+  avgDraftMedia: '++id, projectId, worldId, workId, blobObjectId',
+  avgAuthoringDrafts: '++id, projectId, worldId, &workId, worldReleaseId, productionId, updatedAt',
 } as const satisfies Record<string, string>
 
 export class StoryForgeDB extends Dexie {
@@ -377,6 +384,8 @@ export class StoryForgeDB extends Dexie {
   shortNovelProductions!: Table<ShortNovelProductionV1, number>
   creationReleases!: Table<CreationReleaseV1, number>
   creationReleaseAssets!: Table<CreationReleaseAssetV1, number>
+  avgDraftMedia!: Table<AvgDraftMediaV1, number>
+  avgAuthoringDrafts!: Table<AvgAuthoringDraftV1, number>
   motionDramaProductions!: Table<MotionDramaProductionV1, number>
   motionDramaSeriesBibles!: Table<MotionDramaSeriesBibleRecordV1, number>
   motionDramaEpisodes!: Table<MotionDramaEpisodeV1, number>
@@ -397,6 +406,7 @@ export class StoryForgeDB extends Dexie {
     this.version(3).stores(STORYFORGE_STORES_V3)
     this.version(4).stores(STORYFORGE_STORES_V4)
     this.version(5).stores(STORYFORGE_STORES_V5)
+    this.version(6).stores(STORYFORGE_STORES_V6)
     this.version(STORYFORGE_SCHEMA_VERSION).stores(STORYFORGE_STORES)
   }
 }

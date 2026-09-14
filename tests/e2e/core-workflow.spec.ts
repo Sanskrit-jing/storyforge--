@@ -123,8 +123,8 @@ test('短篇小说使用独立创作基座，世界页不暴露可变作品改�
     await expect(page.locator('.short-embedded [data-impact-target="true"]')).toContainText(chapter.title)
     const editor = page.locator('.short-embedded').last().locator('.tiptap-editor')
     await editor.fill(chapterBodies[index])
-    await expect(page.getByRole('button', { name: '保存', exact: true })).toBeVisible()
-    await page.getByRole('button', { name: '保存', exact: true }).click()
+    // Autosave may finish before Playwright observes the transient 保存 state.
+    // Waiting for the durable saved state also works under full-suite load.
     await expect(page.getByRole('button', { name: '已保存', exact: true })).toBeVisible()
   }
 

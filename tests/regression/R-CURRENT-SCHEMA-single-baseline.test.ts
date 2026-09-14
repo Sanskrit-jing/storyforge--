@@ -11,6 +11,7 @@ import {
   STORYFORGE_STORES_V3,
   STORYFORGE_STORES_V4,
   STORYFORGE_STORES_V5,
+  STORYFORGE_STORES_V6,
 } from '../../src/lib/db/schema'
 import {
   assertCurrentSchemaDefinition,
@@ -18,7 +19,7 @@ import {
   REQUIRED_TABLES,
 } from '../../src/lib/db/ensure-schema'
 
-describe('CURRENT-SCHEMA · v1/v2/v3/v4/v5 to v6 additive migration', () => {
+describe('CURRENT-SCHEMA · v1/v2/v3/v4/v5 to v7 additive migration', () => {
   beforeEach(async () => {
     db.close()
     await db.delete()
@@ -26,9 +27,9 @@ describe('CURRENT-SCHEMA · v1/v2/v3/v4/v5 to v6 additive migration', () => {
 
   afterEach(() => db.close())
 
-  it('数据库使用独立当前命名空间和 v6 schema', () => {
+  it('数据库使用独立当前命名空间和 v7 schema', () => {
     expect(STORYFORGE_DATABASE_NAME).toBe('storyforge-core')
-    expect(STORYFORGE_SCHEMA_VERSION).toBe(6)
+    expect(STORYFORGE_SCHEMA_VERSION).toBe(7)
     expect(db.name).toBe(STORYFORGE_DATABASE_NAME)
     expect(db.verno).toBe(STORYFORGE_SCHEMA_VERSION)
   })
@@ -65,7 +66,7 @@ describe('CURRENT-SCHEMA · v1/v2/v3/v4/v5 to v6 additive migration', () => {
     const upgraded = new StoryForgeDB(databaseName)
     try {
       await upgraded.open()
-      expect(upgraded.verno).toBe(6)
+      expect(upgraded.verno).toBe(7)
       expect(await upgraded.projects.get(projectId)).toMatchObject({ name: '迁移保留样例' })
       expect(await upgraded.shortNovelProductions.count()).toBe(0)
       expect(await upgraded.creationReleases.count()).toBe(0)
@@ -109,7 +110,7 @@ describe('CURRENT-SCHEMA · v1/v2/v3/v4/v5 to v6 additive migration', () => {
     const upgraded = new StoryForgeDB(databaseName)
     try {
       await upgraded.open()
-      expect(upgraded.verno).toBe(6)
+      expect(upgraded.verno).toBe(7)
       expect(await upgraded.projects.get(projectId)).toMatchObject({ name: 'v2 短篇保留样例' })
       expect(await upgraded.creationReleases.count()).toBe(1)
       expect(await upgraded.adaptationSourceFacts.count()).toBe(0)
@@ -152,7 +153,7 @@ describe('CURRENT-SCHEMA · v1/v2/v3/v4/v5 to v6 additive migration', () => {
     const upgraded = new StoryForgeDB(databaseName)
     try {
       await upgraded.open()
-      expect(upgraded.verno).toBe(6)
+      expect(upgraded.verno).toBe(7)
       expect(await upgraded.projects.get(projectId)).toMatchObject({ name: 'v3 改编分析保留样例' })
       expect(await upgraded.adaptationSourceFacts.count()).toBe(1)
       expect(await upgraded.screenplayBeats.count()).toBe(0)
@@ -175,7 +176,7 @@ describe('CURRENT-SCHEMA · v1/v2/v3/v4/v5 to v6 additive migration', () => {
     const upgraded = new StoryForgeDB(databaseName)
     try {
       await upgraded.open()
-      expect(upgraded.verno).toBe(6)
+      expect(upgraded.verno).toBe(7)
       expect(await upgraded.screenplayBeats.count()).toBe(1)
       expect(await upgraded.comicScriptBeats.count()).toBe(0)
       expect(await upgraded.comicPagePlans.count()).toBe(0)
@@ -198,7 +199,7 @@ describe('CURRENT-SCHEMA · v1/v2/v3/v4/v5 to v6 additive migration', () => {
     const upgraded = new StoryForgeDB(databaseName)
     try {
       await upgraded.open()
-      expect(upgraded.verno).toBe(6)
+      expect(upgraded.verno).toBe(7)
       expect(await upgraded.comicScriptBeats.count()).toBe(1)
       expect(await upgraded.motionDramaProductions.count()).toBe(0)
       expect(await upgraded.motionDramaPromptPacks.count()).toBe(0)
@@ -208,4 +209,13 @@ describe('CURRENT-SCHEMA · v1/v2/v3/v4/v5 to v6 additive migration', () => {
       await upgraded.delete()
     }
   })
+  it('从 v6 升级仅增加 AVG 两张产品表，已有作品保持原值',async()=>{
+    const name=`storyforge-avg-migration-${Date.now()}`;const old=new Dexie(name)
+    old.version(6).stores(STORYFORGE_STORES_V6);await old.open()
+    const id=await old.table('works').add({projectId:1,worldId:1,title:'作者原稿',kind:'novel',createdAt:1,updatedAt:1})
+    const original=await old.table('works').get(id);old.close()
+    const current=new StoryForgeDB(name)
+    try{await current.open();expect(await current.works.get(id)).toEqual(original);expect(await current.avgAuthoringDrafts.count()).toBe(0);expect(await current.avgDraftMedia.count()).toBe(0);expect(Object.keys(STORYFORGE_STORES).filter(k=>!(k in STORYFORGE_STORES_V6)).sort()).toEqual(['avgAuthoringDrafts','avgDraftMedia'])}finally{current.close();await current.delete()}
+  })
+
 })

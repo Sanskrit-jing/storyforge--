@@ -1648,6 +1648,16 @@ export const CONTEXT_SOURCES: ContextSource[] = [
     read: readTtrpgPlayerRuntimeContextV1,
   },
   {
+    key: 'avg.authoring', label: 'AVG 作者方案与会谈', scope: 'project', layer: 'L0', ownerFrom: 'work',
+    budgetTokens: 16000, protectedFromTrim: true,
+    read: async input => {
+      const scope = await resolveScope(input)
+      const rows = await readOwnedRows<import('../avg/authoring-contract').AvgAuthoringDraftV1>(scope, 'avgAuthoringDrafts', { owner: 'work' })
+      const draft = rows[0]
+      return draft ? JSON.stringify({ revision: draft.revision, settings: JSON.parse(draft.settingsJson), conversation: (JSON.parse(draft.conversationJson) as import('../avg/draft-service').AvgConversationTurnV1[]).filter(turn=>!turn.archived), worldSelected: draft.worldReleaseId != null }) : ''
+    },
+  },
+  {
     key: 'product-production.brief',
     label: '已授权上层产品生产 Brief',
     scope: 'project',

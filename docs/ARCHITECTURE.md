@@ -18,6 +18,7 @@ StoryForge 当前是 React + TypeScript + Vite 的本地优先单页应用，核
 - `/settings`：模型与应用设置；
 - `/long`：长篇作品库与产品内创建入口。
 - `/short/:pageId?`：短篇作品库、六阶段生产、版本导出与显式扩展；`project` 查询参数选择作品，未选择仍可浏览。
+- `/avg/:pageId?`：AVG 独立作品库、可恢复 S2 方案、冻结世界引用、真实制作与版本修订、玩家舞台；未选择世界可浏览和填写，正式制作需引用冻结版本。
 - `/world/:pageId?`：世界内容编辑、地图、封存、版本资源出口与分享导入；`project` 选择世界工作区，未选择仍可浏览。旧世界工作区链接重定向到此入口。
 - `/script/:pageId?`：小说转剧本作品库、来源与改编规划、场次生产、审查及版本导出；`work` 查询参数选择独立剧本 Work，未选择仍可浏览。
 - `/workspace/:projectId`：作品工作区；独立长篇使用作品库、工作台、版本与导出、派生、导入、社区与设置导航，分步骤与节点复用原领域组件与数据。
@@ -92,11 +93,11 @@ flowchart TB
 | 当前事实 | 数值 | 单一事实源 |
 |---|---:|---|
 | 应用语义版本 | `3.9.1` | `package.json` |
-| TypeScript 生产源码 | 1083 个文件 / 348074 行 | `tsconfig.json` |
-| IndexedDB schema | v6 / 118 张 required tables | `schema.ts` / `REQUIRED_TABLES` |
-| PROJECT_TABLES | 118 张表 | `project-tables.ts` |
+| TypeScript 生产源码 | 1095 个文件 / 351503 行 | `tsconfig.json` |
+| IndexedDB schema | v7 / 120 张 required tables | `schema.ts` / `REQUIRED_TABLES` |
+| PROJECT_TABLES | 120 张表 | `project-tables.ts` |
 | Prompt 主线 | 65 个 moduleKey / 210 条内置模板 | `PromptModuleKey` / `prompt-seeds*.ts` |
-| CONTEXT_SOURCES | 100 个上下文源 | `context-sources.ts` |
+| CONTEXT_SOURCES | 101 个上下文源 | `context-sources.ts` |
 | 写回治理 | 53 个通用 adopt target / 58 个领域扩展 | `adoption-schema.ts` |
 <!-- project-metrics:end -->
 
@@ -226,7 +227,7 @@ src/
 - Project/World/Work 可以位于同一本地物理工作区，但身份权威已经拆分：Project 只管理工作区，World 管理世界身份，Work 管理独立作品；存在内部 World 语义 scope 不等于建立了可分享世界。
 - 分步骤长篇 Phase 5 工程主链和 10万/30万/100万字符规模门已经完成；真实作者长期文学一致性仍需持续研究，但不是尚未完成的功能施工项。
 - 世界 Release、中立资源协议、六类上层产品的需求适配器、五项逻辑契约校验、`S1 世界封存 → S2 产品定向 → S3 产品执行` runtime 闸门和产品成熟度门已经形成共享架构基线；它们规定接入方式，不替代各上层产品的 Brief/production/media/runtime 专项实现。
-- 当前 schema v6 直接表达 Product Production/Build/Release、Product Runtime、World、Work、独立创作产品与漫剧前期生产；保留 v1→v2→v3→v4→v5→v6 的受支持纯加表迁移以保护作者数据，不包含旧字段投影、双读或退役运行入口。非受支持数据库版本和非当前备份明确拒绝。
+- 当前 schema v7 直接表达 Product Production/Build/Release、Product Runtime、World、Work、独立创作产品、漫剧前期生产与 AVG 作者方案/媒资草稿；保留 v1→v2→v3→v4→v5→v6→v7 的受支持纯加表迁移以保护作者数据，不包含旧字段投影、双读或退役运行入口。非受支持数据库版本和非当前备份明确拒绝。
 - ProductRelease 谱系已经有跨产品逻辑 validator，并在角色互动参考纵切面落地；其它上层产品在转为 released 前仍需按自己的物理 schema 接入同一逻辑闸门。
 - 节点官方模板已绑定正式长篇领域 action，通用生成仅限显式 experimental draft 且不能采纳 Canon；完整跨模式真实 UI 体验仍是节点产品维护事项。
 - 账户、云端社区、支付和商业平台不是当前核心运行前提；相关代码必须 capability gate / experimental，不能掩盖主产品未完成。
@@ -238,3 +239,13 @@ src/
 
 代码提交前执行定向测试和最低架构门；交付运行 `npm run ci`，适用时运行 `npm run ci:e2e`。详细要求见
 [`ENGINEERING-QUALITY-STANDARD.md`](./ENGINEERING-QUALITY-STANDARD.md)。
+
+### AVG 产品页面与作者修订
+
+`AvgPage` 将作品库、S2 故事/路线/方案会谈、S3 制作与编辑、发布和游玩接入同一产品。`Work.kind=avg` 拥有 `avgAuthoringDrafts` 和 `avgDraftMedia`；无世界时可以保存方案，正式生产继续要求作者确认、冻结世界来源和生产授权。草稿及媒资仅通过注册表参与导出、引用重映射、删除与恢复胶囊，不声明磁盘直接编辑能力。
+
+跨工作区选择世界使用世界模块的 `reference-cache`：只复制已验证不可变 Revision/Release，保留 UID、内容 hash 与原文；缓存落在消费者的私有存储 scope，不复制可变语义表，不回写源世界，源工作区删除后仍可复验和备份恢复。版本资源页显示已选择版本；进入世界草稿修改需回到世界引擎并封存新版本。
+
+AVG 会谈使用 `avg.consult.v1` 和 `avg.authoring` 注册上下文，经 durable Run、manifest、候选 checkpoint 与验证 receipt 保存。会谈只起草产品定向，正式世界读取仍由生产需求适配器执行。作者确认后回填同一 S2 草稿，历史会谈可归档后继续讨论。
+
+作者修改叙事图、对白、条件、变量和演出，先保存带基线 previewHash 的草稿。提交修订冻结到 Brief 的 AVG 专项 `avgRevision`；同一生产 scheduler 执行素材引用验证、运行包装配和质量检查。旧 Build/Release/存档保持不变，新版本仍需明确开始和发布。没有新增第二套叙事或模型调用系统；商业候选仍受真实试玩、媒资与性能回执限制。

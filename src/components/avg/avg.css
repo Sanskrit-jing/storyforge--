@@ -1,0 +1,232 @@
+.avg-app .lf-content {
+  min-width: 0;
+}
+.avg-app .lf-paper {
+  padding: 30px;
+  margin-bottom: 24px;
+}
+.avg-app h3 {
+  font-family: var(--lf-serif);
+  font-size: 26px;
+  color: #244d47;
+  margin-bottom: 16px;
+}
+.avg-app h4 {
+  font-size: 18px;
+  margin: 16px 0 8px;
+}
+.avg-app p {
+  line-height: 1.8;
+  color: #648274;
+}
+.avg-app .lf-action {
+  font-size: 16px;
+  padding: 12px 22px;
+}
+.avg-app button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.avg-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 16px 0;
+}
+.avg-phases {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 0 28px;
+}
+.avg-phases button {
+  padding: 10px 20px;
+  border-radius: 24px;
+  border: 1px solid #c6d9c5;
+  color: #426b5d;
+  background: #f6f7ef;
+}
+.avg-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  border: 0;
+  padding: 0;
+}
+.avg-app label {
+  display: block;
+  color: #537765;
+  font-size: 16px;
+}
+.avg-app input:not([type="checkbox"]):not([type="range"]),
+.avg-app textarea,
+.avg-app select {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px 16px;
+  background: #fffef8;
+  border: 1px solid #cfddc9;
+  border-radius: 14px;
+  color: #294f46;
+  min-width: 0;
+  font-size: 16px;
+}
+.avg-app textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+.avg-form .avg-actions {
+  grid-column: 1/-1;
+}
+.avg-source {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 16px 0;
+  border-bottom: 1px solid #dce4d5;
+}
+.avg-alert {
+  border: 1px solid #c88d74;
+  padding: 16px;
+  border-radius: 16px;
+  background: #fff4ea;
+  color: #8c442d !important;
+}
+.avg-consult {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 24px;
+}
+.avg-messages article {
+  border-bottom: 1px solid #d3dfcd;
+  padding: 16px 0;
+  white-space: pre-wrap;
+}
+.avg-consult dd {
+  white-space: pre-wrap;
+  margin: 6px 0 18px;
+}
+.avg-consult dt {
+  font-weight: 600;
+}
+.avg-editor-card {
+  padding: 24px;
+  border: 1px solid #d4dfcb;
+  border-radius: 22px;
+  margin: 20px 0;
+  background: #fbfbf5;
+}
+.avg-editor-card details {
+  margin: 16px 0;
+}
+.avg-editor-card summary {
+  cursor: pointer;
+  color: #537765;
+}
+.avg-graph {
+  display: flex;
+  gap: 12px;
+  overflow: auto;
+  padding: 12px 0;
+}
+.avg-graph button {
+  min-width: 150px;
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px solid #c6d7bf;
+  background: #e9efdf;
+}
+.avg-media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
+}
+.avg-media-grid img {
+  width: 100%;
+  height: 220px;
+  object-fit: contain;
+  background: #e5eddf;
+  border-radius: 16px;
+}
+.avg-media-grid audio {
+  width: 100%;
+}
+.avg-production {
+  color: #355c51;
+}
+.avg-production [class*="text-\[9px\]"],
+.avg-production [class*="text-\[10px\]"],
+.avg-production .text-xs {
+  font-size: 14px;
+  line-height: 1.7;
+}
+.avg-production .rounded {
+  border-radius: 18px;
+}
+.avg-production .text-sm {
+  font-size: 17px;
+}
+.avg-production > div {
+  background: #fbfaf2;
+  border-radius: 28px;
+  padding: 24px;
+}
+.avg-production input[type="checkbox"] {
+  width: auto;
+}
+.avg-production section {
+  scroll-margin-top: 30px;
+}
+.avg-production code {
+  overflow-wrap: anywhere;
+}
+.avg-app .avg-editor-json {
+  font-family: monospace;
+  min-height: 100px;
+  font-size: 14px;
+}
+.avg-app .lf-library-grid {
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+}
+@media (max-width: 900px) {
+  .avg-form,
+  .avg-consult {
+    grid-template-columns: 1fr;
+  }
+  .avg-app .lf-paper {
+    padding: 22px;
+  }
+  .avg-source {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .avg-app .lf-content {
+    padding: 0;
+  }
+  .avg-phases button {
+    font-size: 13px;
+    padding: 8px 12px;
+  }
+}
+.avg-app .lf-sidebar nav section {
+  display: grid;
+  gap: 6px;
+}
+.avg-app .lf-sidebar nav h3 {
+  font: 12px var(--font-sans);
+  color: #9db6a4;
+  margin: 18px 12px 6px;
+  letter-spacing: 1px;
+}
+.avg-app .lf-sidebar nav button {
+  width: 100%;
+}
+.avg-app .lf-sidebar > p {
+  color: #abc5b7;
+}
+.avg-app h3 {
+  font-family: var(--font-serif);
+}

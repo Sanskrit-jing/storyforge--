@@ -275,7 +275,7 @@ function modelOutputs(
       audio: [
         { artifactKey: 'media.audio.001', mediaKind: 'bgm', sceneTag: 'opening', beatKey: 'beat.opening', prompt: '雾港开场的克制主题音。', altText: '低沉而克制的雾港主题音。', durationMs: 3000 },
         { artifactKey: 'media.audio.002', mediaKind: 'sfx', sceneTag: 'opening-bell', beatKey: 'beat.opening', prompt: '远处的港口警铃。', altText: '远处港口警铃声。', durationMs: 1000 },
-        { artifactKey: 'media.audio.003', mediaKind: 'sfx', sceneTag: 'truth-light', beatKey: 'beat.truth', prompt: '信号灯启动的短促电流声。', altText: '信号灯启动声。', durationMs: 1000 },
+        { artifactKey: 'media.audio.003', mediaKind: 'sfx', sceneTag: 'truth-light', beatKey: 'beat.generated.002', prompt: '信号灯启动的短促电流声。', altText: '信号灯启动声。', durationMs: 1000 },
         { artifactKey: 'media.audio.004', mediaKind: 'sfx', sceneTag: 'shelter-door', beatKey: 'beat.shelter', prompt: '沉重潮门缓慢闭合。', altText: '潮门闭合声。', durationMs: 1000 },
       ],
     },

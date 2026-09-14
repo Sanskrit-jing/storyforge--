@@ -54,6 +54,8 @@ export const REQUIRED_TABLES = [
   'motionDramaAssetSubjects',
   'motionDramaAssetVersions',
   'motionDramaEpisodes',
+  'avgAuthoringDrafts',
+  'avgDraftMedia',
   'motionDramaProductions',
   'motionDramaPromptOverrides',
   'motionDramaPromptPacks',

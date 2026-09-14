@@ -1,10 +1,11 @@
 import { lazy, Suspense } from 'react'
-import { Routes, Route, useSearchParams } from 'react-router'
+import { Routes, Route, Navigate, useSearchParams } from 'react-router'
 
 import ResumeTracker from './components/home/ResumeTracker'
 
 import { PRODUCT_NAVIGATION } from './components/navigation/product-navigation'
 
+const AvgPage = lazy(() => import('./pages/AvgPage'))
 const HomePage = lazy(() => import('./pages/HomePage'))
 const WorldEnginePage = lazy(() => import('./pages/WorldEnginePage'))
 const PreviewRoutePage = lazy(() => import('./pages/PreviewRoutePage'))
@@ -24,6 +25,7 @@ function RouteFallback() {
 
 function HomeRoute() {
   const [params] = useSearchParams()
+  if (params.get('product') === 'avg') { const next = new URLSearchParams(params); next.delete('tab'); next.delete('product'); return <Navigate replace to={`/avg/production?${next}`}/> }
   // Preserve existing work/tool deep links while the remaining products are audited.
   return params.has('tab') && (params.get('tab') !== 'home' || params.get('legacy') === '1') ? <ProductHubPage /> : <HomePage />
 }
@@ -33,7 +35,8 @@ export default function App() {
     <>
     <ResumeTracker/>
     <Routes>
-      {[...PRODUCT_NAVIGATION.filter(item => !['home', 'long', 'short', 'script', 'world'].includes(item.id)), { id: 'community' }].map(item => <Route key={item.id} path={`/${item.id}/:pageId?`} element={<Suspense fallback={<RouteFallback />}><PreviewRoutePage productId={item.id}/></Suspense>}/>)}
+      {[...PRODUCT_NAVIGATION.filter(item => !['home', 'long', 'short', 'script', 'world', 'avg'].includes(item.id)), { id: 'community' }].map(item => <Route key={item.id} path={`/${item.id}/:pageId?`} element={<Suspense fallback={<RouteFallback />}><PreviewRoutePage productId={item.id}/></Suspense>}/>)}
+      <Route path="/avg/:pageId?" element={<Suspense fallback={<RouteFallback />}><AvgPage /></Suspense>}/>
       <Route path="/home/:pageId?" element={<Suspense fallback={<RouteFallback />}><HomePage /></Suspense>}/>
       <Route path="/world/:pageId?" element={<Suspense fallback={<RouteFallback />}><WorldEnginePage /></Suspense>}/>
       <Route path="/script/:pageId?" element={<Suspense fallback={<RouteFallback />}><ScreenplayPage /></Suspense>}/>

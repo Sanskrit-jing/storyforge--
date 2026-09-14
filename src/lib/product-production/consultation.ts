@@ -1,3 +1,4 @@
+import { parseAvgAuthoringSettingsV1, type AvgAuthoringSettingsV1 } from '../avg/authoring-contract'
 import type {
   ProductionProductKindV1,
   ProductProductionBriefV3,
@@ -307,6 +308,7 @@ export async function draftProductProductionBriefV3(input: {
   confirmTtrpgDefaultMappings?: boolean
   ttrpg?: TtrpgProductionBriefDraftInputV2
   aiTown?: AiTownBriefSettingsV1
+  avg?: AvgAuthoringSettingsV1
   sourceSelection?: ProductProductionSourceSelectionV1
 }): Promise<ProductProductionBriefV3> {
   const scope = await resolveScope({ scope: input.scope })
@@ -322,7 +324,9 @@ export async function draftProductProductionBriefV3(input: {
   }
   const selectedScale = input.scale ?? selected.scale
   const qualityProfile = input.qualityProfile ?? 'prototype'
-  const scale = { scope: selectedScale, ...SCALE_DEFAULTS[selectedScale] }
+  const avg = input.avg ? parseAvgAuthoringSettingsV1(input.avg) : undefined
+  if (avg && input.productType !== 'avg') throw new Error('AVG 方案不能用于其他产品')
+  const scale = { scope: selectedScale, ...SCALE_DEFAULTS[selectedScale], ...(avg ? { targetPlayMinutes: avg.targetPlayMinutes, targetEndingCount: avg.targetEndingCount } : {}) }
   const selectedCatalog = normalizeAuthorSelection({
     source, selected, authorSelection: input.sourceSelection,
   })
@@ -437,6 +441,7 @@ export async function draftProductProductionBriefV3(input: {
   }
   return parseProductProductionBriefV3({
     schema: 'storyforge.product-production-brief', version: 3,
+    ...(avg ? { avg } : {}),
     source: {
       worldReleaseId: input.worldReleaseId, worldContentHash: source.release.contentHash, selection,
       startingPoint: {

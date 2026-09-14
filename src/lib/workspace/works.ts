@@ -307,3 +307,12 @@ export async function updateWorkCover(scope: WorkspaceScope, coverImage: string,
     return updatedAt
   })
 }
+
+/** Explicit author rename of a particular Work; never follows another tab's active pointer. */
+export async function updateWorkTitle(scope: WorkspaceScope, title: string): Promise<void> {
+  if (!title.trim() || title.length > 200) throw new Error('请填写 1～200 字的作品名称')
+  await db.transaction('rw', db.projects, db.worlds, db.works, async () => {
+    const current = await resolveScope({ scope })
+    await db.works.update(current.workId, { title: title.trim(), updatedAt: Date.now() })
+  })
+}

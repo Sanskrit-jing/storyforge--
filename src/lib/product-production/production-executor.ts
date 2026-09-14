@@ -1371,6 +1371,7 @@ async function executeIntegrationTask(input: ProductProductionTaskExecutionInput
       enabledCapabilities: hasAiTownPresentation ? [...modules.enabledCapabilities, 'presentation'] : modules.enabledCapabilities,
       rulesetVersion: 1,
       initialVariables: {
+        ...(options.brief.avg ? { avgAspectRatio: options.brief.avg.aspectRatio } : {}),
         productAdapterId: modules.adapterId,
         productAdapterCommercialReady: modules.commercialReady,
       },
@@ -1391,7 +1392,9 @@ async function executeIntegrationTask(input: ProductProductionTaskExecutionInput
     const firstBeatKey = narrative.beats[0]?.beatKey
     const knownBeatKeys = new Set(narrative.beats.map(beat => beat.beatKey))
     const cues: NonNullable<ProductRuntimePackageV1['presentation']>['cues'] = []
+    const actorKeys = [...new Set(assets.filter(asset=>asset.kind==='character-pose'||asset.kind==='character-expression').map(asset=>asset.characterTag||'intent:protagonist'))]
     media.forEach(({ asset, beatKey: requestedBeatKey }, index) => {
+      if (options.brief.intent.productType === 'avg' && !knownBeatKeys.has(requestedBeatKey)) fail(`AVG 素材引用不存在的对白节拍：${asset.assetKey} → ${requestedBeatKey}`)
       const beatKey = knownBeatKeys.has(requestedBeatKey) ? requestedBeatKey : firstBeatKey
       if (!beatKey) return
       if (asset.kind === 'background' || asset.kind === 'cg') cues.push({
@@ -1402,10 +1405,12 @@ async function executeIntegrationTask(input: ProductProductionTaskExecutionInput
       })
       else if (asset.kind === 'character-pose' || asset.kind === 'character-expression') cues.push({
         cueKey: `cue.${asset.assetKey}`, beatKey, phase: 'before' as const, type: 'show-actor' as const,
-        assetKey: asset.assetKey, actorKey: 'actor.protagonist', slot: 'center', layer: 'actor-front' as const,
+        assetKey: asset.assetKey, actorKey: asset.characterTag || 'intent:protagonist',
+        slot: (['left','right','center'] as const)[actorKeys.indexOf(asset.characterTag||'intent:protagonist') % 3], layer: 'actor-front' as const,
         x: 0, y: 0, scale: 1, opacity: 1, durationMs: product.presentationPolicy.transitionMs,
         easing: 'ease-in-out' as const, order: index,
       })
+      else if(asset.kind==='ui') cues.push({cueKey:`cue.${asset.assetKey}`,beatKey,phase:'before',type:'set-overlay',assetKey:asset.assetKey,durationMs:0,easing:'linear',order:index})
       else cues.push({
         cueKey: `cue.${asset.assetKey}`, beatKey, phase: 'before' as const, type: 'play-audio' as const,
         assetKey: asset.assetKey, durationMs: 0, easing: 'linear' as const,

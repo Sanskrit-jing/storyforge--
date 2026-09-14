@@ -1,3 +1,4 @@
+import {DEFAULT_AVG_SETTINGS} from '../../src/lib/avg/authoring-contract'
 /**
  * 全量项目种子 · 测试共享 helper
  *
@@ -1196,6 +1197,8 @@ export async function seedFullProject() {
     data: productMediaData, opfsPath: null, leaseOwner: null, leaseExpiresAt: null,
     lastVerifiedAt: now, createdAt: now, updatedAt: now,
   }) as number
+  await db.avgAuthoringDrafts.add({projectId,worldId,workId,revision:0,settingsJson:JSON.stringify(DEFAULT_AVG_SETTINGS),worldReleaseId:null,productionId:null,conversationJson:'[]',createdAt:now,updatedAt:now})
+  await db.avgDraftMedia.add({projectId,worldId,workId,blobObjectId:mediaBlobObject,assetJson:JSON.stringify({assetKey:'avg.seed',blobContentHash:productMediaHash}),createdAt:now})
   const productMediaAsset = await db.productMediaAssets.add({
     projectId, worldId, workId, ownerKind: 'runtime', productType: 'ttrpg',
     productReleaseId: null, productRuntimeSessionId: runtimeParent,

@@ -143,11 +143,11 @@ export function inspectProductProductionCapabilityReadinessV1(input: {
  * capability required by that frozen Brief is bound.
  */
 export function evaluateProductProductionAuthorizationReadinessV1(input: {
-  brief: Pick<ProductProductionBriefV3, 'capabilityRequirements'>
+  brief: Pick<ProductProductionBriefV3, 'capabilityRequirements' | 'avgRevision'>
   readiness: ProductProductionCapabilityReadinessV1
 }): ProductProductionAuthorizationReadinessV1 {
   const blockerMessages: string[] = []
-  if (!input.readiness.text.ready) {
+  if (!input.brief.avgRevision && !input.readiness.text.ready) {
     blockerMessages.push(input.readiness.text.issue || '设置中的文本生成能力尚未就绪。')
   }
   const requiredMediaRequirementKeys = input.brief.capabilityRequirements
@@ -457,6 +457,7 @@ export async function runAuthorizedProductProductionV1(input: {
     return projectProductProductionSchedulerV1({ scope, productionId: input.productionId })
   }
   const brief = parseProductProductionBriefV3(details.brief.briefJson)
+  if (brief.avgRevision) return (await import('../avg/revision-production')).runAvgRevisionV1({ ...input, scope, details, brief })
   const textRequirements = brief.capabilityRequirements.filter(requirement => requirement.mediaClass === 'text')
   if (textRequirements.length !== 1) throw new Error('[product-production-service] 正式制作需要唯一文本 capability requirement')
   const textCapability = await resolveConfiguredTextCapabilityV1({
@@ -599,6 +600,7 @@ export async function beginProductProductionEvolutionV1(input: {
   productionId: number
   userText: string
   affectedLanes?: ProductEvolutionAffectedLaneV1[]
+  expectedStateRevision?: number
 }): Promise<{ briefRevision: number }> {
   const userText = input.userText.trim()
   if (!userText) throw new Error('[product-production-service] 请先填写本轮演化目标')
@@ -609,6 +611,7 @@ export async function beginProductProductionEvolutionV1(input: {
     throw new Error('[product-production-service] 世界来源升级必须先选择并确认新的 WorldRelease，不能在普通演化中静默替换')
   }
   const details = await readProductProductionDetailsV1(scope, input.productionId)
+  if (input.expectedStateRevision != null && details.production.stateRevision !== input.expectedStateRevision) throw new Error('制作版本已变化，请重新读取')
   if (!details.build) throw new Error('[product-production-service] 演化需要一个可验证的 Preview 或 Release 基线')
   let base: ProductEvolutionBaseV1
   if (details.production.status === 'released' && details.production.currentProductReleaseId != null) {

@@ -1,3 +1,4 @@
+import type { AvgAuthoringDraftV1, AvgDraftMediaV1 } from '../avg/authoring-contract'
 /**
  * 项目 JSON 导出/导入 · 对外门面
  *
@@ -239,6 +240,8 @@ export interface ProjectExportData {
     Omit<ComicMediaAsset, 'id' | 'projectId' | 'workId' | 'adaptationProjectId' | 'panelId' | 'blobObjectId'>
     & { _exportId: number; _workExportId: number; _adaptationProjectExportId: number; _panelExportId?: number | null; _blobObjectExportId: number }
   )[]
+  avgDraftMedia: (Omit<AvgDraftMediaV1, 'id' | 'projectId' | 'worldId' | 'workId' | 'blobObjectId'> & { _exportId:number;_worldExportId:number;_workExportId:number;_blobObjectExportId:number })[]
+  avgAuthoringDrafts: (Omit<AvgAuthoringDraftV1, 'id' | 'projectId' | 'worldId' | 'workId' | 'worldReleaseId' | 'productionId'> & { _exportId: number; _worldExportId: number; _workExportId: number; _worldReleaseExportId?: number | null; _productionExportId?: number | null })[]
   motionDramaProductions: (
     Omit<MotionDramaProductionV1, 'id' | 'projectId' | 'worldId' | 'workId' | 'adaptationProjectId' | 'currentReleaseId'>
     & {
