@@ -27,7 +27,7 @@ test('目录不可用时仍能读取本地存档，另一标签新增存档后�
 test('社区真实游戏包：多人刷新和交接遮屏，检查点另建冒险，手机桌面可用', async ({ page }) => {
   test.setTimeout(120_000)
   await installKpRehearsal(page)
-  await page.goto('./?tab=home')
+  await page.goto('./?tab=home&legacy=1')
   await expect(page.getByRole('heading', { name: '雾港：最后一盏灯' })).toHaveCount(0)
   await page.getByTestId('product-tab-ttrpg').click()
   await expect(page.getByRole('heading', { name: '跑团', exact: true })).toBeVisible()

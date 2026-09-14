@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 test('漫剧工坊从一句话建立独立小说来源并呈现完整八步前期流程', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('storyforge_guide_completed', 'e2e'))
-  await page.goto('./?tab=home')
+  await page.goto('./?tab=home&legacy=1')
 
   await page.getByRole('banner').getByRole('button', { name: '新建', exact: true }).click()
   await page.getByRole('button', { name: /漫剧工坊/ }).click()
@@ -64,7 +64,7 @@ test('漫剧工坊从一句话建立独立小说来源并呈现完整八步前�
 
 test('粘贴小说正文先建立独立来源 Work，再以完整正文解锁漫剧改编', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('storyforge_guide_completed', 'e2e'))
-  await page.goto('./?tab=home')
+  await page.goto('./?tab=home&legacy=1')
   await page.getByRole('banner').getByRole('button', { name: '新建', exact: true }).click()
   await page.getByRole('button', { name: /漫剧工坊/ }).click()
   await page.getByLabel('名称').fill('E2E 导入原著')
@@ -93,7 +93,7 @@ test('粘贴小说正文先建立独立来源 Work，再以完整正文解锁漫
 
 test('Seedance 执行包呈现能力画像、真实槽位、时间轴、镜间交接与返修入口', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('storyforge_guide_completed', 'e2e'))
-  await page.goto('./?tab=home')
+  await page.goto('./?tab=home&legacy=1')
   await page.getByRole('banner').getByRole('button', { name: '新建', exact: true }).click()
   await page.getByRole('button', { name: /漫剧工坊/ }).click()
   await page.getByLabel('名称').fill('E2E Seedance 执行包')

@@ -5,7 +5,7 @@ test('小说转漫画从独立产品入口冻结来源，经十二步正式数�
   await page.addInitScript(() => {
     localStorage.setItem('storyforge_guide_completed', 'e2e')
   })
-  await page.goto('./?tab=home')
+  await page.goto('./?tab=home&legacy=1')
 
   await page.getByRole('banner').getByRole('button', { name: '新建', exact: true }).click()
   await page.getByRole('button', { name: /长篇小说/ }).click()
@@ -36,7 +36,7 @@ test('小说转漫画从独立产品入口冻结来源，经十二步正式数�
     }, { owner: 'work' }))
   })
 
-  await page.goto('./?tab=home')
+  await page.goto('./?tab=home&legacy=1')
   await page.getByRole('banner').getByRole('button', { name: '新建', exact: true }).click()
   await page.getByRole('button', { name: /小说转漫画/ }).click()
   await expect(page.getByLabel('小说来源')).toContainText('E2E 漫画来源小说')

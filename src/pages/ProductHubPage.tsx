@@ -839,12 +839,12 @@ export default function ProductHubPage() {
     const requested = new URLSearchParams(window.location.search).get('tab')
     return visibleNavTabs().some(tab => tab.id === requested) ? requested as TabId : 'home'
   })
-  const [activeWorkProjectId, setActiveWorkProjectId] = useState<number | null>(null)
-  const [activeWorldProjectId, setActiveWorldProjectId] = useState<number | null>(null)
+  const [activeWorkProjectId, setActiveWorkProjectId] = useState<number | null>(()=>Number(new URLSearchParams(window.location.search).get('project'))||null)
+  const [activeWorldProjectId, setActiveWorldProjectId] = useState<number | null>(()=>Number(new URLSearchParams(window.location.search).get('project'))||null)
   const [showCreate, setShowCreate] = useState(false)
   const [showWorldPicker, setShowWorldPicker] = useState(false)
   const [showMobileNav, setShowMobileNav] = useState(false)
-  const [textGameProduct, setTextGameProduct] = useState<TextGameProductKindV1>('text-adventure')
+  const [textGameProduct, setTextGameProduct] = useState<TextGameProductKindV1>(()=>{const value=new URLSearchParams(window.location.search).get('product');return TEXT_GAME_PRODUCT_KINDS_V1.includes(value as TextGameProductKindV1)?value as TextGameProductKindV1:'text-adventure'})
   const [textGameInitialMode, setTextGameInitialMode] = useState<'play' | 'production'>('play')
   const [textProductProductionHandoff, setTextProductProductionHandoff] = useState<ProductProductionHandoffV1 | null>(null)
   const [ttrpgInitialSessionId, setTtrpgInitialSessionId] = useState<number | null>(null)
@@ -900,10 +900,12 @@ export default function ProductHubPage() {
     project.workspacePurpose !== 'world-engine'
   )), [projects])
   useEffect(() => {
+    if (!projects.length) return
     if (activeWorkProjectId != null && workProjects.some(project => project.id === activeWorkProjectId)) return
     setActiveWorkProjectId(workProjects[0]?.id ?? null)
-  }, [activeWorkProjectId, workProjects])
+  }, [activeWorkProjectId, workProjects, projects.length])
   useEffect(() => {
+    if (!projects.length) return
     // Project identity is authoritative while the derived world projection is
     // still loading. Otherwise a newly-created/imported world is immediately
     // reset to the first stale projection before its own projection arrives.
@@ -918,6 +920,7 @@ export default function ProductHubPage() {
   const selectWorld = (world: ProductWorld) => setActiveWorldProjectId(world.projectId)
   const selectWork = (projectId: number) => setActiveWorkProjectId(projectId)
   const selectTab = (tab: TabId) => {
+    if(tab==='home'&&new URLSearchParams(window.location.search).get('legacy')!=='1'){navigate('/');return}
     const decision = tabDecision(tab)
     if (decision && !decision.enterable) return
     if (tab === 'text-games') setTextGameInitialMode('play')

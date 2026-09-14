@@ -3,11 +3,11 @@ import { allPages } from '../../ui-preview/src/catalog'
 
 test('首页打开独立 UI 预览，提示范围、浏览全部页面并返回正式版', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('storyforge_guide_completed', 'e2e'))
-  await page.goto('./?tab=home')
+  await page.goto('./')
   const entry = page.getByTestId('ui-preview-entry')
-  await expect(entry).toContainText('优化调整中')
-  await expect(entry).toContainText('尚未接入真实功能')
-  await expect(entry).toContainText('待功能梳理完成后，新版 UI 将正式上线')
+  await expect(entry).toContainText('界面换新，持续打磨中')
+  await expect(entry).toContainText('独立预览仅展示示例，不会改动你的作品')
+  await expect(entry).toContainText('待功能梳理完成后逐项上线')
   const before = await page.evaluate(() => JSON.stringify(localStorage))
   await entry.getByRole('link', { name: '浏览新版 UI 预览' }).click()
   await expect(page).toHaveURL(/ui-preview\/index.html#home\/today$/)

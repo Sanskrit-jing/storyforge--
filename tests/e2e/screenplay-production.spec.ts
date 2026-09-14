@@ -5,7 +5,7 @@ test('小说转剧本从产品入口冻结来源，经专业生产数据发布�
   await page.addInitScript(() => {
     localStorage.setItem('storyforge_guide_completed', 'e2e')
   })
-  await page.goto('./?tab=home')
+  await page.goto('./?tab=home&legacy=1')
 
   await page.getByRole('banner').getByRole('button', { name: '新建', exact: true }).click()
   await page.getByRole('button', { name: /长篇小说/ }).click()
@@ -36,7 +36,7 @@ test('小说转剧本从产品入口冻结来源，经专业生产数据发布�
     }, { owner: 'work' }))
   })
 
-  await page.goto('./?tab=home')
+  await page.goto('./?tab=home&legacy=1')
   await page.getByRole('banner').getByRole('button', { name: '新建', exact: true }).click()
   await page.getByRole('button', { name: /小说转剧本/ }).click()
   await expect(page.getByLabel('小说来源')).toContainText('E2E 剧本来源小说')

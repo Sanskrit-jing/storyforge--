@@ -655,7 +655,7 @@ export const ADOPTION_EXTENSIONS: readonly AdoptionExtensionSpec[] = Object.free
       'src/lib/comic/release.ts',
     ],
     policyRegistry: 'PROJECT_TABLES refs + WorkspaceScope + stable work code + narrative lifecycle',
-    reason: 'Work 根创建、稳定 code 补齐和级联是受信生命周期；删除最后一个独占叙事蓝图时还必须原子清空 activeNarrativeModuleId。标题等作者内容仍经 adopt()。',
+    reason: 'Work 根创建、稳定 code 补齐和级联是受信生命周期；updateWorkCover 仅在作者明确确认后按显式 scope 和 updatedAt 更新封面，不接受模型写回。删除最后一个独占叙事蓝图时还必须原子清空 activeNarrativeModuleId。标题等作者内容仍经 adopt()。',
     reviewAfter: '2027-08-01',
   },
   {

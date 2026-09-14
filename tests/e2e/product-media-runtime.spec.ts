@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 test('真实 Chromium 解码透明 PNG 与 PCM WAV，并产出可审计媒体指标', async ({ page, browserName }) => {
-  await page.goto('./?tab=home')
+  await page.goto('./?tab=home&legacy=1')
 
   const measurement = await page.evaluate(async currentBrowserName => {
     const importer = new Function('path', 'return import(path)') as (path: string) => Promise<any>

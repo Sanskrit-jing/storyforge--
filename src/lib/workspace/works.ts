@@ -292,3 +292,18 @@ export async function recordLongformWorkCompletionV1(scope: WorkspaceScope): Pro
     || effectiveWorkKind(work) !== 'novel' || effectiveNovelProfile(work) !== 'long') throw new Error('长篇完稿记录与当前作品不匹配。')
   await db.works.update(scope.workId, { status: 'completed', updatedAt: Date.now() })
 }
+
+/** Manual cover adoption targets an explicit Work, even if another tab changes the active pointer. */
+export async function updateWorkCover(scope: WorkspaceScope, coverImage: string, expectedUpdatedAt: number): Promise<number> {
+  if (coverImage && (!/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(coverImage) || coverImage.length > 7_000_000)) {
+    throw new Error('封面必须是 5 MB 以内的 PNG、JPEG 或 WebP 图片。')
+  }
+  return db.transaction('rw', db.projects, db.worlds, db.works, async () => {
+    const current = await resolveScope({ scope })
+    const work = await db.works.get(current.workId)
+    if (!work || work.updatedAt !== expectedUpdatedAt) throw new Error('作品已被修改，请重新打开封面后再保存。')
+    const updatedAt = Math.max(Date.now(), work.updatedAt + 1)
+    await db.works.update(current.workId, { coverImage, updatedAt })
+    return updatedAt
+  })
+}

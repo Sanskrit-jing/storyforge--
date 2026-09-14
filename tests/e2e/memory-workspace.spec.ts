@@ -11,7 +11,7 @@ async function openCleanHome(page: Page) {
       return root.getDirectoryHandle('custom-location', { create: true })
     }
   })
-  await page.goto('./?tab=home', { waitUntil: 'domcontentloaded' })
+  await page.goto('./?tab=home&legacy=1', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: '你的创作与游玩空间', exact: true })).toBeVisible({ timeout: 15_000 })
 }
 

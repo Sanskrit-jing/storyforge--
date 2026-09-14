@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { useNavigate, useSearchParams } from 'react-router'
+import { Navigate, useNavigate, useSearchParams } from 'react-router'
 import { ArrowLeft } from 'lucide-react'
 
 const SettingsPage = lazy(() => import('../components/settings/SettingsPage'))
@@ -9,6 +9,8 @@ export default function SettingsRoutePage() {
   const [params] = useSearchParams()
   const requestedReturn = params.get('returnTo') ?? ''
   const returnTo = /^\/play(?:\/[a-zA-Z0-9./-]+)?$/.test(requestedReturn) && !requestedReturn.includes('..') ? requestedReturn : '/'
+
+  if (!requestedReturn) return <Navigate replace to="/home/settings"/>
 
   return (
     <div className="min-h-screen bg-bg-base">

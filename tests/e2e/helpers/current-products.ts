@@ -26,7 +26,7 @@ export interface CurrentTtrpgSeedInput {
  * Product Build path; it does not revive a retired per-product authoring table.
  */
 export async function seedCurrentTtrpgProduct(page: Page, input: CurrentTtrpgSeedInput) {
-  await page.goto('./?tab=home')
+  await page.goto('./?tab=home&legacy=1')
   return page.evaluate(async seed => {
     const importer = new Function('path', 'return import(path)') as (path: string) => Promise<any>
     const [
@@ -89,7 +89,7 @@ export async function openCurrentTtrpgPlayer(page: Page): Promise<Locator> {
  * release instead of relying on array position or synthetic database ids.
  */
 export async function seedCurrentAiTownProduct(page: Page) {
-  await page.goto('./?tab=home')
+  await page.goto('./?tab=home&legacy=1')
   return page.evaluate(async () => {
     const importer = new Function('path', 'return import(path)') as (path: string) => Promise<any>
     const { seedAiTownRuntimeFixture } = await importer('/storyforge/tests/helpers/ai-town-runtime.ts')

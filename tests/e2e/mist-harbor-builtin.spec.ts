@@ -8,7 +8,7 @@ test('fresh install, AVG real art, complete route, refreshed save and separate r
   page,
 }, testInfo) => {
   test.setTimeout(180000)
-  await page.goto('./?tab=home')
+  await page.goto('./?tab=home&legacy=1')
   await page.getByRole('button', { name: '跳过引导', exact: true }).first().click()
   await page.getByRole('link', { name: '体验内置作品：雾港，失潮钟声' }).click()
   await expect(page.getByRole('heading', { name: '雾港 失潮钟声' })).toBeVisible()
