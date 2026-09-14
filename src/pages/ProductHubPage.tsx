@@ -448,7 +448,7 @@ function HomePage({ projects, worlds, activeWorld, activeWorkProject, onSelect, 
   return <>
     <div className="sf-home-intro"><div><div className="sf-eyebrow">STORYFORGE · LOCAL WORKSPACE</div><h1>你的创作与游玩空间</h1><p>从一个世界出发，继续写作、编排、游玩，或者开始一段新的故事。</p></div><div className="sf-intro-actions"><Button icon={Hash} onClick={onOpenWorldPicker}>使用世界编号</Button><Button variant="primary" icon={Plus} onClick={onOpenCreate}>新建内容</Button></div></div>
     <section className="sf-ui-preview-card" aria-label="新版 UI 预览" data-testid="ui-preview-entry">
-      <div><span className="sf-eyebrow">界面焕新计划 · 优化调整中</span><h2>新版 UI，先来看看</h2><p>我们正在重新设计各个创作与游玩页面。这里使用示例内容展示新界面，尚未接入真实功能。</p></div>
+      <div><span className="sf-eyebrow">界面焕新计划 · 优化调整中</span><h2>新版 UI，先来看看</h2><p>UI 重构过程中，部分功能与操作流程出现了混乱，目前正在逐项梳理。待功能梳理完成后，新版 UI 将正式上线。当前仅展示示例界面，尚未接入真实功能。</p></div>
       <a href={`${import.meta.env.BASE_URL}ui-preview/index.html#home/today`}>浏览新版 UI 预览 <ArrowRight className="h-4 w-4" /></a>
     </section>
     <MistHarborShelf />
