@@ -1,5 +1,6 @@
 import ShortNovelHistory from '../components/short-novel/ShortNovelHistory'
 import LongformCompletion from '../components/longform/LongformCompletion'
+import { worldModulePath } from '../components/world-engine/navigation'
 import { useCallback, useEffect, useRef, useState, useMemo, lazy, Suspense, Fragment } from 'react'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router'
 import { useProjectStore } from '../stores/project'
@@ -95,13 +96,22 @@ import LongformLayout from '../components/longform/LongformLayout'
 import { LONGFORM_SECTIONS, sectionForModule, type LongformSection, type LongformMode } from '../components/longform/navigation'
 const LongformWorlds = lazy(() => import('../components/longform/LongformWorlds'))
 
-export default function WorkspacePage() {
-  const { projectId } = useParams()
+export default function WorkspacePage({ embeddedProjectId, embeddedModule }: { embeddedProjectId?: number; embeddedModule?: SidebarModule } = {}) {
+  const routeParams = useParams()
+  const projectId = embeddedProjectId != null ? String(embeddedProjectId) : routeParams.projectId
   const location = useLocation()
-  const navigate = useNavigate()
+  const routerNavigate = useNavigate()
+  const navigate = useCallback((path:string, options?:{replace?:boolean}) => {
+    const match = path.match(/^\/workspace\/(\d+)\?(.*)$/)
+    if (embeddedProjectId && match && Number(match[1]) === embeddedProjectId) {
+      const params = new URLSearchParams(match[2])
+      return routerNavigate(worldModulePath(match[1], params.get('module') ?? 'info', params), options)
+    }
+    return routerNavigate(path, options)
+  }, [routerNavigate, embeddedProjectId])
   const toast = useToast()
   const { loadProject, projects, currentProjectId } = useProjectStore()
-  const initialModule = new URLSearchParams(location.search).get('module')
+  const initialModule = embeddedModule ?? new URLSearchParams(location.search).get('module')
   const initialSidebarModule = initialModule && Object.prototype.hasOwnProperty.call(MODULE_CONTENT_TYPES, initialModule)
     ? initialModule as SidebarModule
     : null
@@ -156,7 +166,7 @@ export default function WorkspacePage() {
     return projects.find(p => p.id === currentProjectId) || null
   }, [projects, currentProjectId])
   const activeWork = useActiveWork(project)
-  const isLongform = project?.workspacePurpose === 'independent-work' && activeWork != null && effectiveWorkKind(activeWork) === 'novel' && effectiveNovelProfile(activeWork) === 'long'
+  const isLongform = !embeddedProjectId && project?.workspacePurpose === 'independent-work' && activeWork != null && effectiveWorkKind(activeWork) === 'novel' && effectiveNovelProfile(activeWork) === 'long'
   const changeLongSection = (section: LongformSection) => afterPendingEdits(() => {
     if (section === 'library') { navigate('/long'); return }
     const module = section === 'versions' ? 'version-history' : section === 'import' ? 'import-doc' : section === 'settings' ? 'settings' : 'info'
@@ -439,7 +449,7 @@ export default function WorkspacePage() {
       case 'worldview-natural':
         return <WorldviewNaturalPanel project={project} />
       case 'worldview-humanity':
-        return <WorldviewHumanityPanel project={project} onOpenHistory={() => setActiveModule('history')} />
+        return <WorldviewHumanityPanel project={project} onOpenHistory={() => selectModule('history')} />
       case 'geography':
         return <GeographyPanel project={project} />
       case 'world-map':
@@ -542,7 +552,7 @@ export default function WorkspacePage() {
       case 'state-table':
         return <StatePanel
           project={project}
-          onOpenInventory={() => setActiveModule('inventory')}
+          onOpenInventory={() => selectModule('inventory')}
           initialStateCardId={impactHandoff?.targetModule === 'state-table' && impactHandoffTarget?.table === 'stateCards'
             ? impactHandoffTarget.moduleRecordId
             : null}
@@ -587,11 +597,11 @@ export default function WorkspacePage() {
       case 'version-history':
         return <VersionHistoryPanel project={project} />
       case 'import-doc':
-        return <ImportDocPanel project={project} onNavigate={(m) => { setActiveModule(m); setEditorNodeId(null) }} />
+        return <ImportDocPanel project={project} onNavigate={selectModule} />
       case 'settings':
         return <SettingsPage
           project={project}
-          onOpenDataManagement={() => { setActiveModule('data-management'); setEditorNodeId(null) }}
+          onOpenDataManagement={() => selectModule('data-management')}
         />
       case 'usage-stats':
         return <UsageStatsPage project={project} />
@@ -600,7 +610,7 @@ export default function WorkspacePage() {
         return <DataManagementPanel
           project={project}
           onImported={(newId) => navigate(`/workspace/${newId}`)}
-          onOpenStorageSettings={() => { setActiveModule('settings'); setEditorNodeId(null) }}
+          onOpenStorageSettings={() => selectModule('settings')}
         />
       default:
         return null
@@ -610,13 +620,14 @@ export default function WorkspacePage() {
   if (activeWork && effectiveWorkKind(activeWork)==='screenplay') return <Navigate replace to={`/script/editor?work=${activeWork.id}`}/>
   if (project.workspacePurpose === 'independent-work' && activeWork && effectiveWorkKind(activeWork) === 'novel' && effectiveNovelProfile(activeWork) === 'short') return <Navigate replace to={`/short/${activeModule === 'chapters-list' ? 'editor' : activeModule === 'version-history' || activeModule === 'export' ? 'versions' : 'intent'}?project=${project.id}`}/>
 
+  if (!embeddedProjectId && project.workspacePurpose === 'world-engine') return <Navigate replace to={worldModulePath(project.id!, activeModule, query)}/>
   const Layout = isLongform ? LongformLayout : Fragment
   const layoutProps = isLongform ? { title: activeWork.title, section: longSection, mode: longMode, module: activeModule, hiddenModules, onSection: changeLongSection, onMode: changeLongMode, onModule: selectModule, onNavigate: (path: string) => afterPendingEdits(() => navigate(path), '编辑保存失败'), onHome: () => afterPendingEdits(() => navigate('/'), '编辑保存失败') } : {}
   return (
     <Layout {...layoutProps as React.ComponentProps<typeof LongformLayout>}>
-    <div data-workspace-ready={isLongform ? 'longform' : 'legacy'} className={isLongform ? 'h-full flex min-w-0' : 'h-screen bg-bg-base flex overflow-hidden'}>
+    <div data-workspace-ready={embeddedProjectId ? 'world' : isLongform ? 'longform' : 'legacy'} className={isLongform || embeddedProjectId ? 'h-full flex min-w-0' : 'h-screen bg-bg-base flex overflow-hidden'}>
       {/* 左侧导航 */}
-      {!isLongform && <Sidebar
+      {!isLongform && !embeddedProjectId && <Sidebar
         active={activeModule}
         onSelect={selectModule}
         onBack={() => afterPendingEdits(() => navigate(backPath), '当前编辑未能保存，已阻止离开工作区')}
@@ -638,7 +649,7 @@ export default function WorkspacePage() {
         <div className="flex h-11 shrink-0 items-center justify-between gap-3 border-b border-border/70 bg-bg-surface/70 px-4">
           <div className="flex min-w-0 items-center gap-2">
             <ContentTypeBadge contentType={getModuleContentType(activeModule)} showDescription />
-            {activeWork && <WorkKindBadge work={activeWork} />}
+            {activeWork && !embeddedProjectId && <WorkKindBadge work={activeWork} />}
             {activeWork && effectiveWorkKind(activeWork) === 'novel' && effectiveNovelProfile(activeWork) === 'short' && (
               <button
                 type="button"
@@ -652,7 +663,7 @@ export default function WorkspacePage() {
             {profileSwitchError && <span className="max-w-72 truncate text-[11px] text-red-600" title={profileSwitchError}>{profileSwitchError}</span>}
           </div>
           <div className="flex items-center gap-1">
-            {!isLongform && <WorldDerivationActions
+            {!isLongform && !embeddedProjectId && <WorldDerivationActions
               project={project}
               compact
               onDerived={targetProjectId => navigate(`/workspace/${targetProjectId}?module=info`)}

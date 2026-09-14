@@ -632,9 +632,10 @@ export const ADOPTION_EXTENSIONS: readonly AdoptionExtensionSpec[] = Object.free
       'src/lib/workspace/create-workspace.ts',
       'src/lib/world-engine/derivation.ts',
       'src/lib/world-engine/promotion.ts',
+      'src/lib/world-engine/draft.ts',
     ],
     policyRegistry: 'PROJECT_TABLES refs + world package trust + world release lifecycle',
-    reason: 'World 根创建、版本推进和引用级联是注册表约束的领域生命周期，不接受模型自由字段写回。',
+    reason: 'World 根创建、版本推进和引用级联是注册表约束的领域生命周期；draft.ts 仅允许作者显式修改名称与简介，校验 scope 和 updatedAt，不接受模型自由字段写回。',
     reviewAfter: '2027-08-01',
   },
   {

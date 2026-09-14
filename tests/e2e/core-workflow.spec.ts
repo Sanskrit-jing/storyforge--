@@ -2,7 +2,7 @@ import { fillShortFields } from './helpers/shortform-navigation'
 import { openLongformLeaf } from './helpers/longform-navigation'
 import { expect, test, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
-import { currentWorldReleasePanel, publishCurrentWorldRelease } from './helpers/world-release'
+import { currentWorldReleasePanel, publishCurrentWorldRelease, openWorldSection } from './helpers/world-release'
 
 async function openCleanHome(page: Page) {
   await page.addInitScript(() => {
@@ -188,25 +188,25 @@ test('产品综合首页可从零创建世界引擎并分配稳定编号', async
   await page.getByRole('button', { name: '创建世界引擎', exact: true }).click()
 
   await expect(page.getByRole('heading', { name: '世界引擎', exact: true })).toBeVisible()
-  await expect(page.locator('.sf-worlds-featured').getByRole('heading', { name: '潮汐之后', exact: true })).toBeVisible()
-  await expect(page.locator('.sf-world-code-large')).toHaveText(/W-[A-Z0-9]+-[A-Z0-9]+ · v0/)
-  await expect(page.getByText('从基础设定开始', { exact: true })).toBeVisible()
+  await expect(page.locator('.lf-library-grid').getByRole('heading', { name: '潮汐之后', exact: true })).toBeVisible()
+  await expect(page.locator('.lf-library-grid article').first()).toContainText(/W-[A-Z0-9]+-[A-Z0-9]+ · 尚未发布/)
+  await expect(page.getByRole('button',{name:'编辑世界',exact:true})).toBeVisible()
 
-  await page.getByRole('button', { name: '回到总览', exact: true }).click()
+  await page.goto('./?tab=home')
   await page.getByRole('banner').getByRole('button', { name: '新建', exact: true }).click()
   await page.getByRole('button', { name: /世界引擎.*从零创建/ }).click()
   await page.getByPlaceholder('例如：潮汐之后').fill('群星港')
   await page.getByRole('button', { name: '创建世界引擎', exact: true }).click()
-  await expect(page.locator('.sf-worlds-featured').getByRole('heading', { name: '群星港', exact: true })).toBeVisible()
+  await expect(page.locator('.lf-library-grid').getByRole('heading', { name: '群星港', exact: true })).toBeVisible()
 
-  await page.getByRole('button', { name: '回到总览', exact: true }).click()
+  await page.goto('./?tab=home')
   const tidalWorld = page.locator('.sf-world-card').filter({ hasText: '潮汐之后' })
   await expect(tidalWorld).toHaveCount(1)
   await tidalWorld.click()
-  await expect(page.locator('.sf-worlds-featured').getByRole('heading', { name: '潮汐之后', exact: true })).toBeVisible()
+  await expect(page.locator('.lf-library-grid').getByRole('heading', { name: '潮汐之后', exact: true })).toBeVisible()
 
-  await page.getByRole('banner').getByRole('button', { name: '搜索世界', exact: true }).click()
-  await expect(page.getByRole('heading', { name: '选择世界入口', exact: true })).toBeVisible()
+  await page.getByLabel('搜索本地世界').fill('潮汐之后')
+  await expect(page.locator('.lf-library-grid article')).toHaveCount(1)
 })
 
 test('独立长篇保持独立，并可由作者显式派生且封存为世界 v1', async ({ page }) => {
@@ -228,10 +228,10 @@ test('独立长篇保持独立，并可由作者显式派生且封存为世界 v
   await expect(dialog).toContainText('派生并封存世界 v1？')
   await dialog.getByRole('button', { name: '派生并封存', exact: true }).click()
 
-  await expect(page.getByRole('heading', { name: '完整世界工作台', exact: true })).toBeVisible()
-  await expect(page.locator('.sf-worlds-featured').getByRole('heading', { name: '分步骤世界基线 · 世界', exact: true })).toBeVisible()
-  await expect(page.locator('.sf-world-code-large')).toHaveText(/W-[A-Z0-9]+-[A-Z0-9]+ · v1/)
-  await expect(page.getByRole('button', { name: '自然环境', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '我的世界', exact: true })).toBeVisible()
+  await expect(page.locator('.lf-library-grid').getByRole('heading', { name: '分步骤世界基线 · 世界', exact: true })).toBeVisible()
+  await expect(page.locator('.lf-library-grid article').first()).toContainText(/W-[A-Z0-9]+-[A-Z0-9]+ · 已发布 v1/)
+  await expect(page.getByRole('button', { name: '自然与地理', exact: true })).toBeVisible()
   const identities = await page.evaluate(async () => {
     const importer = new Function('path', 'return import(path)') as (path: string) => Promise<any>
     const { db } = await importer('/storyforge/src/lib/db/schema.ts')
@@ -244,8 +244,9 @@ test('独立长篇保持独立，并可由作者显式派生且封存为世界 v
     { name: '分步骤世界基线', purpose: 'independent-work' },
     { name: '分步骤世界基线 · 世界', purpose: 'world-engine' },
   ]))
-  await page.getByRole('button', { name: '继续分步骤创作', exact: true }).click()
-  await expect(page).toHaveURL(/\/storyforge\/workspace\/\d+\?module=outline$/)
+  await openWorldSection(page,'story')
+  await page.getByRole('navigation',{name:'世界内容导航'}).getByRole('button',{name:'大纲与章纲',exact:true}).click()
+  await expect(page).toHaveURL(/world\/story\?project=\d+&module=outline/)
 })
 
 test('世界引擎可在同一 World 创建并切换两部隔离作品', async ({ page }) => {
@@ -258,6 +259,7 @@ test('世界引擎可在同一 World 创建并切换两部隔离作品', async (
   await page.getByPlaceholder('例如：潮汐之后').fill('双作品世界')
   await page.getByRole('button', { name: '创建世界引擎', exact: true }).click()
 
+  await openWorldSection(page,'story')
   const manager = page.getByRole('region', { name: '世界作品' })
   await expect(manager).toContainText('双作品世界')
   await manager.getByRole('button', { name: '新建作品' }).click()
@@ -267,6 +269,7 @@ test('世界引擎可在同一 World 创建并切换两部隔离作品', async (
 
   await manager.locator('.sf-world-work-row').filter({ hasText: '双作品世界' }).locator('button').first().click()
   await expect(manager.locator('.sf-world-work-row.active')).toContainText('双作品世界')
+  await openWorldSection(page,'versions')
   await expect(currentWorldReleasePanel(page)).toBeVisible()
   await expect(page.getByRole('heading', { name: '冻结世界与交给具体产品', exact: true })).toBeVisible()
 })
@@ -281,7 +284,8 @@ test('世界引擎只封存纯语义 Release，并显式交给上层产品生产
   await page.getByPlaceholder('例如：潮汐之后').fill('发布实例世界')
   await page.getByRole('button', { name: '创建世界引擎', exact: true }).click()
 
-  await page.getByRole('button', { name: '主线与支线', exact: true }).click()
+  await openWorldSection(page,'story')
+  await page.getByRole('navigation',{name:'世界内容导航'}).getByRole('button',{name:'主支线与进度',exact:true}).click()
   await page.getByTitle('新增主线').click()
   await page.getByRole('button', { name: '添加阶段', exact: true }).click()
   await expect(page.getByText('阶段列表（1）', { exact: true })).toBeVisible()
@@ -318,6 +322,7 @@ test('世界修订与产品交接在窄屏纵向排列且没有横向溢出', as
   await page.getByPlaceholder('例如：潮汐之后').fill('窄屏世界')
   await page.getByRole('button', { name: '创建世界引擎', exact: true }).click()
 
+  await openWorldSection(page,'versions')
   const pipeline = currentWorldReleasePanel(page)
   await expect(pipeline).toBeVisible()
   await expect(pipeline.getByText('选择语义范围', { exact: true })).toBeVisible()
@@ -348,12 +353,13 @@ test('世界引擎可生成并预检本地世界分享包，再导入为新编�
   await page.getByPlaceholder('一句话描述这个世界或作品').fill('用于本地发布包往返的测试世界。')
   await page.getByRole('button', { name: '创建世界引擎', exact: true }).click()
   await expect(page.getByRole('heading', { name: '世界引擎', exact: true })).toBeVisible()
-  const sourceCodeText = await page.locator('.sf-world-code-large').textContent()
+  const sourceCodeText = await page.locator('.lf-library-grid article small').first().textContent()
   const sourceWorldCode = sourceCodeText?.match(/W-[A-Z0-9]+-[A-Z0-9]+/)?.[0]
   expect(sourceWorldCode).toBeTruthy()
 
   await publishCurrentWorldRelease(page, 'E2E 分享包来源')
 
+  await openWorldSection(page,'sharing')
   await page.getByLabel('作者署名').fill('E2E 作者')
   const download = page.waitForEvent('download')
   await page.getByRole('button', { name: '下载世界分享包', exact: true }).click()
@@ -366,10 +372,11 @@ test('世界引擎可生成并预检本地世界分享包，再导入为新编�
   await (await fileChooser).setFiles(packagePath!)
   await expect(page.getByTestId('world-package-preview')).toContainText('分享包预检通过')
   await page.getByRole('button', { name: '确认导入纯语义世界', exact: true }).click()
-  await expect(page.getByText('已导入为新的本地世界副本，原有项目未被覆盖。', { exact: true })).toBeVisible()
-  await expect(page.locator('.sf-worlds-featured').getByRole('heading', { name: '分享包测试世界', exact: true })).toBeVisible()
-  await expect(page.getByText(/社区导入 · W-/)).toBeVisible()
-  const importedCodeText = await page.locator('.sf-world-code-large').textContent()
+  await expect(page).toHaveURL(/world\/basics\?project=/)
+  await page.getByRole('navigation',{name:'世界页面导航'}).getByRole('button',{name:'我的世界',exact:true}).click()
+  await expect(page.locator('.lf-library-grid').getByRole('heading', { name: '分享包测试世界', exact: true })).toHaveCount(2)
+  await expect(page.locator('.lf-library-grid article')).toHaveCount(2)
+  const importedCodeText = await page.locator('.lf-heading small').textContent()
   const importedWorldCode = importedCodeText?.match(/W-[A-Z0-9]+-[A-Z0-9]+/)?.[0]
   expect(importedWorldCode).toBeTruthy()
   expect(importedWorldCode).not.toBe(sourceWorldCode)

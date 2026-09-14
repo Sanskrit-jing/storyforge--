@@ -141,3 +141,8 @@ export async function readWorldSemanticResourcesV1(input: {
   await Promise.all(workers)
   return results
 }
+
+/** Paginated author-facing browsing uses the same neutral frozen protocol as
+ * product readers. It never exposes a physical release manifest. */
+export { openWorldReleaseV1, searchWorldReleaseV1, readWorldResourceV1, readWorldOriginalEvidenceV1, type OpenWorldReleaseV1 } from './world-release-provider'
+export { WORLD_RELEASE_RESOURCE_KINDS_V1 } from './world-release-provider-contract'

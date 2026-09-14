@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { openCurrentTtrpgPlayer, seedCurrentTtrpgProduct } from './helpers/current-products'
-import { publishCurrentWorldRelease } from './helpers/world-release'
+import { publishCurrentWorldRelease, openWorldSection } from './helpers/world-release'
 
 async function seedFormalTtrpgCampaign(page: Page) {
   return seedCurrentTtrpgProduct(page, {
@@ -285,7 +285,8 @@ test('世界到游戏只进入统一制作中心并自动复用全局 AI 配置'
   await page.getByPlaceholder('例如：潮汐之后').fill('上层产品生产入口验收世界')
   await page.getByRole('button', { name: '创建世界引擎', exact: true }).click()
 
-  await page.getByRole('button', { name: '主线与支线', exact: true }).click()
+  await openWorldSection(page,'story')
+  await page.getByRole('navigation',{name:'世界内容导航'}).getByRole('button',{name:'主支线与进度',exact:true}).click()
   await page.getByTitle('新增主线').click()
   await page.getByRole('button', { name: '添加阶段', exact: true }).click()
   await page.getByRole('button', { name: '添加阶段', exact: true }).click()

@@ -1,5 +1,5 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
-import { publishCurrentWorldRelease } from './helpers/world-release'
+import { publishCurrentWorldRelease, openWorldSection } from './helpers/world-release'
 
 type BrowserMeasurement = {
   browserName: string
@@ -97,7 +97,8 @@ async function createPerformanceBuild(page: Page) {
   await page.getByRole('button', { name: /世界引擎.*从零创建/ }).click()
   await page.getByPlaceholder('例如：潮汐之后').fill('浏览器性能隔离世界')
   await page.getByRole('button', { name: '创建世界引擎', exact: true }).click()
-  await page.getByRole('button', { name: '主线与支线', exact: true }).click()
+  await openWorldSection(page,'story')
+  await page.getByRole('navigation',{name:'世界内容导航'}).getByRole('button',{name:'主支线与进度',exact:true}).click()
   await page.getByTitle('新增主线').click()
   await page.getByRole('button', { name: '添加阶段', exact: true }).click()
   await page.getByRole('button', { name: '添加阶段', exact: true }).click()
@@ -107,7 +108,9 @@ async function createPerformanceBuild(page: Page) {
   await pipeline.getByRole('button', { name: '交给文字游戏', exact: true }).click()
 
   const enableProduction = page.getByRole('button', { name: '为当前项目显式启用', exact: true })
-  if (await enableProduction.isVisible().catch(() => false)) await enableProduction.click()
+  // This fresh world's production switch is off. Wait for the routed product
+  // page before authorizing; an immediate visibility probe can skip this step.
+  await enableProduction.click()
 
   await expect(page.getByRole('textbox', { name: '游戏标题', exact: true })).toBeVisible({ timeout: 15_000 })
   await page.getByRole('combobox', { name: /产品形态/ }).selectOption('avg')

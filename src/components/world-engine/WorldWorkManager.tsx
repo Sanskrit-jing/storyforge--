@@ -1,3 +1,4 @@
+import { flushPendingEditsV1 } from '../../lib/authoring/pending-edit-coordinator'
 import { useCallback, useEffect, useState } from 'react'
 import { BookOpenText, Check, Plus, Trash2, X } from 'lucide-react'
 import type { Work } from '../../lib/types/world-ownership'
@@ -30,6 +31,7 @@ export default function WorldWorkManager({ projectId, activeWorkId, onChanged }:
     if (workId === activeWorkId || busy) return
     setBusy(true); setError('')
     try {
+      await flushPendingEditsV1()
       await switchActiveWork(projectId, workId)
       await onChanged()
       await reload()
@@ -42,6 +44,7 @@ export default function WorldWorkManager({ projectId, activeWorkId, onChanged }:
     if (!title.trim() || busy) return
     setBusy(true); setError('')
     try {
+      await flushPendingEditsV1()
       const work = await createWorldWork(projectId, { title })
       await switchActiveWork(projectId, work.id!)
       setTitle(''); setCreating(false)
@@ -63,6 +66,7 @@ export default function WorldWorkManager({ projectId, activeWorkId, onChanged }:
     if (!confirmed) return
     setBusy(true); setError('')
     try {
+      await flushPendingEditsV1()
       await deleteWork(work.id)
       await onChanged()
       await reload()

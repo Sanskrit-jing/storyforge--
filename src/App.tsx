@@ -3,6 +3,7 @@ import { Routes, Route, useSearchParams } from 'react-router'
 
 import { PRODUCT_NAVIGATION } from './components/navigation/product-navigation'
 
+const WorldEnginePage = lazy(() => import('./pages/WorldEnginePage'))
 const PreviewRoutePage = lazy(() => import('./pages/PreviewRoutePage'))
 const MistHarborPage = lazy(() => import('./pages/MistHarborPage'))
 const ProductHubPage = lazy(() => import('./pages/ProductHubPage'))
@@ -27,7 +28,8 @@ function HomeRoute() {
 export default function App() {
   return (
     <Routes>
-      {[...PRODUCT_NAVIGATION.filter(item => !['long', 'short', 'script'].includes(item.id)), { id: 'community' }].map(item => <Route key={item.id} path={`/${item.id}/:pageId?`} element={<Suspense fallback={<RouteFallback />}><PreviewRoutePage productId={item.id}/></Suspense>}/>)}
+      {[...PRODUCT_NAVIGATION.filter(item => !['long', 'short', 'script', 'world'].includes(item.id)), { id: 'community' }].map(item => <Route key={item.id} path={`/${item.id}/:pageId?`} element={<Suspense fallback={<RouteFallback />}><PreviewRoutePage productId={item.id}/></Suspense>}/>)}
+      <Route path="/world/:pageId?" element={<Suspense fallback={<RouteFallback />}><WorldEnginePage /></Suspense>}/>
       <Route path="/script/:pageId?" element={<Suspense fallback={<RouteFallback />}><ScreenplayPage /></Suspense>}/>
       <Route path="/" element={<Suspense fallback={<RouteFallback />}><HomeRoute /></Suspense>} />
       <Route path="/play" element={<Suspense fallback={<RouteFallback />}><TtrpgCommunityPage /></Suspense>} />

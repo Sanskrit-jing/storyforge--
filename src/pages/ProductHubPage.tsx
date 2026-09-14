@@ -55,9 +55,6 @@ import { useProjectStore } from '../stores/project'
 import { useWorldGroupStore } from '../stores/world-group'
 import type { WorldProjection } from '../lib/world-engine/domain'
 import { loadWorldProjections } from '../lib/world-engine/domain'
-import WorldEngineWorkspace from '../components/world-engine/WorldEngineWorkspace'
-import type { SidebarModule } from '../components/layout/sidebar-tree'
-import WorldSharingPanel from '../components/product/WorldSharingPanel'
 import ProjectStorageFolderField from '../components/shared/ProjectStorageFolderField'
 import { bindCreatedProjectStorageWorkspace } from '../lib/storage/project-storage-workspace'
 import WelcomeGuide from '../components/guide/WelcomeGuide'
@@ -461,22 +458,6 @@ function WorldCard({ world, onOpen }: { world: ProductWorld; onOpen: () => void 
   return <button className="sf-world-card" onClick={onOpen}><WorldGlyph accent={world.accent} /><div className="sf-world-card-body"><div className="sf-card-topline"><span className="sf-overline"><Hash className="h-3 w-3" /> {world.code}</span><span className="sf-version">v{world.version}</span></div><h3>{world.name}</h3><p>{world.description}</p><div className="sf-tag-row">{world.tags.map(tag => <span className="sf-tag" key={tag}>{tag}</span>)}</div><div className="sf-world-card-footer"><span className="sf-source"><StatusDot tone={world.projection?.communityOrigin ? 'neutral' : 'success'} />{world.source}</span><span className="sf-completeness">{world.completeness}%</span></div></div></button>
 }
 
-function WorldEnginePage({ worlds, activeWorld, onSelectWorld, onOpenCreate, onOpenWorldPicker, onImported, onOpenModule, onOpenProductProduction }: { worlds: ProductWorld[]; activeWorld?: ProductWorld; onSelectWorld: (world: ProductWorld) => void; onOpenCreate: () => void; onOpenWorldPicker: () => void; onImported: (projectId: number) => void | Promise<void>; onOpenModule: (module: SidebarModule) => void; onOpenProductProduction: (handoff: ProductProductionHandoffV1) => void }) {
-  const [worldReleaseRevision, setWorldReleaseRevision] = useState(0)
-  if (!activeWorld) return <><PageHeading eyebrow="FOUNDATION / WORLD ENGINE" title="世界引擎" description="独立创建、版本化并复用世界设定。" action={<Button variant="primary" icon={Plus} onClick={onOpenCreate}>从零创建世界</Button>} /><EmptyProjectState onCreate={onOpenCreate} /><WorldSharingPanel onImported={onImported} /></>
-  const projection = activeWorld.projection
-  const refreshWorld = async () => {
-    await onImported(activeWorld.projectId)
-    setWorldReleaseRevision(previous => previous + 1)
-  }
-  return <>
-    <PageHeading eyebrow="FOUNDATION / WORLD ENGINE" title="世界引擎" description="世界引擎封存可被跑团、角色聊天与文字游戏引用的叙事语义；独立长篇、短篇和节点创作不以它为前置。" action={<><Button icon={Hash} onClick={onOpenWorldPicker}>使用世界编号</Button><Button variant="primary" icon={Plus} onClick={onOpenCreate}>从零创建世界</Button></>} />
-    <div className="sf-subnav">{worlds.map(world => <button key={world.code} className={world.code === activeWorld.code ? 'active' : ''} onClick={() => onSelectWorld(world)}><WorldGlyph accent={world.accent} small /><span>{world.name}</span><span>{world.code}</span></button>)}<span className="sf-subnav-spacer" /></div>
-    <section className="sf-worlds-featured"><div className="sf-worlds-featured-visual"><WorldGlyph accent={activeWorld.accent} /></div><div className="sf-worlds-featured-copy"><span className="sf-overline">WORLD ENGINE · {activeWorld.source}</span><h2>{activeWorld.name}</h2><p>{activeWorld.description}</p><span className="sf-world-code-large"><Hash className="h-4 w-4" /> {activeWorld.code} · v{activeWorld.version}</span><div className="sf-worlds-featured-actions"><Button variant="primary" icon={ArrowRight} onClick={() => document.getElementById('world-engine-editor')?.scrollIntoView({ behavior: 'smooth' })}>管理世界设定</Button><Button icon={BookOpenText} onClick={() => onOpenModule('outline')}>继续分步骤创作</Button></div></div><div className="sf-worlds-featured-stats"><div><strong>{activeWorld.completeness}%</strong><span>数据域覆盖</span></div><div><strong>v{activeWorld.version}</strong><span>当前草稿版本</span></div><div><strong>{projection?.readiness === 'usable' ? '可创作' : projection?.readiness === 'building' ? '建设中' : '待建立'}</strong><span>世界状态</span></div></div></section>
-    <section id="world-engine-editor" className="sf-product-panel"><WorldEngineWorkspace projection={projection} activeWorkId={activeWorld.project.activeWorkId} onWorkChanged={refreshWorld} onOpenModule={onOpenModule} onOpenProductProduction={onOpenProductProduction} /></section>
-    <WorldSharingPanel project={activeWorld.project} worldReleaseRevision={worldReleaseRevision} onImported={onImported} />
-  </>
-}
 
 function NovelPage({ project, onCreate, onDerived }: { project?: Project; onCreate: () => void; onDerived: (projectId: number) => void | Promise<void> }) {
   const navigate = useNavigate()
@@ -873,6 +854,28 @@ export default function ProductHubPage() {
   const activeWorldGroupId = useWorldGroupStore(state => state.activeGroupId)
 
   useEffect(() => { void loadProjects() }, [loadProjects])
+  const [handoffError,setHandoffError] = useState('')
+  useEffect(() => {
+    const encoded = new URLSearchParams(window.location.search).get('worldHandoff')
+    if (!encoded) return
+    let active = true
+    void (async () => {
+      const parsed = parseProductProductionHandoffV1(JSON.parse(encoded))
+      const release = await db.worldReleases.get(parsed.worldReleaseId)
+      if (!release || release.contentHash !== parsed.worldContentHash) throw new Error('交接世界版本不存在或已变化')
+      if (!active) return
+      setActiveWorldProjectId(release.projectId)
+      if (parsed.productType === 'ttrpg') {
+        if (!productDecision('upper.ttrpg').enterable) throw new Error('跑团产品当前未开放')
+        setTtrpgProductionHandoff(parsed);setActiveTab('ttrpg')
+      } else {
+        if (!TEXT_GAME_PRODUCT_KINDS_V1.includes(parsed.productType as TextGameProductKindV1) || !productDecision(textGameCatalogId(parsed.productType as TextGameProductKindV1)).enterable) throw new Error('该产品当前未开放')
+        setTextGameProduct(parsed.productType as TextGameProductKindV1);setTextGameInitialMode('production');setTextProductProductionHandoff(parsed);setActiveTab('text-games')
+      }
+    })().catch(cause => {if(active)setHandoffError(String(cause))})
+    return () => {active=false}
+  }, [])
+
 
   useEffect(() => {
     let cancelled = false
@@ -949,6 +952,7 @@ export default function ProductHubPage() {
   }
 
   const renderPage = () => {
+    if (handoffError) return <p role="alert">{handoffError}</p>
     const home = () => <HomePage
       projects={projects}
       worlds={worlds}
@@ -966,25 +970,7 @@ export default function ProductHubPage() {
       return home()
     }
     switch (activeTab) {
-      case 'worlds': return <WorldEnginePage worlds={worlds} activeWorld={activeWorld} onSelectWorld={selectWorld} onOpenCreate={() => setShowCreate(true)} onOpenWorldPicker={() => setShowWorldPicker(true)} onImported={async projectId => { await loadProjects(); setActiveWorldProjectId(projectId); setActiveTab('worlds') }} onOpenModule={module => { if (activeWorldProject?.id) navigate(`/workspace/${activeWorldProject.id}?module=${module}`) }} onOpenProductProduction={handoff => {
-        const parsed = parseProductProductionHandoffV1(handoff)
-        if (parsed.productType === 'ttrpg') {
-          if (!productDecision('upper.ttrpg').enterable) throw new Error('跑团产品当前未开放。')
-          setTtrpgProductionHandoff(parsed)
-          setActiveTab('ttrpg')
-          return
-        }
-        if (!TEXT_GAME_PRODUCT_KINDS_V1.includes(parsed.productType as TextGameProductKindV1)) {
-          throw new Error(`该通用入口暂不支持产品类型：${parsed.productType}`)
-        }
-        if (!productDecision(textGameCatalogId(parsed.productType as TextGameProductKindV1)).enterable) {
-          throw new Error('所选文字游戏产品当前未开放。')
-        }
-        setTextGameProduct(parsed.productType as TextGameProductKindV1)
-        setTextGameInitialMode('production')
-        setTextProductProductionHandoff(parsed)
-        setActiveTab('text-games')
-      }} />
+      case 'worlds': return <Navigate replace to={`/world/worlds${activeWorldProjectId ? `?project=${activeWorldProjectId}` : ''}`}/>
       case 'novel': return <NovelPage project={activeWorkProject} onCreate={() => setShowCreate(true)} onDerived={async projectId => { await loadProjects(); setActiveWorldProjectId(projectId); setActiveTab('worlds') }} />
       case 'nodes': return <NodesPage project={activeWorkProject} onCreate={() => setShowCreate(true)} />
       case 'ttrpg': return <TtrpgPage project={activeWorldProject} world={activeWorld} onOpenWorldPicker={() => setShowWorldPicker(true)} onCreate={() => setShowCreate(true)} initialSessionId={ttrpgInitialSessionId} initialProductionHandoff={ttrpgProductionHandoff} initialOnlineHandoff={onlineRoomHandoff} onOnlineHandoffConsumed={() => setOnlineRoomHandoff(null)} />
