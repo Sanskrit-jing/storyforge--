@@ -1,3 +1,4 @@
+import { detailedOutlineAuthoringPostStateMatchesV1, type DetailedOutlineAuthoringSnapshotV1 } from '../detailed-outline-authoring'
 import { db } from '../../db/schema'
 import type { WorkspaceScope } from '../../types'
 import {
@@ -561,6 +562,7 @@ async function businessAlreadyMatches(
     return false
   }
   if (agentId === 'outline') {
+    if (candidate.payload.skillId === 'outline.details') return detailedOutlineAuthoringPostStateMatchesV1(input.scope, candidate.payload.baseSnapshot as DetailedOutlineAuthoringSnapshotV1, candidate.draft)
     if (candidate.payload.skillId === 'outline.character-revision') {
       return characterRevisionCandidateMatchesBusinessStateV1({
         scope: input.scope,
@@ -666,7 +668,8 @@ async function repairPartialOutlineAdoption(
     return
   }
     if (
-      candidate.payload.skillId === 'outline.story-arcs'
+      candidate.payload.skillId === 'outline.details'
+      || candidate.payload.skillId === 'outline.story-arcs'
       || candidate.payload.skillId === 'outline.storyline-progress'
       || candidate.payload.skillId === 'outline.character-driven'
     ) return

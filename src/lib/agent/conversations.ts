@@ -292,3 +292,18 @@ export async function updateAgentEventCandidate(
   }
 
 }
+
+/** Explicit author summary replaces earlier dialogue only in planning context; original events remain intact. */
+export async function saveLongformPlanningSummaryV1(input: { projectId: number; conversationId: number; scope: WorkspaceScope; summary: string }) {
+  const summary = input.summary.trim()
+  if (!summary || summary.length > 8000) throw new Error('请填写 1–8000 字的需求摘要。')
+  return appendAgentEvent({ ...input, kind: 'message', role: 'user', content: summary, payload: { type: 'longform-planning-summary-v1', authorConfirmed: true } })
+}
+export function buildLongformPlanningDialogueV1(events: AgentEvent[]): string {
+  const summary = [...events].reverse().find(event => {
+    if (event.kind !== 'message' || event.role !== 'user') return false
+    try { const payload = JSON.parse(event.payload); return payload.type === 'longform-planning-summary-v1' && payload.authorConfirmed === true } catch { return false }
+  })
+  return events.filter(event => event.kind === 'message' && (!summary || event.sequence >= summary.sequence))
+    .map(event => `${event.id === summary?.id ? '作者确认的历史需求摘要' : event.role ?? 'assistant'}: ${event.content}`).join('\n')
+}

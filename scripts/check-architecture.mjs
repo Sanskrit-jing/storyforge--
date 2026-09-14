@@ -1279,11 +1279,16 @@ if (!acceptProseBody.includes('preparePostAdoptionAfterCommit({')
   || acceptProseBody.includes('handleAutoPostGenerate({')) {
   violations.push('[㉛章后策略旁路] 正文采纳必须进入 preparePostAdoptionAfterCommit，禁止直接启动模型后处理')
 }
-const postAdoptionCoordinatorStart = chapterEditorSource.indexOf('const preparePostAdoptionAfterCommit = async')
-const postAdoptionCoordinatorEnd = chapterEditorSource.indexOf('const handleAuthorizePostAdoption = async', postAdoptionCoordinatorStart)
-const postAdoptionCoordinatorBody = postAdoptionCoordinatorStart >= 0 && postAdoptionCoordinatorEnd > postAdoptionCoordinatorStart
-  ? chapterEditorSource.slice(postAdoptionCoordinatorStart, postAdoptionCoordinatorEnd)
-  : ''
+const postAdoptionSharedSource = read('src/lib/prose/post-adoption-runner.ts')
+const postAdoptionCoordinatorStart = postAdoptionSharedSource.indexOf('export async function prepareChapterPostAdoptionV1')
+const postAdoptionCoordinatorBody = postAdoptionCoordinatorStart >= 0 ? postAdoptionSharedSource.slice(postAdoptionCoordinatorStart) : ''
+const masterPostAdoptionSource = read('src/lib/agent/master-post-adoption.ts')
+if (!chapterEditorSource.includes('await prepareChapterPostAdoptionV1({')
+  || !chapterEditorSource.includes('await runChapterPostAdoptionV1({')
+  || !masterPostAdoptionSource.includes('await prepareChapterPostAdoptionV1({')
+  || !masterPostAdoptionSource.includes('await runChapterPostAdoptionV1({')) {
+  violations.push('[㉛章后共用链] 正文编辑器与主 Agent 必须共用章后策略准备和执行器')
+}
 const invalidateIndex = postAdoptionCoordinatorBody.indexOf('invalidateChapterPostAdoptionDerivativesV1({')
 const policyIndex = postAdoptionCoordinatorBody.indexOf('readWorkPostAdoptionSettingsV1(scope)')
 const runIndex = postAdoptionCoordinatorBody.indexOf('createChapterPostAdoptionDurableRunV1({')

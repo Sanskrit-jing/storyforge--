@@ -1,3 +1,4 @@
+import { buildDetailedOutlineAuthoringPromptV1 } from '../../lib/agent/detailed-outline-authoring'
 import { useCallback, useEffect, useState } from 'react'
 import { useAIStream } from '../../hooks/useAIStream'
 import { useAIConfigStore } from '../../stores/ai-config'
@@ -7,27 +8,13 @@ import { db } from '../../lib/db/schema'
 import { resolveScopeLike } from '../../lib/workspace/scope'
 import { hashCanonicalValue } from '../../lib/agent/run/hash'
 import {
-  buildDetailSceneGeneratePrompt,
-  buildEnhancedDetailPrompt,
-} from '../../lib/ai/adapters/detail-scene-adapter'
-import {
-  buildAgentSkillInputGuidanceV1,
-  getAgentSkillV1,
-} from '../../lib/agent/skill-registry'
-import { projectContextGatewayInputStateV1 } from '../../lib/agent/context-gateway-input'
-import {
   buildDetailedOutlineCopilotPatchV1,
-  buildDetailedOutlineSceneMergeGuidanceV1,
   createDetailedOutlineCreativeArtifactV1,
   detailedOutlinePostStateMatchesPatchV1,
   revalidateDetailedOutlineCreativeDraftV1,
 } from '../../lib/agent/detailed-outline-copilot'
 import { updateAgentEventCandidate } from '../../lib/agent/conversations'
 import { creativeArtifactCanAdoptV1 } from '../../lib/agent/creative-reliability'
-import {
-  buildNarrativeBriefV1,
-  formatNarrativeBriefForPromptV1,
-} from '../../lib/agent/narrative-brief'
 import { resolveRequestConfig } from '../../lib/ai/client'
 import {
   beginDetailedOutlineGenerationGatewayStepV1,
@@ -196,45 +183,7 @@ export function useDetailedOutlineGenerationController(
     const contentRevision = await captureWorkspaceContentRevisionV1({ scope, worldGroupId })
     const context = await buildDetailContext(outlineNodeId, scope, worldGroupId, operation)
     await assertWorkspaceContentRevisionFreshV1(contentRevision, { scope, worldGroupId })
-    const skill = getAgentSkillV1('outline.details', 'outline')
-    const inputState = projectContextGatewayInputStateV1(
-      skill,
-      context.assembled.contextGatewayExecution,
-      context.assembled,
-    )
-    const guidance = [
-      buildAgentSkillInputGuidanceV1(skill, inputState),
-      buildDetailedOutlineSceneMergeGuidanceV1(currentDetailed?.scenes ?? []),
-    ].filter(Boolean).join('\n\n')
-    const baseMessages = operation === 'scenes'
-      ? buildDetailSceneGeneratePrompt(
-          chapterTitle,
-          chapterSummary,
-          context.worldContext,
-          context.characterContext,
-          '',
-          guidance,
-        )
-      : buildEnhancedDetailPrompt(
-          chapterTitle,
-          chapterSummary,
-          '',
-          '',
-          context.worldContext,
-          context.characterContext,
-          context.foreshadowContext,
-          guidance,
-        )
-    const narrativeBrief = buildNarrativeBriefV1({
-      authorRequest: operation === 'scenes'
-        ? `把《${chapterTitle}》拆成可执行场景，必须推动章节状态发生变化。`
-        : `完善《${chapterTitle}》的场景、冲突、情绪变化和结尾压力。`,
-      assembled: context.assembled,
-    })
-    const messages = [{
-      role: 'system' as const,
-      content: formatNarrativeBriefForPromptV1(narrativeBrief),
-    }, ...baseMessages]
+    const { messages, narrativeBrief } = buildDetailedOutlineAuthoringPromptV1({ operation, chapterTitle, chapterSummary, assembled: context.assembled, currentDetailed })
     let snapshot = await createDetailedOutlineGenerationDurableRunV1({
       scope,
       worldGroupId,
@@ -334,7 +283,7 @@ export function useDetailedOutlineGenerationController(
     chapterTitle,
     aiConfig,
     creativeQualityMode,
-    currentDetailed?.scenes,
+    currentDetailed,
     selectedOutlineNodeId,
     projectId,
     worldGroupId,
@@ -428,7 +377,7 @@ export function useDetailedOutlineGenerationController(
     ai,
     enhanceAI,
     chapterSummary,
-    currentDetailed?.scenes,
+    currentDetailed,
     selectedOutlineNodeId,
     projectId,
     validCharacterIds,

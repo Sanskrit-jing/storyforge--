@@ -1,3 +1,4 @@
+import { prepareChapterPostAdoptionV1, runChapterPostAdoptionV1, type ChapterPostAdoptionTaskV1 } from '../../lib/prose/post-adoption-runner'
 import { lazy, Suspense, useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router'
 import { FileText, ClipboardList, RotateCcw } from 'lucide-react'
@@ -13,8 +14,6 @@ import { useBeforeUnload } from '../../hooks/useBeforeUnload'
 import { useActiveWork } from '../../hooks/useActiveWork'
 import { buildChapterContentPrompt, buildContinuePrompt, buildPolishPrompt, buildExpandPrompt, buildDeAIPrompt } from '../../lib/ai/adapters/chapter-adapter'
 import { buildReviewRevisePrompt, type ReviewResult } from '../../lib/ai/adapters/review-adapter'
-import { rebuildChapterChunks, ensureChunkEmbeddings, rebuildProjectNarrativeSummaries } from '../../lib/retrieval/retrieval'
-import { isEmbeddingReady } from '../../lib/ai/adapters/embedding-adapter'
 import { propagateChapterEditStale, buildEditImpactGraphV1, type EditImpactGraphV1 } from '../../lib/consistency/impact-analysis'
 import {
   buildImpactRemediationPlanV1,
@@ -122,34 +121,22 @@ import {
   type ChapterTransitionCandidateV1,
 } from '../../lib/agent/run/chapter-transition-durable'
 import {
-  beginChapterPostAdoptionStepV1,
   authorizeChapterPostAdoptionV1,
   beginChapterPostAdoptionOrganizationAdoptionV1,
   chapterPostAdoptionChainStateV1,
   commitChapterPostAdoptionOrganizationV1,
-  createChapterPostAdoptionDurableRunV1,
-  failChapterPostAdoptionStepV1,
   markChapterPostAdoptionOrganizationStaleV1,
-  recordChapterPostAdoptionOutputV1,
   rejectChapterPostAdoptionOrganizationAdoptionV1,
   recoverChapterPostAdoptionOrganizationV1,
   recoverChapterPostAdoptionConsistencyV1,
   rejectChapterPostAdoptionAuthorizationV1,
   readChapterPostAdoptionChainStatusV1,
   readLatestChapterPostAdoptionRunV1,
-  scheduleChapterPostAdoptionStepsV1,
-  succeedChapterPostAdoptionStepV1,
   verifyChapterPostAdoptionRunV1,
-  CHAPTER_POST_ADOPTION_STEP_SOURCE_KEYS_V1,
   CHAPTER_POST_ADOPTION_STEP_IDS_V1,
   type ChapterPostAdoptionDurableEvidenceV1,
   type ChapterPostAdoptionChainStateV1,
-  type ChapterPostAdoptionStepIdV1,
 } from '../../lib/agent/run/chapter-post-adoption-durable'
-import {
-  buildChapterPostAdoptionResumePlanV1,
-  isChapterPostAdoptionStepRunnableV1,
-} from '../../lib/agent/run/chapter-post-adoption-resume'
 import { createContextManifestFromAssemblyV1 } from '../../lib/agent/run/context-manifest'
 import { readAgentRunV1, type AgentRunSnapshotV1 } from '../../lib/agent/run/event-store'
 import { hashChapterText, normalizeChapterText } from '../../lib/ai/chapter-memory/text-normalization'
@@ -201,12 +188,8 @@ import {
   rejectImpactStoryTimelineRegenerationCandidateV1,
   type ImpactStoryTimelineRegenerationCandidateV1,
 } from '../../lib/agent/run/impact-story-timeline-regeneration-durable'
-import { classifyAgentRunFailureV1 } from '../../lib/agent/run/failure-policy'
 import { resolveScopeLike } from '../../lib/workspace/scope'
 import {
-  buildPostAdoptionAuthorizationSnapshotV1,
-  invalidateChapterPostAdoptionDerivativesV1,
-  preflightPostAdoptionAutoV1,
   readWorkPostAdoptionSettingsV1,
   updateWorkPostAdoptionSettingsV1,
   type ResolvedPostAdoptionSettingsV1,
@@ -232,7 +215,6 @@ import {
 import { AgentTeamBudgetTracker } from '../../lib/agent/team-budget'
 import {
   isConsistencyAgentCurrent,
-  hashConsistencyAgentCandidateV1,
   persistConsistencyAgentCandidate,
   readLatestConsistencyAgentRun,
   runBackgroundConsistencyAgent,
@@ -680,6 +662,7 @@ export default function ChapterEditor({ project, outlineNodeId }: Props) {
         : (await readChapterPostAdoptionChainStatusV1({
             scope,
             parentRunId: linkedParentRunId,
+            chapterId: currentChapter.id!,
           })).state
       if (run?.candidate.durable?.stepId === CHAPTER_POST_ADOPTION_STEP_IDS_V1.organization) {
         try {
@@ -2633,480 +2616,50 @@ export default function ChapterEditor({ project, outlineNodeId }: Props) {
 
   // HARNESS-20/41: 正文采纳后的单一 post-adoption barrier。
   // 七域结构抽取复用“整理本章”Agent；检索、章节记忆和确定性一致性守卫均有独立证据。
-  const handleAutoPostGenerate = async (task: {
-    chapterId: number
-    chapterTitle: string
-    chapterContent: string
-    chapterPlainText: string
-    parent?: {
-      runId: number
-      receiptHash: string
-      artifactHash: string
-    }
-    resumeRunId?: number
-  }) => {
+  const handleAutoPostGenerate = async (task: ChapterPostAdoptionTaskV1) => {
     const controller = new AbortController()
     organizationAbortRef.current?.abort()
     organizationAbortRef.current = controller
     setOrganizingChapter(true)
-    try {
-    const scope = await resolveScopeLike(project.id!)
-    const transitionChapter = await db.chapters.get(task.chapterId)
-    const transitionOutline = transitionChapter?.outlineNodeId != null
-      ? await db.outlineNodes.get(transitionChapter.outlineNodeId)
-      : null
-    const transitionWorldGroupId = transitionOutline?.worldGroupId ?? chapterWorldGroupId ?? null
-    const expectedSourceTextHash = await hashChapterText(task.chapterContent)
-    const organizationRequestConfig = resolveRequestConfig(aiConfig, { category: 'chapter.organize' }).config
-    const memoryRequestConfig = resolveRequestConfig(aiConfig, { category: 'chapter.memory' }).config
     setTransitionError('')
     setTransitionCandidate(null)
     transitionCandidateRef.current = null
     setPendingDiffs(null)
-    let snapshot = task.resumeRunId != null
-      ? await readAgentRunV1(scope, task.resumeRunId)
-      : await createChapterPostAdoptionDurableRunV1({
-          scope,
-          worldGroupId: transitionWorldGroupId,
-          chapterId: task.chapterId,
-          parent: task.parent,
-        })
-    if (snapshot.contract.scope.chapterIds?.length !== 1 || snapshot.contract.scope.chapterIds[0] !== task.chapterId) {
-      throw new Error('章节后处理恢复运行与当前章节不匹配。')
-    }
-    if (task.resumeRunId != null) {
-      const resumePlan = buildChapterPostAdoptionResumePlanV1(snapshot)
-      if (resumePlan.terminal) return
-      if (!resumePlan.canResume) {
-        throw new Error(`章节后处理当前不可自动恢复：${resumePlan.blockedReason ?? '需要检查运行证据'}`)
-      }
-    }
-    setPostAdoptionRunId(snapshot.run.id)
-    setPostAdoptionChainState(chapterPostAdoptionChainStateV1(snapshot))
-    transitionSnapshotRef.current = snapshot
-    snapshot = await scheduleChapterPostAdoptionStepsV1({ scope, snapshot })
-
-    const assembledFor = async (
-      sourceKeys: readonly string[],
-      requestConfig = aiConfig,
-    ) => assembleContext({
-      projectId: project.id!,
-      scope,
-      worldGroupId: transitionWorldGroupId,
-      chapterId: task.chapterId,
-      outlineNodeId: transitionChapter?.outlineNodeId ?? null,
-      provider: requestConfig.provider,
-      model: requestConfig.model,
-      sourceKeys: [...sourceKeys],
-      stateReferenceText: task.chapterPlainText,
-      extraStateIds,
-      inputBudgetMaxTokens: 24_000,
-    })
-    const manifestFor = async (
-      stepId: ChapterPostAdoptionStepIdV1,
-      attempt: number,
-      sourceKeys: readonly string[],
-      assembled: Awaited<ReturnType<typeof assembleContext>>,
-    ) => createContextManifestFromAssemblyV1({
-      runId: snapshot.run.id,
-      stepId,
-      attempt,
-      projectId: project.id!,
-      worldGroupId: transitionWorldGroupId,
-      declaredSourceKeys: sourceKeys,
-      assembled,
-      boundary: { chapterId: task.chapterId, outlineNodeId: transitionChapter?.outlineNodeId ?? undefined },
-      readerVersion: 'chapter-post-adoption-context-v1',
-    })
-    const ensureFresh = async () => {
-      const latest = await db.chapters.get(task.chapterId)
-      if (!latest || await hashChapterText(latest.content ?? '') !== expectedSourceTextHash) {
-        throw new Error('正文已变化，章节后处理候选已过期。')
-      }
-    }
-    const updateSnapshot = (next: AgentRunSnapshotV1) => {
-      snapshot = next
-      transitionSnapshotRef.current = next
-      setPostAdoptionChainState(chapterPostAdoptionChainStateV1(next))
-    }
-    const shouldRunStep = (stepId: ChapterPostAdoptionStepIdV1): boolean => {
-      return isChapterPostAdoptionStepRunnableV1(
-        buildChapterPostAdoptionResumePlanV1(snapshot),
-        stepId,
-      )
-    }
-    // 1. 一次综合抽取七域候选；作者确认前业务表零写入。
-    if (!shouldRunStep(CHAPTER_POST_ADOPTION_STEP_IDS_V1.organization)) {
-      if (snapshot.projection.steps[CHAPTER_POST_ADOPTION_STEP_IDS_V1.organization]?.status === 'awaiting_confirmation') {
-        setShowOrganization(true)
-      }
-    } else {
-    setAutoProcessing('extracting')
     try {
-      await ensureFresh()
-      const organizationAssembly = await assembledFor(
-        CHAPTER_POST_ADOPTION_STEP_SOURCE_KEYS_V1.organization,
-        organizationRequestConfig,
-      )
-      const organizationManifest = await manifestFor(
-        CHAPTER_POST_ADOPTION_STEP_IDS_V1.organization,
-        1,
-        CHAPTER_POST_ADOPTION_STEP_SOURCE_KEYS_V1.organization,
-        organizationAssembly,
-      )
-      updateSnapshot(await beginChapterPostAdoptionStepV1({
-        scope,
-        snapshot,
-        stepId: CHAPTER_POST_ADOPTION_STEP_IDS_V1.organization,
-        contextManifest: organizationManifest,
-        binding: { chapterId: task.chapterId, sourceTextHash: expectedSourceTextHash },
-        modelIdentity: {
-          provider: organizationRequestConfig.provider,
-          model: organizationRequestConfig.model,
-        },
-      }))
-      const [allRelations] = await Promise.all([
-        db.characterRelations.where('projectId').equals(project.id!).toArray(),
-        loadForeshadows(project.id!),
-      ])
-      const scopedCharacters = project.enableMultiWorld
-        ? characters.filter(character => (
-          character.isCrossWorld
-          || (character.homeWorldGroupId ?? null) === (transitionWorldGroupId ?? null)
-        ))
-        : characters
-      const scopedCharacterIds = new Set(
-        scopedCharacters.flatMap(character => character.id != null ? [character.id] : []),
-      )
-      const existingRelations = allRelations.filter(relation => (
-        scopedCharacterIds.has(relation.fromCharacterId)
-        && scopedCharacterIds.has(relation.toCharacterId)
-      ))
-      const organizationContextSnapshot = organizationAssembly.included.flatMap((sourceKey, index) => (
-        sourceKey === 'chapterContent' ? [] : [organizationAssembly.segments[index]?.content ?? '']
-      )).filter(Boolean).join('\n\n')
-      const budget = new AgentTeamBudgetTracker(useAIConfigStore.getState().agentTeamBudgetProfile)
-      const candidate = await runChapterOrganization({
-        projectId: project.id!,
-        chapterId: task.chapterId,
-        chapterTitle: task.chapterTitle,
-        worldGroupId: transitionWorldGroupId,
-        chapterContent: task.chapterContent,
-        stateContext: buildSelectiveStateContext(task.chapterPlainText, extraStateIds).text,
-        characters: scopedCharacters,
-        knownItemNames: itemEntries.map(entry => entry.itemName),
-        existingRelations,
-        foreshadows: useForeshadowStore.getState().foreshadows,
-        storyArcs,
-        contextSnapshot: organizationContextSnapshot,
-        budget,
-        call: messages => executeRegisteredAIEntryV1('prose.chapter.organize', messages, aiConfig, {
-          category: 'chapter.organize',
-          projectId: project.id!,
-          configOverrides: { maxTokens: 8_000 },
-          contextOverflowPolicy: 'reject',
-        }, controller.signal),
-      })
-      await ensureFresh()
-      const candidateHash = await hashChapterOrganizationCandidateV1(candidate)
-      const run = await persistChapterOrganizationCandidate(candidate, {
-        durable: {
-          runId: snapshot.run.id,
-          stepId: CHAPTER_POST_ADOPTION_STEP_IDS_V1.organization,
-          attempt: 1,
-          contextManifestHash: organizationManifest.manifestHash,
-          candidateHash,
+      await runChapterPostAdoptionV1({
+        project, aiConfig, task, extraStateIds, signal: controller.signal,
+        callbacks: {
+          onSnapshot: updatePostAdoptionSnapshot,
+          onPhase: setAutoProcessing,
+          onError: setTransitionError,
+          onOrganizationPending: () => setShowOrganization(true),
+          onOrganization: run => { setOrganizationRun(run); setOrganizationCurrent(true) },
+          onMemoryWritten: chapterId => { void refreshChapter(chapterId) },
+          onConsistency: run => {
+            setConsistencyRun(run)
+            setConsistencyCurrent(true)
+            useReviewResultStore.getState().setConsistency(task.chapterId, toConsistencyAuditResult(run.candidate))
+          },
         },
       })
-      updateSnapshot(await recordChapterPostAdoptionOutputV1({
-        scope,
-        snapshot,
-        stepId: CHAPTER_POST_ADOPTION_STEP_IDS_V1.organization,
-        output: run.candidate,
-        candidateHash,
-        requiresConfirmation: true,
-      }))
-      setOrganizationRun(run)
-      setOrganizationCurrent(true)
-      setShowOrganization(true)
-    } catch (error) {
-      try {
-        updateSnapshot(await readAgentRunV1(scope, snapshot.run.id))
-      } catch {
-        // Keep the original processing error when a refresh window prevents a re-read.
-      }
-      const failure = await classifyAgentRunFailureV1(error)
-      updateSnapshot(await failChapterPostAdoptionStepV1({
-        scope,
-        snapshot,
-        stepId: CHAPTER_POST_ADOPTION_STEP_IDS_V1.organization,
-        ...failure,
-      }))
-      if (!controller.signal.aborted) {
-        setTransitionError(error instanceof Error ? error.message : '七域交接候选生成失败')
-      }
-      if (controller.signal.aborted) return
-    } finally {
-      setAutoProcessing('idle')
-    }
-    }
-
-    // 2. summary + handoff 仍只调用一次模型，并由原子 CAS 写回 chapters。
-    if (shouldRunStep(CHAPTER_POST_ADOPTION_STEP_IDS_V1.memory)) try {
-      await ensureFresh()
-      const memoryAssembly = await assembledFor(
-        CHAPTER_POST_ADOPTION_STEP_SOURCE_KEYS_V1.memory,
-        memoryRequestConfig,
-      )
-      updateSnapshot(await beginChapterPostAdoptionStepV1({
-        scope,
-        snapshot,
-        stepId: CHAPTER_POST_ADOPTION_STEP_IDS_V1.memory,
-        contextManifest: await manifestFor(
-          CHAPTER_POST_ADOPTION_STEP_IDS_V1.memory,
-          1,
-          CHAPTER_POST_ADOPTION_STEP_SOURCE_KEYS_V1.memory,
-          memoryAssembly,
-        ),
-        binding: { chapterId: task.chapterId, sourceTextHash: expectedSourceTextHash },
-        modelIdentity: {
-          provider: memoryRequestConfig.provider,
-          model: memoryRequestConfig.model,
-        },
-      }))
-      const result = await handleChapterMemory({
-        chapterId: task.chapterId,
-        chapterTitle: task.chapterTitle,
-        chapterContent: task.chapterContent,
-      })
-      if (result !== 'written') throw new Error(`章节记忆后处理未写入：${result}`)
-      updateSnapshot(await recordChapterPostAdoptionOutputV1({
-        scope,
-        snapshot,
-        stepId: CHAPTER_POST_ADOPTION_STEP_IDS_V1.memory,
-        output: { status: result, sourceTextHash: expectedSourceTextHash },
-      }))
-      updateSnapshot(await succeedChapterPostAdoptionStepV1({
-        scope,
-        snapshot,
-        stepId: CHAPTER_POST_ADOPTION_STEP_IDS_V1.memory,
-        output: { status: result, sourceTextHash: expectedSourceTextHash },
-      }))
-    } catch (error) {
-      const failure = await classifyAgentRunFailureV1(error)
-      updateSnapshot(await failChapterPostAdoptionStepV1({
-        scope,
-        snapshot,
-        stepId: CHAPTER_POST_ADOPTION_STEP_IDS_V1.memory,
-        ...failure,
-      }))
-      setTransitionError(error instanceof Error ? error.message : '章节记忆后处理失败')
-    }
-
-    // 3. 记忆写回后再重建检索与层级摘要，避免把刚生成的可信摘要留在 pending 状态。
-    if (shouldRunStep(CHAPTER_POST_ADOPTION_STEP_IDS_V1.retrieval)) try {
-      await ensureFresh()
-      const retrievalAssembly = await assembledFor(CHAPTER_POST_ADOPTION_STEP_SOURCE_KEYS_V1.retrieval)
-      updateSnapshot(await beginChapterPostAdoptionStepV1({
-        scope,
-        snapshot,
-        stepId: CHAPTER_POST_ADOPTION_STEP_IDS_V1.retrieval,
-        contextManifest: await manifestFor(
-          CHAPTER_POST_ADOPTION_STEP_IDS_V1.retrieval,
-          1,
-          CHAPTER_POST_ADOPTION_STEP_SOURCE_KEYS_V1.retrieval,
-          retrievalAssembly,
-        ),
-        model: false,
-      }))
-      const chapter = await db.chapters.get(task.chapterId)
-      if (!chapter) throw new Error('章节在后处理期间不可见。')
-      const chunks = await rebuildChapterChunks({
-        projectId: project.id!,
-        chapter: { ...chapter, content: task.chapterContent },
-        worldGroupId: transitionWorldGroupId,
-        knownEntities: characters.map(c => c.name),
-        scope,
-      })
-      const summaries = await rebuildProjectNarrativeSummaries({ projectId: project.id!, scope })
-      const embCfg = useAIConfigStore.getState().embedding
-      if (isEmbeddingReady(embCfg)) {
-        void ensureChunkEmbeddings({ projectId: project.id!, cfg: embCfg, scope })
-          .catch(e => console.warn('[ChapterPostAdoption] 语义索引补建失败（关键词检索仍可用）:', e))
-      }
-      updateSnapshot(await succeedChapterPostAdoptionStepV1({
-        scope,
-        snapshot,
-        stepId: CHAPTER_POST_ADOPTION_STEP_IDS_V1.retrieval,
-        output: { chunks, summaries, sourceTextHash: expectedSourceTextHash },
-      }))
-    } catch (error) {
-      const failure = await classifyAgentRunFailureV1(error)
-      updateSnapshot(await failChapterPostAdoptionStepV1({
-        scope,
-        snapshot,
-        stepId: CHAPTER_POST_ADOPTION_STEP_IDS_V1.retrieval,
-        ...failure,
-      }))
-      setTransitionError(error instanceof Error ? error.message : '检索后处理失败')
-    }
-
-    // 4. 零 token 确定性一致性守卫。报告进入同一 durable Run；语义深审仍由作者显式触发。
-    if (shouldRunStep(CHAPTER_POST_ADOPTION_STEP_IDS_V1.consistency)) try {
-      await ensureFresh()
-      const consistencyAssembly = await assembledFor(CHAPTER_POST_ADOPTION_STEP_SOURCE_KEYS_V1.consistency)
-      const consistencyManifest = await manifestFor(
-        CHAPTER_POST_ADOPTION_STEP_IDS_V1.consistency,
-        1,
-        CHAPTER_POST_ADOPTION_STEP_SOURCE_KEYS_V1.consistency,
-        consistencyAssembly,
-      )
-      updateSnapshot(await beginChapterPostAdoptionStepV1({
-        scope,
-        snapshot,
-        stepId: CHAPTER_POST_ADOPTION_STEP_IDS_V1.consistency,
-        contextManifest: consistencyManifest,
-        model: false,
-      }))
-      const guard = await runBackgroundConsistencyAgent({
-        projectId: project.id!,
-        chapterId: task.chapterId,
-        chapterTitle: task.chapterTitle,
-        worldGroupId: transitionWorldGroupId,
-        chapterContent: task.chapterContent,
-        budget: new AgentTeamBudgetTracker(useAIConfigStore.getState().agentTeamBudgetProfile),
-        contextEvidence: {
-          included: consistencyAssembly.included,
-          omitted: consistencyAssembly.omitted,
-          trimmed: consistencyAssembly.trimmed,
-          inputTokens: consistencyAssembly.totalInputTokens,
-          inputBudget: consistencyAssembly.inputBudget,
-        },
-      })
-      await ensureFresh()
-      const candidateHash = await hashConsistencyAgentCandidateV1(guard)
-      const durableGuard = {
-        ...guard,
-        durable: {
-          runId: snapshot.run.id,
-          stepId: CHAPTER_POST_ADOPTION_STEP_IDS_V1.consistency,
-          attempt: 1,
-          contextManifestHash: consistencyManifest.manifestHash,
-          candidateHash,
-        },
-      }
-      const run = await persistConsistencyAgentCandidate(durableGuard)
-      updateSnapshot(await recordChapterPostAdoptionOutputV1({
-        scope,
-        snapshot,
-        stepId: CHAPTER_POST_ADOPTION_STEP_IDS_V1.consistency,
-        output: durableGuard,
-        candidateHash,
-        requiresConfirmation: false,
-        modelResponded: false,
-      }))
-      updateSnapshot(await succeedChapterPostAdoptionStepV1({
-        scope,
-        snapshot,
-        stepId: CHAPTER_POST_ADOPTION_STEP_IDS_V1.consistency,
-        output: durableGuard,
-      }))
-      setConsistencyRun(run)
-      setConsistencyCurrent(true)
-      useReviewResultStore.getState().setConsistency(task.chapterId, toConsistencyAuditResult(durableGuard))
-    } catch (error) {
-      const failure = await classifyAgentRunFailureV1(error)
-      updateSnapshot(await failChapterPostAdoptionStepV1({
-        scope,
-        snapshot,
-        stepId: CHAPTER_POST_ADOPTION_STEP_IDS_V1.consistency,
-        ...failure,
-      }))
-      setTransitionError(error instanceof Error ? error.message : '正文一致性守卫失败')
-    }
-
-    const selectedStepIds = (snapshot.contract.automationAuthorization?.taskTypes
-      ?? ['organization', 'memory', 'retrieval', 'consistency']).map(taskType => (
-      taskType === 'organization' ? CHAPTER_POST_ADOPTION_STEP_IDS_V1.organization
-        : taskType === 'memory' ? CHAPTER_POST_ADOPTION_STEP_IDS_V1.memory
-          : taskType === 'retrieval' ? CHAPTER_POST_ADOPTION_STEP_IDS_V1.retrieval
-            : CHAPTER_POST_ADOPTION_STEP_IDS_V1.consistency
-    ))
-    if (selectedStepIds.every(stepId => snapshot.projection.steps[stepId]?.status === 'succeeded')) {
-      try {
-        const verified = await verifyChapterPostAdoptionRunV1({ scope, runId: snapshot.run.id })
-        updateSnapshot(verified.snapshot)
-      } catch (error) {
-        setTransitionError(error instanceof Error ? error.message : '章后终态验证失败')
-      }
-    }
     } finally {
       if (organizationAbortRef.current === controller) organizationAbortRef.current = null
       setOrganizingChapter(false)
     }
   }
 
-  const preparePostAdoptionAfterCommit = async (task: {
-    chapterId: number
-    chapterTitle: string
-    chapterContent: string
-    chapterPlainText: string
-    parent?: {
-      runId: number
-      receiptHash: string
-      artifactHash: string
-    }
-  }) => {
-    const scope = await resolveScopeLike(project.id!)
-    const invalidation = await invalidateChapterPostAdoptionDerivativesV1({
-      scope,
-      chapterId: task.chapterId,
-    })
-    setPostAdoptionInvalidation(invalidation)
-    const settings = await readWorkPostAdoptionSettingsV1(scope)
-    setPostAdoptionSettings(settings)
-    if (settings.policy === 'off') {
+  const preparePostAdoptionAfterCommit = async (task: ChapterPostAdoptionTaskV1) => {
+    const result = await prepareChapterPostAdoptionV1({ project, aiConfig, task })
+    setPostAdoptionInvalidation(result.invalidation)
+    setPostAdoptionSettings(result.settings)
+    if (!result.snapshot) {
       setPostAdoptionRunId(null)
       setPostAdoptionChainState(null)
-      setTransitionError('正文已采纳并完成本地失效标记；当前 Work 已关闭章后 AI 任务。')
+      setTransitionError(result.reason ?? '')
       return
     }
-    const sourceTextHash = await hashChapterText(task.chapterContent)
-    const organizationRoute = resolveRequestConfig(aiConfig, { category: 'chapter.organize' }).config
-    const memoryRoute = resolveRequestConfig(aiConfig, { category: 'chapter.memory' }).config
-    const authorization = await buildPostAdoptionAuthorizationSnapshotV1({
-      scope,
-      chapterId: task.chapterId,
-      sourceTextHash,
-      modelRoutes: [
-        { taskType: 'organization', provider: organizationRoute.provider, model: organizationRoute.model },
-        { taskType: 'memory', provider: memoryRoute.provider, model: memoryRoute.model },
-      ],
-      settings,
-    })
-    if (settings.policy === 'auto-with-budget') {
-      const preflight = preflightPostAdoptionAutoV1(authorization)
-      if (!preflight.allowed) {
-        setPostAdoptionRunId(null)
-        setPostAdoptionChainState(null)
-        setTransitionError(`章后自动任务已在调用前停止：${preflight.reason}`)
-        return
-      }
-    }
-    const chapter = await db.chapters.get(task.chapterId)
-    const transitionOutline = chapter?.outlineNodeId != null
-      ? await db.outlineNodes.get(chapter.outlineNodeId)
-      : null
-    const snapshot = await createChapterPostAdoptionDurableRunV1({
-      scope,
-      worldGroupId: transitionOutline?.worldGroupId ?? chapterWorldGroupId ?? null,
-      chapterId: task.chapterId,
-      parent: task.parent,
-      authorization,
-    })
-    updatePostAdoptionSnapshot(snapshot)
-    if (settings.policy === 'suggest') return
-    await handleAutoPostGenerate({ ...task, resumeRunId: snapshot.run.id })
+    updatePostAdoptionSnapshot(result.snapshot)
+    if (result.settings.policy === 'auto-with-budget') await handleAutoPostGenerate({ ...task, resumeRunId: result.snapshot.run.id })
   }
 
   const handleAuthorizePostAdoption = async () => {

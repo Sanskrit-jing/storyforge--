@@ -24,6 +24,7 @@ export async function runChapterMemoryTask(args: {
   chapterId: number
   chapterTitle: string
   chapterContent: string
+  signal?: AbortSignal
   call: (messages: ChatMessage[]) => Promise<string>
 }): Promise<ChapterMemoryTaskResult> {
   const scope = await resolveScopeLike(args.projectId)
@@ -39,6 +40,7 @@ export async function runChapterMemoryTask(args: {
     planSnapshot.nextChapterPlan,
   )
   const raw = await args.call(prepared.messages)
+  if (args.signal?.aborted) throw new DOMException('章节记忆已取消', 'AbortError')
   const memory = parseChapterMemoryOutput({
     raw,
     chapterId: args.chapterId,

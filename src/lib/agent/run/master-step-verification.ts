@@ -1,3 +1,4 @@
+import { parseDetailedOutlineCopilotDraftV1 } from '../detailed-outline-copilot'
 import type { AgentRunStepVerificationReceiptV1 } from '../../types/agent-run'
 import { parseCharacterCandidateDraft } from '../character-copilot'
 import { parseCharacterDrivenCandidateDraftV1 } from '../character-driven-copilot'
@@ -65,6 +66,7 @@ function validateCandidateDraft(payload: MasterCandidatePayload, draft: string):
     return
   }
   if (payload.agentId === 'outline') {
+    if (payload.skillId === 'outline.details') { parseDetailedOutlineCopilotDraftV1(draft, 'enhanced'); return }
     if (payload.skillId === 'outline.storyline-progress') {
       parseStorylineProgressCandidateDraftV1(draft)
       return

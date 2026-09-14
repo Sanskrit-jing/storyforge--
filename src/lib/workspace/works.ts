@@ -277,3 +277,12 @@ export async function updateWorkPostAdoptionPolicyV1(input: {
     updatedAt: Date.now(),
   })
 }
+
+/** Manual longform acceptance uses a caller-held transaction and a freshly verified coverage report. */
+export async function recordLongformWorkCompletionV1(scope: WorkspaceScope): Promise<void> {
+  const project = await db.projects.get(scope.projectId)
+  const work = await db.works.get(scope.workId)
+  if (!project || project.activeWorkId !== scope.workId || !work || work.projectId !== scope.projectId || work.worldId !== scope.worldId
+    || effectiveWorkKind(work) !== 'novel' || effectiveNovelProfile(work) !== 'long') throw new Error('长篇完稿记录与当前作品不匹配。')
+  await db.works.update(scope.workId, { status: 'completed', updatedAt: Date.now() })
+}

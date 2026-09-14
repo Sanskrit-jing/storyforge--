@@ -15,11 +15,10 @@ import {
   type DirectionTemplate,
   parseDirectionTemplate,
   DIRECTION_TEMPLATE_PROMPT,
-  EMPTY_DIRECTION_TEMPLATE
 } from './direction-template'
 
 export interface StoryArcCompliance {
-  score: number                    // 0-100, 故事线符合度评分
+  score: number | null             // 0-100, 故事线符合度评分
   coveredEvents: string[]          // 已覆盖的关键事件
   missingEvents: string[]          // 缺失的关键事件
   suggestions: string[]            // AI 建议添加的内容
@@ -67,6 +66,7 @@ export type ChoiceAction =
   | { type: 'cancel' }
 
 export interface ChunkedGenerationOptions {
+  projectId?: number
   volumeId: number
   volumeTitle: string
   volumeSummary: string
@@ -86,6 +86,9 @@ export interface ChunkedGenerationOptions {
     regenerate: () => Promise<BlockChoice>,
   ) => Promise<{ action: 'accept'; choiceId: string } | { action: 'cancel' }>
   signal?: AbortSignal
+  resume?: { blocks: BlockGenerationResult[]; choices?: BlockChoice[]; selectedChoiceId?: string }
+  onCheckpoint?: (value: { blocks: BlockGenerationResult[]; choices: BlockChoice[]; selectedChoiceId?: string; phase: 'direction' | 'choice' | 'chapters' | 'ready' }) => Promise<void>
+  runChapterModel?: (messages: ChatMessage[], blockIndex: number) => Promise<string>
 }
 
 export async function generateSingleDirection(
@@ -140,11 +143,10 @@ ${options.storyArcContext ? '重要：你可以返回一个可选的 JSON 对象
   ]
 
   const config = useAIConfigStore.getState().config
-  try {
     const rawOutput = await executeRegisteredAIEntryV1('outline.chunked.generate', messages, config, {
       category: 'outline.chunked-direction',
-      projectId: options.volumeId,
-    })
+      projectId: options.projectId,
+    }, options.signal)
 
     const template = parseDirectionTemplate(rawOutput)
     const title = template.title || `方案 ${choiceIndex + 1}`
@@ -175,31 +177,7 @@ ${options.storyArcContext ? '重要：你可以返回一个可选的 JSON 对象
       focus: finalFocus,
       storyArcCompliance,
     }
-  } catch {
-    const fallbackTitle = `方案 ${choiceIndex + 1}`
-    const focus = engine.calculateChapterFocus(
-      chapterRange[0] + Math.floor(blockCount / 2),
-      options.totalChapters,
-    )
-    return {
-      id: `choice-${blockIndex}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      title: fallbackTitle,
-      description: `${fallbackTitle}（AI 生成失败，使用默认方案）`,
-      template: {
-        ...EMPTY_DIRECTION_TEMPLATE,
-        title: fallbackTitle,
-        coreConflict: '（AI 生成失败，请手动描述本方案的核心冲突）',
-        keyEvents: ['（AI 生成失败，请手动补充关键事件）'],
-      },
-      focus,
-      storyArcCompliance: options.storyArcContext ? {
-        score: 0,
-        coveredEvents: [],
-        missingEvents: ['AI 生成失败'],
-        suggestions: ['请重新生成或手动设计'],
-      } : undefined,
-    }
-  }
+
 }
 
 export async function regenerateDirection(
@@ -252,11 +230,12 @@ export async function runChunkedOutlineGeneration(
   const engine = new NarrativeEngine()
   const blocks = divideChaptersIntoBlocks(options.totalChapters, config.blockCount)
   const startTime = Date.now()
-  const results: BlockGenerationResult[] = []
+  const results: BlockGenerationResult[] = [...(options.resume?.blocks ?? [])]
 
   const blockLabels = getBlockLabels(config.blockCount)
 
-  for (let i = 0; i < blocks.length; i++) {
+  for (let i = results.length; i < blocks.length; i++) {
+    if (blocks[i].chapterCount === 0) continue
     if (options.signal?.aborted) {
       return {
         blocks: results,
@@ -277,11 +256,18 @@ export async function runChunkedOutlineGeneration(
       waitingForChoice: false,
     })
 
-    let currentChoice = await generateSingleDirection(options, i, blockLabel, block.chapterRange, engine)
-    const favoriteChoices: BlockChoice[] = []
-    let selectedChoice: BlockChoice | null = null
+    const restored = i === (options.resume?.blocks.length ?? -1) ? options.resume : undefined
+    const allChoices = [...(restored?.choices ?? [])]
+    if (!allChoices.length) {
+      await options.onCheckpoint?.({ blocks: results, choices: [], phase: 'direction' })
+      allChoices.push(await generateSingleDirection(options, i, blockLabel, block.chapterRange, engine))
+    }
+    let currentChoice = allChoices[0]
+    const favoriteChoices: BlockChoice[] = allChoices.slice(1)
+    let selectedChoice: BlockChoice | null = allChoices.find(c => c.id === restored?.selectedChoiceId) ?? null
 
     while (!selectedChoice && !options.signal?.aborted) {
+      await options.onCheckpoint?.({ blocks: results, choices: allChoices, phase: 'choice' })
       options.onProgress?.({
         currentBlockIndex: i,
         totalBlocks: blocks.length,
@@ -301,13 +287,17 @@ export async function runChunkedOutlineGeneration(
               options, i, blockLabel, block.chapterRange, engine,
               allPreviousChoices,
             )
+            favoriteChoices.push(currentChoice)
+            allChoices.unshift(newChoice)
             currentChoice = newChoice
+            await options.onCheckpoint?.({ blocks: results, choices: allChoices, phase: 'choice' })
             return newChoice
           },
         )
 
         if (result.action === 'accept') {
-          selectedChoice = [currentChoice, ...favoriteChoices].find(c => c.id === result.choiceId) || currentChoice
+          selectedChoice = allChoices.find(c => c.id === result.choiceId) ?? null
+          if (!selectedChoice) throw new Error('所选剧情走向已失效，请重新选择。')
         } else if (result.action === 'cancel') {
           return {
             blocks: results,
@@ -338,6 +328,7 @@ export async function runChunkedOutlineGeneration(
       waitingForChoice: false,
     })
 
+    await options.onCheckpoint?.({ blocks: results, choices: allChoices, selectedChoiceId: selectedChoice.id, phase: 'chapters' })
     const chapters = await generateBlockChapters(options, i, block.chapterRange, selectedChoice, engine)
 
     results.push({
@@ -348,6 +339,7 @@ export async function runChunkedOutlineGeneration(
       selectedChoiceId: selectedChoice.id,
       selectedChoice,
     })
+    await options.onCheckpoint?.({ blocks: results, choices: [], phase: 'ready' })
   }
 
   return {
@@ -367,7 +359,7 @@ async function generateBlockChapters(
 ): Promise<ParsedChapter[]> {
   const chapterCount = chapterRange[1] - chapterRange[0] + 1
 
-  const systemPrompt = `你是一位专业的小说章节大纲撰写者。请基于以下信息为「${options.volumeTitle}」的第 ${chapterRange[0] + 1}-${chapterRange[1] + 1} 章生成详细的章节大纲。`
+  const systemPrompt = `每章计划承载约 ${options.config.wordsPerChapter} 字正文，请据此安排事件密度。\n作者补充要求：${options.userHint || '无'}\n你是一位专业的小说章节大纲撰写者。请基于以下信息为「${options.volumeTitle}」的第 ${chapterRange[0] + 1}-${chapterRange[1] + 1} 章生成详细的章节大纲。`
 
   const choiceContext = formatDirectionTemplate(choice.template, choice.description)
 
@@ -385,18 +377,18 @@ async function generateBlockChapters(
       : []),
     {
       role: 'user',
-      content: `卷大纲：${options.volumeSummary}\n\n世界观：${options.worldContext}\n\n角色：${options.characterContext}\n\n世界规则：${options.worldRulesContext}\n\n${narrativeHint}${narrativeHint ? '\n\n' : ''}选定的剧情走向方案：\n${choiceContext}\n\n请严格按照以上走向方案，为第 ${chapterRange[0] + 1}-${chapterRange[1] + 1} 章生成 ${chapterCount} 章的详细大纲。格式为：\n1. 章节标题：章节内容摘要\n2. 章节标题：章节内容摘要\n...`,
+      content: `卷大纲：${options.volumeSummary}\n\n世界观：${options.worldContext}\n\n角色：${options.characterContext}\n\n世界规则：${options.worldRulesContext}\n\n${narrativeHint}${narrativeHint ? '\n\n' : ''}选定的剧情走向方案：\n${choiceContext}\n\n请严格按照以上走向方案，为第 ${chapterRange[0] + 1}-${chapterRange[1] + 1} 章生成 ${chapterCount} 章的详细大纲。严格只返回 JSON 数组，每项包含 title（章节标题）、summary（章节内容摘要），不得附加解释。`,
     },
   ]
 
   const config = useAIConfigStore.getState().config
-  try {
-    const rawOutput = await executeRegisteredAIEntryV1('outline.chunked.generate', messages, config, {
+    const rawOutput = options.runChapterModel ? await options.runChapterModel(messages, blockIndex) : await executeRegisteredAIEntryV1('outline.chunked.generate', messages, config, {
       category: 'outline.chunked-chapters',
-      projectId: options.volumeId,
-    })
+      projectId: options.projectId,
+    }, options.signal)
 
     const parsed = parseChapterOutlineOutput(rawOutput)
+    if (parsed.length !== chapterCount) throw new Error(`本块需要 ${chapterCount} 章，实际解析到 ${parsed.length} 章，未进入下一块。`)
 
     if (options.config.enableNarrativeEngine && parsed.length > 0) {
       const hasReveal = parsed.some(ch => /揭秘|发现|真相/.test(ch.summary))
@@ -408,10 +400,7 @@ async function generateBlockChapters(
     }
 
     return parsed
-  } catch (error) {
-    console.error(`[ChunkedGenerator] 块 ${blockIndex} 生成失败:`, error)
-    return []
-  }
+
 }
 
 function formatDirectionTemplate(template: DirectionTemplate, rawDescription: string): string {
@@ -452,7 +441,7 @@ function parseStoryArcCompliance(rawOutput: string, expectedStage?: string): Sto
   if (!jsonMatch) {
     // 如果没有找到 JSON，返回一个默认值
     return {
-      score: 70,  // 默认给一个中等分数
+      score: null,
       coveredEvents: [],
       missingEvents: [],
       suggestions: ['AI 未返回符合度评估，建议人工检查'],
@@ -466,7 +455,7 @@ function parseStoryArcCompliance(rawOutput: string, expectedStage?: string): Sto
 
     const compliance = parsed.compliance || {}
     return {
-      score: Math.min(100, Math.max(0, compliance.score || 70)),
+      score: typeof compliance.score === 'number' && Number.isFinite(compliance.score) ? Math.min(100, Math.max(0, compliance.score)) : null,
       coveredEvents: compliance.coveredEvents || [],
       missingEvents: compliance.missingEvents || [],
       suggestions: compliance.suggestions || [],
@@ -475,7 +464,7 @@ function parseStoryArcCompliance(rawOutput: string, expectedStage?: string): Sto
   } catch {
     // JSON 解析失败，返回默认值
     return {
-      score: 60,
+      score: null,
       coveredEvents: [],
       missingEvents: [],
       suggestions: ['AI 返回格式异常，建议人工检查'],

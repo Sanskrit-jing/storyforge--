@@ -1,3 +1,5 @@
+import LongformAgentProgress from '../longform/LongformAgentProgress'
+import type { MasterAgentPlan } from '../../lib/agent/orchestrator'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Bot,
@@ -27,6 +29,7 @@ interface Props {
   project: Project
   worldGroupId: number | null
   worldName: string
+  embedded?: boolean
   onClose: () => void
 }
 
@@ -41,12 +44,14 @@ export default function ChatCopilotPanel({
   worldGroupId,
   worldName,
   onClose,
+  embedded = false,
 }: Props) {
   const activeWork = useActiveWork(project)
   const copilot = useMasterCopilot({ project, worldGroupId })
   const creativeQualityMode = useAIConfigStore(state => state.creativeQualityMode)
   const teamBudgetProfile = useAIConfigStore(state => state.agentTeamBudgetProfile)
-  const [showDetails, setShowDetails] = useState(false)
+  const [showDetails, setShowDetails] = useState(embedded)
+  const [planningSummary, setPlanningSummary] = useState('')
   const endRef = useRef<HTMLDivElement | null>(null)
   const messages = copilot.events.filter(event => event.kind === 'message')
   const taskEvents = copilot.events.filter(event => event.kind === 'task')
@@ -57,7 +62,10 @@ export default function ChatCopilotPanel({
       status: string
       error?: string
     }>()
-    taskEvents.forEach(event => {
+    const latestPlanEvent = [...copilot.events].reverse().find(event => event.kind === 'plan' && Array.isArray(parseAgentEventPayload<Partial<MasterAgentPlan>>(event, {}).tasks))
+    const plan = latestPlanEvent ? parseAgentEventPayload<Partial<MasterAgentPlan>>(latestPlanEvent, {}) : null
+    for (const task of plan?.tasks ?? []) result.set(task.id, { taskId: task.id, agentId: task.agentId, status: 'pending' })
+    taskEvents.filter(event => !latestPlanEvent || event.sequence > latestPlanEvent.sequence).forEach(event => {
       const payload = parseAgentEventPayload<{
         taskId?: string
         agentId?: string
@@ -72,7 +80,7 @@ export default function ChatCopilotPanel({
       })
     })
     return [...result.values()]
-  }, [taskEvents])
+  }, [taskEvents, copilot.events])
   const previewRequest = copilot.activeRequest ?? copilot.authorRequest
   const runPreview = useMemo(() => (
     previewRequest.trim().length >= 2
@@ -91,7 +99,7 @@ export default function ChatCopilotPanel({
   return (
     <aside
       aria-label="主 Agent 创作副驾"
-      className="fixed inset-y-0 right-0 z-30 flex h-full w-[min(28rem,calc(100vw-2rem))] shrink-0 flex-col border-l border-border bg-bg-surface shadow-xl lg:static lg:z-auto lg:w-[28rem] lg:shadow-none"
+      className={`${embedded ? 'lf-agent-page' : 'fixed inset-y-0 right-0 z-30 w-[min(28rem,calc(100vw-2rem))] lg:static lg:z-auto lg:w-[28rem]'} flex h-full shrink-0 flex-col border-l border-border bg-bg-surface shadow-xl lg:shadow-none`}
     >
       <header className="border-b border-border/70 px-4 py-3">
         <div className="flex items-start justify-between gap-3">
@@ -118,9 +126,10 @@ export default function ChatCopilotPanel({
         </div>
         <div className="mt-3 flex items-start gap-2 rounded-md border border-accent/20 bg-accent/5 p-2 text-[11px] leading-4 text-text-secondary">
           <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" />
-          你只需要描述目标。主 Agent 会在幕后调度领域 Agent；任何正式写入仍必须由你确认。
+          先一起明确创作需求，确认计划后，主 Agent 再在幕后调度领域 Agent 填充内容。候选经采纳后显示在分步骤的对应位置。
         </div>
       </header>
+      {embedded && <LongformAgentProgress project={project} worldGroupId={worldGroupId} busy={copilot.busy} onRequest={copilot.setAuthorRequest}/>}
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3">
         {copilot.loading && (
@@ -186,7 +195,7 @@ export default function ChatCopilotPanel({
                           ? 'text-error'
                           : 'text-accent'
                     }>
-                      {task.status === 'completed' ? '已完成' : task.status === 'failed' ? task.error || '失败' : '执行中'}
+                      {task.status === 'completed' ? '候选已生成' : task.status === 'failed' ? task.error || '失败' : task.status === 'pending' ? '等待前序采纳' : '执行中'}
                     </span>
                   </div>
                 ))}
@@ -298,6 +307,7 @@ export default function ChatCopilotPanel({
             </div>
           </section>
         ))}
+        {copilot.pendingPlan && !copilot.pendingCandidates.length && <section className="lf-paper" aria-label="待确认创作计划"><h3>本轮创作计划</h3><p>{copilot.pendingPlan.summary}</p><ol>{copilot.pendingPlan.tasks.map(task => <li key={task.id} className="mb-3">{task.instruction}</li>)}</ol><button type="button" className="lf-action lf-action-primary" disabled={copilot.busy || !!copilot.authorRequest.trim()} onClick={() => { void copilot.confirmPlan() }}>确认计划并开始</button><p>可以继续对话调整需求，再确认开始。确认前不会填充作品内容。</p></section>}
         <div ref={endRef} />
       </div>
 
@@ -305,9 +315,16 @@ export default function ChatCopilotPanel({
         className="border-t border-border/70 p-3"
         onSubmit={event => {
           event.preventDefault()
-          void copilot.submit()
+          void copilot.discuss()
         }}
       >
+        {copilot.error && <p role="alert" className="mb-2 text-xs text-error">{copilot.error}</p>}
+        <details className="mb-3 text-xs text-text-secondary">
+          <summary className="cursor-pointer">整理需求摘要</summary>
+          <p className="my-2">对话较长时，在这里整理已确认的目标、约束与待办。保存后规划使用这份摘要和后续对话，原对话与候选仍完整保留；不会调用模型。</p>
+          <textarea aria-label="已确认的需求摘要" value={planningSummary} onChange={event => setPlanningSummary(event.target.value)} maxLength={8000} rows={5} className="w-full rounded border border-border bg-bg-base p-2" disabled={copilot.busy || copilot.loading || copilot.pendingCandidates.length > 0}/>
+          <button type="button" className="mt-2 rounded border border-border px-3 py-2" disabled={!planningSummary.trim() || copilot.busy || copilot.loading || copilot.pendingCandidates.length > 0} onClick={() => { void copilot.savePlanningSummary(planningSummary).then(saved => { if (saved) setPlanningSummary('') }) }}>确认保存需求摘要</button>
+        </details>
         {runPreview && copilot.pendingCandidates.length === 0 && (
           <section
             aria-label="本轮调用预估"
@@ -343,7 +360,7 @@ export default function ChatCopilotPanel({
           onKeyDown={event => {
             if (event.key === 'Enter' && !event.shiftKey) {
               event.preventDefault()
-              void copilot.submit()
+              void copilot.discuss()
             }
           }}
           placeholder={copilot.pendingCandidates.length
@@ -352,7 +369,7 @@ export default function ChatCopilotPanel({
           className="w-full resize-none rounded-md border border-border bg-bg-base px-3 py-2 text-xs leading-5 text-text-primary outline-none focus:border-accent disabled:opacity-60"
         />
         <div className="mt-2 flex items-center justify-between">
-          <span className="text-[10px] text-text-muted">Enter 发送 · 输入、计划和候选自动保存在本地</span>
+          <span className="text-[10px] text-text-muted">Enter 发送 · 已发送对话、计划和候选保存在本地</span>
           {copilot.busy ? (
             <button
               type="button"
@@ -373,7 +390,7 @@ export default function ChatCopilotPanel({
               className="flex items-center gap-1 rounded bg-accent px-3 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-40"
             >
               <Send className="h-3.5 w-3.5" />
-              交给主 Agent
+              讨论与规划
             </button>
           )}
         </div>

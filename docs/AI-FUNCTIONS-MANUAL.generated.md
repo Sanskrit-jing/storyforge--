@@ -326,17 +326,17 @@ AI 输出经 `adopt({ target, data })` 写回,只有这里登记的字段可写(
 
 | category | 触发文件 |
 |---|---|
-| `agent.orchestrator` | `src/lib/agent/orchestrator.ts:748` |
-| `agent.orchestrator.replan` | `src/lib/agent/orchestrator.ts:835` |
+| `agent.orchestrator` | `src/lib/agent/orchestrator.ts:767` |
+| `agent.orchestrator.replan` | `src/lib/agent/orchestrator.ts:860` |
 | `agent.readonly` | `src/lib/agent/client-adapter.ts:118` |
 | `authoring.ttrpg-campaign` | `src/lib/ttrpg/campaign-proposal-harness.ts:429` |
 | `canon.setting.extract` | `src/lib/agent/run/constitution-extraction-durable.ts:508` |
 | `chapter.content` | `src/lib/generation/chapter-generation-node.ts:23` |
 | `chapter.continue` | `src/lib/generation/chapter-generation-node.ts:26` |
 | `chapter.continuity` | `src/lib/node-authoring/domain-execution.ts:776`<br/>`src/lib/node-authoring/domain-execution.ts:840` |
-| `chapter.deai` | `src/components/editor/ChapterEditor.tsx:1707` |
-| `chapter.expand` | `src/components/editor/ChapterEditor.tsx:1685` |
-| `chapter.polish` | `src/components/editor/ChapterEditor.tsx:1675` |
+| `chapter.deai` | `src/components/editor/ChapterEditor.tsx:1690` |
+| `chapter.expand` | `src/components/editor/ChapterEditor.tsx:1668` |
+| `chapter.polish` | `src/components/editor/ChapterEditor.tsx:1658` |
 | `chapter.toolbar` | `src/lib/agent/run/selection-edit-durable.ts:567` |
 | `cultivation.progress` | `src/lib/agent/run/cultivation-progress-extraction-durable.ts:558` |
 | `detail.chapter-planning` | `src/lib/node-authoring/domain-execution.ts:605` |
@@ -360,7 +360,7 @@ AI 输出经 `adopt({ target, data })` 写回,只有这里登记的字段可写(
 | `review.outline-workshop` | `src/lib/outline/workshop.ts:457` |
 | `review.quality` | `src/components/editor/ReviewPanel.tsx:112` |
 | `review.readability` | `src/components/editor/ReviewPanel.tsx:133` |
-| `review.revise` | `src/components/editor/ChapterEditor.tsx:1735` |
+| `review.revise` | `src/components/editor/ChapterEditor.tsx:1718` |
 | `runtime.prose.ai-town-director` | `src/lib/ai-town/director-harness.ts:271` |
 | `runtime.ttrpg-gm` | `src/lib/ttrpg/decision-harness.ts:134` |
 | `runtime.ttrpg-player` | `src/lib/ttrpg/player-harness.ts:310` |
@@ -385,8 +385,8 @@ AI 输出经 `adopt({ target, data })` 写回,只有这里登记的字段可写(
 - `src/lib/agent/master-candidate-semantic-review.ts:601 · chat`
 - `src/lib/agent/outline-copilot.ts:492 · chat`
 - `src/lib/agent/outline-copilot.ts:742 · chat`
-- `src/lib/agent/prose-copilot.ts:642 · chat`
-- `src/lib/agent/prose-copilot.ts:908 · chat`
+- `src/lib/agent/prose-copilot.ts:662 · chat`
+- `src/lib/agent/prose-copilot.ts:928 · chat`
 - `src/lib/agent/run/codex-extraction-durable.ts:779 · chat`
 - `src/lib/agent/run/history-agent-durable.ts:514 · chat`
 - `src/lib/agent/run/reference-derived-durable.ts:506 · chat`
@@ -422,8 +422,8 @@ AI 输出经 `adopt({ target, data })` 写回,只有这里登记的字段可写(
 | `prose.selection.expand` | `prose.selection-edit` | `chapter.expand` | auxiliary / authoring-draft | `selection-expand-preview` | 禁止 | `src/components/editor/ChapterEditor.tsx` |
 | `prose.selection.deai` | `prose.selection-edit` | `chapter.deai` | auxiliary / authoring-draft | `selection-rewrite-preview` | 禁止 | `src/components/editor/ChapterEditor.tsx` |
 | `prose.chapter.revise` | `prose.revise` | `review.revise` | auxiliary / authoring-draft | `chapter-revision-preview` | 禁止 | `src/components/editor/ChapterEditor.tsx` |
-| `prose.chapter.memory` | `prose.memory` | `chapter.memory` | formal / durable-run | `chapter-memory-candidate` | `chapters` | `src/components/editor/ChapterEditor.tsx` |
-| `prose.chapter.organize` | `prose.organize` | `chapter.organize` | formal / durable-run | `chapter-organization-candidate` | `stateCards`<br/>`temporalFacts`<br/>`itemLedger`<br/>`storyTimelineEvents`<br/>`characterRelations`<br/>`foreshadows`<br/>`storylineProgress`<br/>`storylineCrossings`<br/>`storyArcs` | `src/components/editor/ChapterEditor.tsx` |
+| `prose.chapter.memory` | `prose.memory` | `chapter.memory` | formal / durable-run | `chapter-memory-candidate` | `chapters` | `src/components/editor/ChapterEditor.tsx`<br/>`src/lib/prose/post-adoption-runner.ts` |
+| `prose.chapter.organize` | `prose.organize` | `chapter.organize` | formal / durable-run | `chapter-organization-candidate` | `stateCards`<br/>`temporalFacts`<br/>`itemLedger`<br/>`storyTimelineEvents`<br/>`characterRelations`<br/>`foreshadows`<br/>`storylineProgress`<br/>`storylineCrossings`<br/>`storyArcs` | `src/components/editor/ChapterEditor.tsx`<br/>`src/lib/prose/post-adoption-runner.ts` |
 | `prose.review.quality` | `prose.review` | `review.quality` | auxiliary / read-only | `quality-review-report` | 禁止 | `src/components/editor/ReviewPanel.tsx` |
 | `prose.review.anti-ai` | `prose.review` | `review.anti-ai` | auxiliary / read-only | `anti-ai-review-report` | 禁止 | `src/components/editor/ReviewPanel.tsx` |
 | `prose.review.readability` | `prose.review` | `review.readability` | auxiliary / read-only | `readability-review-report` | 禁止 | `src/components/editor/ReviewPanel.tsx` |
@@ -437,12 +437,12 @@ AI 输出经 `adopt({ target, data })` 写回,只有这里登记的字段可写(
 | `outline.workshop.quality` | `prose.review` | `review.outline-workshop` | auxiliary / read-only | `outline-workshop-quality-report` | 禁止 | `src/lib/outline/workshop.ts` |
 | `outline.workshop.scenes` | `outline.chapters` | `outline.workshop.scenes` | formal / generation-node | `outline-workshop-scenes` | `outlineNodes` | `src/lib/outline/workshop.ts` |
 | `outline.volume.generate` | `outline.volumes` | `outline.volume` | formal / durable-run | `volume-outline-candidate` | `outlineNodes` | `src/lib/outline/generation-node.ts` |
-| `outline.chapter.generate` | `outline.chapters` | `outline.chapter` | formal / durable-run | `chapter-outline-candidate` | `outlineNodes` | `src/lib/outline/generation-node.ts` |
+| `outline.chapter.generate` | `outline.chapters` | `outline.chapter` | formal / durable-run | `chapter-outline-candidate` | `outlineNodes` | `src/lib/outline/generation-node.ts`<br/>`src/lib/outline/chunked-session.ts` |
 | `outline.chapter.review` | `outline.chapters` | `outline.review` | auxiliary / read-only | `outline-review-report` | 禁止 | `src/lib/outline/chapter-reviewer.ts` |
 | `outline.chapter.rewrite` | `outline.chapters` | `outline.rewrite` | formal / authoring-draft | `outline-rewrite-candidate` | `outlineNodes` | `src/lib/outline/chapter-reviewer.ts` |
 | `outline.chunked.generate` | `outline.chapters` | `outline.chunked-direction`<br/>`outline.chunked-chapters` | formal / authoring-draft | `chunked-outline-candidate` | `outlineNodes` | `src/lib/outline/chunked-generator.ts` |
 | `outline.detail.scene` | `outline.details` | `detail.scene` | formal / durable-run | `detailed-outline-candidate` | `detailedOutlines` | `src/components/outline/useDetailedOutlineGenerationController.ts` |
-| `outline.detail.enhance` | `outline.details` | `detail.enhance` | formal / durable-run | `detailed-outline-enhancement` | `detailedOutlines` | `src/components/outline/useDetailedOutlineGenerationController.ts` |
+| `outline.detail.enhance` | `outline.details` | `detail.enhance` | formal / durable-run | `detailed-outline-enhancement` | `detailedOutlines` | `src/components/outline/useDetailedOutlineGenerationController.ts`<br/>`src/lib/agent/detailed-outline-authoring.ts` |
 | `outline.detail.batch` | `outline.details` | `detail.enhance` | formal / durable-run | `detailed-outline-batch-candidate` | `detailedOutlines` | `src/lib/ai/batch-detail-runner.ts` |
 | `world.scene.verify` | `world-origin.review` | `scene.verify` | auxiliary / read-only | `scene-verification-report` | 禁止 | `src/components/scene/SceneVerifyPanel.tsx` |
 | `eval.context-compression` | `prose.review` | `eval.h17.compression`<br/>`eval.h17.generation` | evaluation / eval-only | `context-compression-eval-artifact` | 禁止 | `src/components/settings/HarnessEvalPanel.tsx` |
@@ -455,4 +455,4 @@ AI 输出经 `adopt({ target, data })` 写回,只有这里登记的字段可写(
 
 ---
 
-生成时间基准:commit `a3e4ec9d`
+生成时间基准:commit `c092cb37`

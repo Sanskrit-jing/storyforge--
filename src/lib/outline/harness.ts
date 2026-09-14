@@ -51,6 +51,7 @@ import {
   OUTLINE_GENERATION_TERMINAL_VERIFIER_V1,
   persistOutlineGenerationCandidateV1,
   type OutlineGenerationBatchRefV1,
+  type ChunkedOutlineCandidateRefV1,
   type OutlineGenerationCandidateV1,
 } from './candidate-lifecycle'
 import { outlineGatewayExecutionFromAssemblyV1 } from './gateway-context'
@@ -238,7 +239,7 @@ export interface OutlineGenerationTraceV1 extends GenerationNodeShadowTrace {
   readonly durable?: GenerationNodeDurableTraceV1
   readonly initializationError?: string
   readonly traceErrors: readonly string[]
-  persistCandidate: (output: string) => Promise<OutlineGenerationCandidateV1 | null>
+  persistCandidate: (output: string, chunked?: ChunkedOutlineCandidateRefV1) => Promise<OutlineGenerationCandidateV1 | null>
   terminateRun: (input: { status: 'failed' | 'cancelled'; code: string }) => Promise<void>
 }
 
@@ -347,7 +348,7 @@ function composeOutlineTraces(input: {
       }
       await trace.stepFailed(value)
     }),
-    async persistCandidate(output: string) {
+    async persistCandidate(output: string, chunked?: ChunkedOutlineCandidateRefV1) {
       if (!output.trim()) return null
       if (!input.durable || !input.scope || input.conversationId == null) {
         if (strict) throw new Error('正式大纲运行缺少 durable candidate store')
@@ -363,6 +364,7 @@ function composeOutlineTraces(input: {
         request: input.request,
         durable: input.durable,
         output,
+        chunked,
         batch: input.batch,
         contentRevision: input.contentRevision,
       })

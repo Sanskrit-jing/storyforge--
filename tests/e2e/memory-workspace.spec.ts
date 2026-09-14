@@ -1,3 +1,4 @@
+import { openLongformLeaf } from './helpers/longform-navigation'
 import { expect, test, type Page } from '@playwright/test'
 
 async function openCleanHome(page: Page) {
@@ -24,6 +25,11 @@ async function createProject(page: Page, name: string) {
   await expect(page).toHaveURL(/\/storyforge\/workspace\/\d+\?module=outline$/)
 }
 
+async function openWorkspaceLeaf(page: Page, name: string) {
+  if (await openLongformLeaf(page, name)) return
+  await sidebarButton(page, name).click()
+}
+
 function sidebarButton(page: Page, name: string) {
   return page.getByRole('navigation').getByText(name, { exact: true }).locator('xpath=ancestor::button[1]')
 }
@@ -42,26 +48,26 @@ test('本地记忆工作区以真实浏览器文件系统完成手动双向核�
   await openCleanHome(page)
   await createProject(page, 'OPFS 记忆验收')
 
-  await sidebarButton(page, '设置').click()
+  await openWorkspaceLeaf(page, '设置')
   const storageSettings = page.getByTestId('project-storage-workspace-settings')
   await expect(storageSettings.getByRole('heading', { name: '项目存储工作区', exact: true })).toBeVisible()
   await expect(storageSettings.getByText(/已关联/)).toBeVisible()
   await expect(storageSettings.getByRole('button', { name: '更换位置', exact: true })).toBeVisible()
 
   // Seed high-value author semantics through the real UI before the first disk baseline.
-  await sidebarButton(page, '故事设计').click()
+  await openWorkspaceLeaf(page, '故事设计')
   await page.getByText('点击填写一句话故事…', { exact: true }).click()
   await page.getByPlaceholder('点击填写一句话故事…').fill('浏览器创建的潮汐记忆故事')
   await page.getByPlaceholder('点击填写一句话故事…').press('Tab')
   await expect(page.getByText('浏览器创建的潮汐记忆故事', { exact: true })).toBeVisible()
 
-  await sidebarButton(page, '创作规则').click()
+  await openWorkspaceLeaf(page, '创作规则')
   const writingStyle = page.getByPlaceholder(/描述期望的写作风格/)
   await writingStyle.fill('浏览器创建的克制证据文风')
   await writingStyle.press('Tab')
   await expect(writingStyle).toHaveValue('浏览器创建的克制证据文风')
 
-  await sidebarButton(page, '数据管理').click()
+  await openWorkspaceLeaf(page, '数据管理')
   await expect(page.getByRole('heading', { name: '数据管理', exact: true })).toBeVisible()
 
   await expect(page.getByRole('button', { name: '选择本地文件夹', exact: true })).toHaveCount(0)
@@ -128,11 +134,11 @@ test('本地记忆工作区以真实浏览器文件系统完成手动双向核�
   await page.getByRole('button', { name: '确认采纳本地改动', exact: true }).click()
   await expect(page.getByText('本地文件改动已采纳，并完成数据库与文件回读核对', { exact: true }))
     .toBeVisible({ timeout: 15_000 })
-  await sidebarButton(page, '故事设计').click()
+  await openWorkspaceLeaf(page, '故事设计')
   await expect(page.getByText('硬盘修订的潮汐记忆故事', { exact: true })).toBeVisible()
-  await sidebarButton(page, '创作规则').click()
+  await openWorkspaceLeaf(page, '创作规则')
   await expect(page.getByPlaceholder(/描述期望的写作风格/)).toHaveValue('硬盘修订的克制证据文风')
-  await sidebarButton(page, '数据管理').click()
+  await openWorkspaceLeaf(page, '数据管理')
 
   await page.evaluate(async ({ workPath }) => {
     const parts = workPath.split('/').filter(Boolean)
@@ -158,7 +164,7 @@ test('本地记忆工作区以真实浏览器文件系统完成手动双向核�
   // The storage location can be changed from Settings. Rebinding alone is
   // still zero-write; the new location is initialized only after self-check
   // and explicit confirmation.
-  await sidebarButton(page, '设置').click()
+  await openWorkspaceLeaf(page, '设置')
   await storageSettings.getByRole('button', { name: '更换位置', exact: true }).click()
   await expect(storageSettings.getByText(/存储位置已改为“custom-location”/)).toBeVisible()
   expect(await page.evaluate(async () => {

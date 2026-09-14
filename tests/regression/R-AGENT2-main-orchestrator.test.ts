@@ -255,7 +255,7 @@ describe('AGENT-2 · 主 Agent 编排与持久会话', () => {
     expect(complete).not.toHaveBeenCalled()
   })
 
-  it('同轮新建章纲和正文会分阶段，只先返回可确认的大纲任务', async () => {
+  it('同轮新建章纲和正文保留全部任务，并冻结作者确认屏障', async () => {
     const plan = await createMasterAgentPlan({
       projectId: project.id!,
       worldGroupId: null,
@@ -270,7 +270,9 @@ describe('AGENT-2 · 主 Agent 编排与持久会话', () => {
       }),
     })
     expect(plan.summary).toContain('先生成并确认章节大纲')
-    expect(plan.tasks.map(task => task.agentId)).toEqual(['outline'])
+    expect(plan.tasks.map(task => task.agentId)).toEqual(['outline', 'prose'])
+    expect(plan.workflow?.workflowId).toBe('staged-author-confirmed')
+    expect(plan.tasks[1].dependsOn).toContain('outline')
   })
 
   it('没有 durable Harness 绑定的候选不能重新进入正式编辑', async () => {

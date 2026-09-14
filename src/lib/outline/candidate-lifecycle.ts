@@ -1,3 +1,4 @@
+import { parseChapterOutlineOutput } from '../ai/parse-outline-output'
 import {
   appendAgentRunEventV1,
   createVerificationReceiptV1,
@@ -52,6 +53,14 @@ export interface OutlineGenerationBatchRefV1 {
   predecessorCandidateHash?: string
 }
 
+export interface ChunkedOutlineCandidateRefV1 {
+  sessionId: string
+  blockIndex: number
+  blockTotal: number
+  predecessorRunId?: number
+  rawOutput: string
+}
+
 export interface OutlineGenerationCandidatePayloadV1 {
   version: 1
   type: typeof OUTLINE_GENERATION_CANDIDATE_PAYLOAD_TYPE
@@ -60,6 +69,7 @@ export interface OutlineGenerationCandidatePayloadV1 {
   operation: string
   candidateHash: string
   batch?: OutlineGenerationBatchRefV1
+  chunked?: ChunkedOutlineCandidateRefV1
   /** Absent on candidates created before WEH-0C. */
   contentRevision?: WorkspaceContentRevisionVectorV1
 }
@@ -145,11 +155,26 @@ export async function persistOutlineGenerationCandidateV1(input: {
   durable: GenerationNodeDurableTraceV1
   output: string
   batch?: OutlineGenerationBatchRefV1
+  chunked?: ChunkedOutlineCandidateRefV1
   contentRevision?: WorkspaceContentRevisionVectorV1
 }): Promise<OutlineGenerationCandidateV1 | null> {
   if (!input.output.trim()) return null
   const batch = input.batch == null ? null : parseOutlineGenerationBatchRef(input.batch)
   if (input.batch != null && !batch) throw new Error('批量章纲候选引用不符合受控结构')
+  if (input.chunked) {
+    const ref = input.chunked
+    if (!validChunkedRef(ref)) throw new Error('精细章纲候选来源不合法')
+    let prefix: ReturnType<typeof parseChapterOutlineOutput> = []
+    if (ref.predecessorRunId != null) {
+      const previous = await readOutlineGenerationCandidateV1(input.scope, ref.predecessorRunId)
+      if (!previous?.chunked || previous.chunked.sessionId !== ref.sessionId
+        || previous.chunked.blockIndex + 1 !== ref.blockIndex
+        || previous.operation !== encodeGenerationOperation(input.request)
+        || previous.worldGroupId !== input.durable.projection().worldGroupId) throw new Error('精细章纲前序候选不匹配')
+      prefix = parseChapterOutlineOutput(previous.output)
+    }
+    if (input.output !== JSON.stringify([...prefix, ...parseChapterOutlineOutput(ref.rawOutput)])) throw new Error('精细章纲合并结果与原始响应不一致')
+  }
   const candidateHash = await hashCanonicalValue(input.output)
   const operation = encodeGenerationOperation(input.request)
   const payload: OutlineGenerationCandidatePayloadV1 = {
@@ -160,10 +185,11 @@ export async function persistOutlineGenerationCandidateV1(input: {
     operation,
     candidateHash,
     ...(batch ? { batch } : {}),
+    ...(input.chunked ? { chunked: input.chunked } : {}),
     ...(input.contentRevision ? { contentRevision: input.contentRevision } : {}),
   }
   const candidateEvent = await input.durable.commitCandidate({
-    output: input.output,
+    output: input.chunked?.rawOutput ?? input.output,
     candidateHash,
     requiresConfirmation: true,
     persistCandidate: () => appendAgentEvent({
@@ -188,6 +214,18 @@ export async function persistOutlineGenerationCandidateV1(input: {
   }
 }
 
+function validChunkedRef(ref: ChunkedOutlineCandidateRefV1): boolean {
+  return typeof ref.sessionId === 'string' && /^[a-zA-Z0-9_-]{8,120}$/.test(ref.sessionId)
+    && Number.isInteger(ref.blockTotal) && ref.blockTotal >= 1 && ref.blockTotal <= 7
+    && Number.isInteger(ref.blockIndex) && ref.blockIndex >= 0 && ref.blockIndex < ref.blockTotal
+    && typeof ref.rawOutput === 'string' && ref.rawOutput.trim().length > 0
+    && (ref.blockIndex === 0 ? ref.predecessorRunId == null : Number.isInteger(ref.predecessorRunId) && ref.predecessorRunId! > 0)
+}
+
+export async function readOutlineGenerationCandidateV1(scope: WorkspaceScope, runId: number): Promise<OutlineGenerationCandidateV1 | null> {
+  return candidateForSnapshot(scope, await readAgentRunV1(scope, runId))
+}
+
 function parseOutlineCandidatePayload(event: AgentEvent): OutlineGenerationCandidatePayloadV1 | null {
   const payload = parseAgentEventPayload<Partial<OutlineGenerationCandidatePayloadV1>>(event, {})
   const batch = parseOutlineGenerationBatchRef(payload.batch)
@@ -209,6 +247,7 @@ function parseOutlineCandidatePayload(event: AgentEvent): OutlineGenerationCandi
     || payload.stepId !== payload.operation
     || typeof payload.candidateHash !== 'string'
     || !/^[a-f0-9]{64}$/.test(payload.candidateHash)
+    || (payload.chunked != null && !validChunkedRef(payload.chunked))
     || (payload.batch != null && !batch)
   ) return null
   return {
@@ -328,13 +367,17 @@ async function resolveOutlineCandidate(input: OutlineGenerationCandidateV1): Pro
     || payload.candidateHash !== input.candidateHash
     || await hashCanonicalValue(event.content) !== input.candidateHash
   ) throw new Error('大纲候选正文或来源证据已损坏')
+  if (payload.chunked && !(await candidateForSnapshot(scope, snapshot))) throw new Error('精细章纲的原始响应或前序证据已损坏')
   return { scope, snapshot }
 }
 
 async function candidateForSnapshot(
   scope: WorkspaceScope,
   snapshot: AgentRunSnapshotV1,
+  seen = new Set<number>(),
 ): Promise<OutlineGenerationCandidateV1 | null> {
+  if (seen.has(snapshot.run.id)) return null
+  seen.add(snapshot.run.id)
   const conversationId = snapshot.run.conversationId
   if (conversationId == null) return null
   const step = Object.values(snapshot.projection.steps).find(item => item.candidateHash)
@@ -350,6 +393,20 @@ async function candidateForSnapshot(
       || payload.candidateHash !== step.candidateHash
       || await hashCanonicalValue(event.content) !== payload.candidateHash
     ) continue
+    if (payload.chunked) {
+      const ref = payload.chunked
+      const rawHash = await hashCanonicalValue(ref.rawOutput)
+      if (!snapshot.events.some(row => row.type === 'model.responded' && row.payload.stepId === payload.stepId && row.payload.outputHash === rawHash)) continue
+      let prefix: ReturnType<typeof parseChapterOutlineOutput> = []
+      if (ref.predecessorRunId != null) {
+        const previous = await candidateForSnapshot(scope, await readAgentRunV1(scope, ref.predecessorRunId), seen)
+        if (!previous?.chunked || previous.chunked.sessionId !== ref.sessionId || previous.chunked.blockTotal !== ref.blockTotal
+          || previous.chunked.blockIndex + 1 !== ref.blockIndex || previous.operation !== payload.operation
+          || previous.worldGroupId !== (snapshot.run.worldGroupId ?? null)) continue
+        prefix = parseChapterOutlineOutput(previous.output)
+      }
+      if (event.content !== JSON.stringify([...prefix, ...parseChapterOutlineOutput(ref.rawOutput)])) continue
+    }
     return {
       ...payload,
       projectId: snapshot.run.projectId,
@@ -374,7 +431,7 @@ export async function restoreLatestOutlineGenerationCandidateV1(
       const snapshot = await readAgentRunV1(scope, run.id!)
       if (snapshot.projection.state !== 'awaiting_confirmation') continue
       const candidate = await candidateForSnapshot(scope, snapshot)
-      if (candidate && !candidate.batch) return candidate
+      if (candidate && !candidate.batch && !candidate.chunked) return candidate
     } catch {
       // A corrupt or cross-scope ledger must not become a recoverable candidate.
     }

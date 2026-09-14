@@ -31,8 +31,8 @@ function StoryArcComplianceDisplay({ compliance }: { compliance?: StoryArcCompli
       </div>
 
       <div className="flex items-center gap-2">
-        <div className={`px-2 py-0.5 rounded text-[10px] font-medium ${getScoreBg(compliance.score)} ${getScoreColor(compliance.score)}`}>
-          {compliance.score}%
+        <div className={`px-2 py-0.5 rounded text-[10px] font-medium ${getScoreBg(compliance.score ?? 0)} ${getScoreColor(compliance.score ?? 0)}`}>
+          {compliance.score == null ? '未评估' : `${compliance.score}%`}
         </div>
 
         {compliance.coveredEvents.length > 0 && (
@@ -104,7 +104,7 @@ export default function ChunkedGenerationPanel({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Check className="w-4 h-4 text-success" />
-            <span className="text-sm font-medium text-text-primary">精细生成完成</span>
+            <span className="text-sm font-medium text-text-primary">{result.cancelled ? '已保存的部分章纲' : '精细生成完成'}</span>
           </div>
           <div className="flex gap-2">
             <button
@@ -115,9 +115,10 @@ export default function ChunkedGenerationPanel({
             </button>
             <button
               onClick={onApplyResult}
+              disabled={isRunning}
               className="px-3 py-1.5 text-xs text-white bg-accent rounded hover:bg-accent-hover"
             >
-              应用结果
+              {isRunning ? '正在采纳…' : '采纳这些章纲'}
             </button>
           </div>
         </div>

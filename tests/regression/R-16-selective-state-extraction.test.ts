@@ -20,16 +20,15 @@ describe('R-16: selective state extraction wiring', () => {
   })
 
   it('auto post-generation organization uses selective recall and does not restore the state-only model bypass', () => {
-    const source = readFileSync(sourcePath, 'utf8')
-    const body = source.slice(
-      source.indexOf('const handleAutoPostGenerate = async (task: {'),
-      source.indexOf('const handleAcceptAI = async (text: string) => {'),
-    )
+    const editor = readFileSync(sourcePath, 'utf8')
+    expect(editor).toContain('await runChapterPostAdoptionV1({')
+    const body = readFileSync(resolve(process.cwd(), 'src/lib/prose/post-adoption-runner.ts'), 'utf8')
 
     expect(body).toContain('sourceKeys: [...sourceKeys]')
     expect(body).toContain('CHAPTER_POST_ADOPTION_STEP_SOURCE_KEYS_V1.organization')
     expect(body).toContain('stateReferenceText: task.chapterPlainText')
-    expect(body).toContain('buildSelectiveStateContext(task.chapterPlainText, extraStateIds).text')
+    expect(body).toContain("organizationAssembly.included[index] === 'stateCards'")
+    expect(body).toContain('extraStateIds,')
     expect(body.match(/runChapterOrganization\(/g)).toHaveLength(1)
     expect(body).not.toContain('stateAI.start(')
     expect(body).not.toContain('buildStateExtractPrompt(')

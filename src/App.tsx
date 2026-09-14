@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router'
 
 const MistHarborPage = lazy(() => import('./pages/MistHarborPage'))
 const ProductHubPage = lazy(() => import('./pages/ProductHubPage'))
+const LongformLibraryPage = lazy(() => import('./pages/LongformLibraryPage'))
 const WorkspacePage = lazy(() => import('./pages/WorkspacePage'))
 const TtrpgCommunityPage = lazy(() => import('./pages/TtrpgCommunityPage'))
 const TtrpgSessionPage = lazy(() => import('./pages/TtrpgSessionPage'))
@@ -21,6 +22,7 @@ export default function App() {
       <Route path="/play/mist-harbor" element={<Suspense fallback={<RouteFallback />}><MistHarborPage /></Suspense>} />
       <Route path="/play/:gameKey" element={<Suspense fallback={<RouteFallback />}><TtrpgCommunityPage /></Suspense>} />
       <Route path="/settings" element={<Suspense fallback={<RouteFallback />}><SettingsRoutePage /></Suspense>} />
+      <Route path="/long" element={<Suspense fallback={<RouteFallback />}><LongformLibraryPage /></Suspense>} />
       <Route path="/workspace/:projectId" element={<Suspense fallback={<RouteFallback />}><WorkspacePage /></Suspense>} />
     </Routes>
   )

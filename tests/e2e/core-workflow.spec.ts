@@ -1,3 +1,4 @@
+import { openLongformLeaf } from './helpers/longform-navigation'
 import { expect, test, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { currentWorldReleasePanel, publishCurrentWorldRelease } from './helpers/world-release'
@@ -18,6 +19,11 @@ async function createProject(page: Page, name: string) {
   await page.getByRole('button', { name: '创建长篇小说', exact: true }).click()
   await expect(page).toHaveURL(/\/storyforge\/workspace\/\d+\?module=outline$/)
   await expect(page.getByTitle(name)).toBeVisible()
+}
+
+async function openWorkspaceLeaf(page: Page, name: string) {
+  if (await openLongformLeaf(page, name)) return
+  await sidebarButton(page, name).click()
 }
 
 function sidebarButton(page: Page, name: string) {
@@ -376,6 +382,7 @@ test('世界引擎可生成并预检本地世界分享包，再导入为新编�
 })
 
 async function openSidebarLeaf(page: Page, branchName: string, leafName: string) {
+  if (await openLongformLeaf(page, leafName)) return
   const leaf = sidebarButton(page, leafName)
   const branch = sidebarButton(page, branchName)
   // 对真实 branch 做一次显式归一：若点击后叶子消失，说明刚才是关闭，再点一次打开。
@@ -403,7 +410,7 @@ async function expectNumericInputValue(locator: ReturnType<Page['getByPlaceholde
 async function createBookWithSavedChapter(page: Page, projectName: string, chapterText: string) {
   await openCleanHome(page)
   await createProject(page, projectName)
-  await page.getByRole('button', { name: '大纲', exact: true }).click()
+  await openWorkspaceLeaf(page, '大纲')
   await page.getByRole('button', { name: '添加卷', exact: true }).click()
   await expectInputValue(page, '第1卷')
   await page.getByRole('button', { name: '添加章节', exact: true }).click()
@@ -421,8 +428,8 @@ async function createBookWithSavedChapter(page: Page, projectName: string, chapt
 test('新用户可创建项目并进入工作区', async ({ page }) => {
   await openCleanHome(page)
   await createProject(page, 'E2E 创建项目')
-  await expect(page.getByRole('button', { name: '大纲', exact: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: '章节', exact: true })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: '长篇工作台二级导航' }).getByRole('button', { name: '大纲与章纲', exact: true })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: '长篇工作台二级导航' }).getByRole('button', { name: '正文', exact: true })).toBeVisible()
 })
 
 test('领域节点模式可自由建图、运行、刷新恢复并完整清理', async ({ page }) => {
@@ -564,7 +571,7 @@ test('可见资料库精确选择字段，节点冻结权重与实际召回', as
   await page.getByRole('textbox', { name: originPlaceholder }).fill('潮汐退去后，第一座浮空城从海床升起。')
   await page.getByRole('heading', { name: '🌌 世界来源' }).click()
 
-  await sidebarButton(page, '资料与检索库').click()
+  await openWorkspaceLeaf(page, '资料与检索库')
   await expect(page.getByRole('heading', { name: '资料与检索库', exact: true })).toBeVisible()
   await page.getByText('世界观主世界观', { exact: true }).click()
   await expect(page.getByText('潮汐退去后，第一座浮空城从海床升起。', { exact: true })).toBeVisible()
@@ -572,7 +579,7 @@ test('可见资料库精确选择字段，节点冻结权重与实际召回', as
   await worldviewResource.getByRole('spinbutton', { name: '默认权重' }).fill('2.5')
   await expect(worldviewResource.getByRole('spinbutton', { name: '默认权重' })).toHaveValue('2.5')
 
-  await sidebarButton(page, '节点模式').click()
+  await openWorkspaceLeaf(page, '节点模式')
   await page.getByRole('button', { name: '创建空白节点图', exact: true }).click()
   await page.getByRole('button', { name: /^项目资料/ }).click()
   await page.getByText('项目资料', { exact: true }).last().click()
@@ -585,7 +592,7 @@ test('可见资料库精确选择字段，节点冻结权重与实际召回', as
   await expect(page.getByLabel('候选输出')).toContainText('第一座浮空城')
 
   await page.reload()
-  await sidebarButton(page, '资料与检索库').click()
+  await openWorkspaceLeaf(page, '资料与检索库')
   await expect(page.getByText(/项目资料 · .*纳入 1 \/ 省略 0 \/ 裁剪 0/)).toBeVisible()
 })
 
@@ -593,7 +600,7 @@ test('人文知识主入口可保存拆分概述，并安全关联与断开城�
   await openCleanHome(page)
   await createProject(page, 'E2E 世界知识归并')
 
-  await sidebarButton(page, '重要地点').click()
+  await openWorkspaceLeaf(page, '重要地点')
   await expect(page.getByRole('heading', { name: '📍 重要地点' })).toBeVisible()
   await page.getByRole('button', { name: '添加地点', exact: true }).click()
   await page.getByRole('button', { name: '列表', exact: true }).click()
@@ -601,12 +608,12 @@ test('人文知识主入口可保存拆分概述，并安全关联与断开城�
   await page.getByRole('heading', { name: '📍 重要地点' }).click()
   await expect(page.getByText('雁门关', { exact: true })).toBeVisible()
 
-  await sidebarButton(page, '人文环境').click()
+  await openWorkspaceLeaf(page, '人文环境')
   await expect(page.getByRole('heading', { name: '🏛️ 人文环境与社会' })).toBeVisible()
   await expect(page.getByRole('button', { name: /打开正式历史年表/ })).toBeVisible()
   await page.getByRole('button', { name: /打开正式历史年表/ }).click()
   await expect(page.getByRole('heading', { name: '📜 历史年表与时间线' })).toBeVisible()
-  await sidebarButton(page, '人文环境').click()
+  await openWorkspaceLeaf(page, '人文环境')
   await page.getByRole('button', { name: /政治制度/ }).click()
   await page.getByText('政体、官制、法律、军事、外交、权力主体与阶层结构').last().click()
   await page.locator('textarea').last().fill('议政院与六部共同治理')
@@ -619,21 +626,21 @@ test('人文知识主入口可保存拆分概述，并安全关联与断开城�
   await expect(page.getByText('地点关联已保存', { exact: true })).toBeVisible()
 
   await page.reload()
-  await sidebarButton(page, '人文环境').click()
+  await openWorkspaceLeaf(page, '人文环境')
   await page.getByRole('button', { name: /政治制度/ }).click()
   await expect(page.getByText('议政院与六部共同治理', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: /城池重镇/ }).click()
   await page.getByText('雁门城', { exact: true }).click()
   await expect(page.getByLabel('城池重要地点')).toHaveValue(/\d+/)
 
-  await sidebarButton(page, '重要地点').click()
+  await openWorkspaceLeaf(page, '重要地点')
   await page.getByRole('button', { name: '列表', exact: true }).click()
   await page.getByText('雁门关', { exact: true }).click()
   await page.getByRole('button', { name: '删除地点', exact: true }).click()
   await page.getByRole('button', { name: '确认', exact: true }).click()
   await expect(page.getByText('雁门关', { exact: true })).toHaveCount(0)
 
-  await sidebarButton(page, '人文环境').click()
+  await openWorkspaceLeaf(page, '人文环境')
   await page.getByRole('button', { name: /城池重镇/ }).click()
   await page.getByText('雁门城', { exact: true }).click()
   await expect(page.getByLabel('城池重要地点')).toHaveValue('')
@@ -645,10 +652,10 @@ test('建卷建章、保存正文、刷新恢复并导出正文与隐私诊断',
   await createBookWithSavedChapter(page, projectName, chapterText)
 
   await page.reload()
-  await page.getByRole('button', { name: '章节', exact: true }).click()
+  await openWorkspaceLeaf(page, '章节')
   await expect(page.locator('.tiptap-editor')).toContainText(chapterText)
 
-  await page.getByRole('button', { name: '数据管理', exact: true }).click()
+  await openWorkspaceLeaf(page, '数据管理')
   const markdownDownload = page.waitForEvent('download')
   await page.getByRole('button', { name: '导出 Markdown', exact: true }).click()
   const markdown = await markdownDownload
@@ -732,7 +739,7 @@ test('局部改写只读取冻结选区，刷新恢复候选并在作者确认�
   expect(selectionEditCalls).toBe(1)
 
   await page.reload()
-  await sidebarButton(page, '章节').click()
+  await openWorkspaceLeaf(page, '章节')
   await expect(page.getByText('候选尚未写入正文', { exact: true })).toBeVisible()
   await expect(page.getByText(replacementText, { exact: true })).toBeVisible()
   await expect(editor).toContainText(sourceText)
@@ -745,7 +752,7 @@ test('局部改写只读取冻结选区，刷新恢复候选并在作者确认�
   expect(selectionEditCalls).toBe(1)
 
   await page.reload()
-  await sidebarButton(page, '章节').click()
+  await openWorkspaceLeaf(page, '章节')
   await expect(page.getByText('候选尚未写入正文', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: '确认替换', exact: true }).click()
   await expect(editor).toContainText(`暮色沉入河谷，${replacementText}守门人抬头望向北方，认出了久违的归鸟。`)
@@ -753,7 +760,7 @@ test('局部改写只读取冻结选区，刷新恢复候选并在作者确认�
   expect(selectionEditCalls).toBe(1)
 
   await page.reload()
-  await sidebarButton(page, '章节').click()
+  await openWorkspaceLeaf(page, '章节')
   await expect(editor).toContainText(replacementText)
 })
 
@@ -819,7 +826,7 @@ test('整理本章只调用一次模型，刷新恢复候选并在确认后写�
   await expect(page.getByText('还没有故事年表', { exact: true })).toBeVisible()
 
   await page.reload()
-  await sidebarButton(page, '章节').click()
+  await openWorkspaceLeaf(page, '章节')
   await page.getByRole('button', { name: '查看整理结果', exact: true }).click()
   await expect(modal.getByText('旧城门开启 · 重要度 2', { exact: true })).toBeVisible()
   expect(organizationCalls).toBe(1)
@@ -884,7 +891,7 @@ test('一致性 Agent 显式单次检测，刷新恢复只读报告且不写业�
   expect(consistencyCalls).toBe(1)
 
   await page.reload()
-  await sidebarButton(page, '章节').click()
+  await openWorkspaceLeaf(page, '章节')
   await page.getByRole('button', { name: '质量审校', exact: true }).click()
   await page.locator('main').getByText('一致性', { exact: true }).last().click()
   await expect(page.getByText('当前正文报告 · Fast Guard', { exact: false })).toBeVisible()
@@ -902,7 +909,7 @@ test('智能实体改名先预览，再原子同步正文与角色主档并可�
     '顾临川踏入山门。顾临川望见远处灯火。',
   )
 
-  await sidebarButton(page, '角色生成').click()
+  await openWorkspaceLeaf(page, '角色生成')
   await page.getByRole('button', { name: '新建角色', exact: true }).click()
   await page.getByRole('button', { name: '主要', exact: true }).click()
   await page.getByRole('button', { name: '绝对中立', exact: true }).click()
@@ -912,7 +919,7 @@ test('智能实体改名先预览，再原子同步正文与角色主档并可�
   await page.locator('input.text-2xl').press('Enter')
   await expect(page.locator('div.cursor-text.text-2xl')).toHaveText('顾临川')
 
-  await sidebarButton(page, '章节').click()
+  await openWorkspaceLeaf(page, '章节')
   await page.getByRole('button', { name: '查找替换', exact: true }).click()
   await page.getByRole('button', { name: '智能实体改名', exact: true }).click()
   await page.getByRole('combobox', { name: '选择稳定实体' }).selectOption({
@@ -997,7 +1004,7 @@ test('对照润色沉淀有界样本，并完成文风画像与互动校准闭�
   await page.getByRole('button', { name: '创建快照并保存', exact: true }).click()
   await expect(page.getByRole('region', { name: '对照润色' })).toHaveCount(0)
 
-  await sidebarButton(page, '文风学习').click()
+  await openWorkspaceLeaf(page, '文风学习')
   await expect(page.getByRole('heading', { name: '文风学习', exact: true })).toBeVisible()
   await expect(page.getByText('已保存 1 / 8 组', { exact: false })).toBeVisible()
   await expect(page.getByText('他非常快速地跑过长街', { exact: false })).toBeVisible()
@@ -1025,7 +1032,7 @@ test('对照润色沉淀有界样本，并完成文风画像与互动校准闭�
   expect(beforeConfirmation.runs).toEqual([expect.objectContaining({ status: 'awaiting_confirmation' })])
 
   await page.reload()
-  await sidebarButton(page, '文风学习').click()
+  await openWorkspaceLeaf(page, '文风学习')
   await expect(page.getByText('已恢复待确认文风候选；没有重复调用模型。', { exact: true })).toBeVisible()
   await expect(page.getByLabel('待确认文风画像')).toHaveValue(/偏爱克制动词/)
   expect(styleLearningCalls).toBe(1)
@@ -1076,7 +1083,7 @@ test('对照润色沉淀有界样本，并完成文风画像与互动校准闭�
   await expect(page.getByText('已保存 2 / 8 组', { exact: false })).toBeVisible()
 
   await page.reload()
-  await sidebarButton(page, '文风学习').click()
+  await openWorkspaceLeaf(page, '文风学习')
   await expect(page.getByText('已保存 2 / 8 组', { exact: false })).toBeVisible()
   await expect(page.locator('textarea[placeholder*="文风画像"]')).toHaveValue(/偏爱克制动词/)
   expect(styleLearningCalls).toBe(1)
@@ -1087,7 +1094,7 @@ test('完整 JSON 导出后可重新导入且正文不丢', async ({ page }) => 
   const projectName = 'E2E JSON 往返'
   const chapterText = '这段正文必须跟随完整 JSON 备份恢复。'
   await createBookWithSavedChapter(page, projectName, chapterText)
-  await page.getByRole('button', { name: '数据管理', exact: true }).click()
+  await openWorkspaceLeaf(page, '数据管理')
 
   const exportDownload = page.waitForEvent('download')
   await page.getByRole('button', { name: '导出 JSON', exact: true }).click()
@@ -1099,14 +1106,14 @@ test('完整 JSON 导出后可重新导入且正文不丢', async ({ page }) => 
   await page.getByRole('button', { name: '导入 JSON', exact: true }).click()
   await (await fileChooser).setFiles(backupPath!)
   await expect(page).toHaveURL(/\/storyforge\/workspace\/\d+$/)
-  await page.getByRole('button', { name: '章节', exact: true }).click()
+  await openWorkspaceLeaf(page, '章节')
   await expect(page.locator('.tiptap-editor')).toContainText(chapterText)
 })
 
 test('手动快照可恢复为新项目且不覆盖原项目', async ({ page }) => {
   const projectName = 'E2E 快照恢复'
   await createBookWithSavedChapter(page, projectName, '快照中的正文内容。')
-  await page.getByRole('button', { name: '版本历史', exact: true }).click()
+  await openWorkspaceLeaf(page, '版本历史')
   await page.getByPlaceholder('快照名称（可选 — 留空使用时间戳）').fill('E2E 手动快照')
   await page.getByRole('button', { name: '创建快照', exact: true }).click()
   await expect(page.getByText('E2E 手动快照')).toBeVisible()
@@ -1170,15 +1177,15 @@ test('取消删除安全门后项目与正文都保留', async ({ page }) => {
 test('上下文窗口、四类通用任务与主 Agent 角色模型路由跨模块和刷新保留', async ({ page }) => {
   await openCleanHome(page)
   await createProject(page, 'E2E AI 配置持久化')
-  await sidebarButton(page, '设置').click()
+  await openWorkspaceLeaf(page, '设置')
 
   const contextWindow = page.getByPlaceholder('本地/自定义模型请按实际填写，如 131072；留空 = 用内置预设')
   await contextWindow.fill('2,100,000')
   await expect(page.getByText('2,100,000 token', { exact: false })).toBeVisible()
   await expect(page.getByText('已自动保存到当前配置', { exact: true })).toBeVisible()
 
-  await sidebarButton(page, '数据管理').click()
-  await sidebarButton(page, '设置').click()
+  await openWorkspaceLeaf(page, '数据管理')
+  await openWorkspaceLeaf(page, '设置')
   await expectNumericInputValue(contextWindow, 2_100_000)
 
   await page.getByRole('button', { name: '＋ 保存当前为预设', exact: true }).click()
@@ -1214,7 +1221,7 @@ test('上下文窗口、四类通用任务与主 Agent 角色模型路由跨模�
   await page.getByLabel('主 Agent 团队总预算').selectOption('economy')
 
   await page.reload()
-  await sidebarButton(page, '设置').click()
+  await openWorkspaceLeaf(page, '设置')
   await expectNumericInputValue(contextWindow, 2_100_000)
   await expect(page.getByLabel('创作生成模型预设')).toHaveValue(await page.getByLabel('结构提取模型预设').inputValue())
   await expect(page.getByLabel('分析总结模型预设')).toHaveValue(await page.getByLabel('审查校验模型预设').inputValue())
@@ -1237,7 +1244,7 @@ test('本地 OpenAI 兼容服务可刷新并保存模型列表', async ({ page }
   })
   await openCleanHome(page)
   await createProject(page, 'E2E 本地模型刷新')
-  await sidebarButton(page, '设置').click()
+  await openWorkspaceLeaf(page, '设置')
 
   const provider = page.locator('label:has-text("提供商") + select')
   await provider.selectOption('ollama')
@@ -1252,7 +1259,7 @@ test('本地 OpenAI 兼容服务可刷新并保存模型列表', async ({ page }
   await expect(baseUrl).toHaveValue('http://localhost:1234/v1')
 
   await page.reload()
-  await sidebarButton(page, '设置').click()
+  await openWorkspaceLeaf(page, '设置')
   await expect(page.locator('input[placeholder="手动输入模型名"]')).toHaveValue('qwen-local')
   await expect(baseUrl).toHaveValue('http://localhost:1234/v1')
 })
@@ -1321,7 +1328,8 @@ test('主 Agent 调度世界领域任务，拒绝零写入并精确采纳可见�
   const candidate = copilot.getByRole('textbox', { name: '世界来源候选内容' })
 
   await request.fill('生成一段世界来源，包含文明起点')
-  await copilot.getByRole('button', { name: '交给主 Agent', exact: true }).click()
+  await copilot.getByRole('button', { name: '讨论与规划', exact: true }).click()
+  await copilot.getByRole('button', { name: '确认计划并开始', exact: true }).click()
   await expect(candidate).toContainText(firstCandidate.value)
   await expect(copilot.getByText(/均衡 · ≈[\d,]+ tokens/)).toBeVisible()
   await expect(copilot.getByText(/查看本次实际输入证据 · \d+ 个来源/)).toBeVisible()
@@ -1343,7 +1351,8 @@ test('主 Agent 调度世界领域任务，拒绝零写入并精确采纳可见�
   expect(formalWorldOriginAfterReject).not.toContain(firstCandidate.value)
 
   await request.fill('重新生成一段世界来源')
-  await copilot.getByRole('button', { name: '交给主 Agent', exact: true }).click()
+  await copilot.getByRole('button', { name: '讨论与规划', exact: true }).click()
+  await copilot.getByRole('button', { name: '确认计划并开始', exact: true }).click()
   await expect(candidate).toContainText(secondCandidate.value)
   const edited = {
     ...secondCandidate,
@@ -1671,7 +1680,7 @@ test('灵感反推主面板通过定向 durable Skill 生成、恢复、拒绝�
 
   await openCleanHome(page)
   await createProject(page, 'E2E 灵感副驾确认闭环')
-  await sidebarButton(page, '灵感反推').click()
+  await openWorkspaceLeaf(page, '灵感反推')
   await page.getByPlaceholder(/随便写点什么/).fill('退潮后城市从海床升起，守灯人听见潮汐钟。')
   await page.getByPlaceholder('碎片标题（可选）').fill('潮汐灯塔')
   await page.getByRole('button', { name: /加入素材库/ }).click()
@@ -1684,7 +1693,7 @@ test('灵感反推主面板通过定向 durable Skill 生成、恢复、拒绝�
   await expect(candidate).toContainText('模型版：盐海退潮后')
 
   await page.reload()
-  await sidebarButton(page, '灵感反推').click()
+  await openWorkspaceLeaf(page, '灵感反推')
   await expect(candidate).toContainText('模型版：盐海退潮后')
   await page.getByRole('button', { name: '放弃本次结果', exact: true }).click()
   await expect(candidate).toHaveCount(0)
@@ -1968,7 +1977,7 @@ test('主 Agent 调度大纲领域任务，确认可见整批候选后同步到�
 
   await openCleanHome(page)
   await createProject(page, 'E2E 大纲副驾确认闭环')
-  await page.getByRole('button', { name: '大纲', exact: true }).click()
+  await openWorkspaceLeaf(page, '大纲')
 
   await page.getByRole('button', { name: '打开 AI 对话副驾' }).click()
   const copilot = page.getByRole('complementary', { name: '主 Agent 创作副驾' })
@@ -1976,13 +1985,15 @@ test('主 Agent 调度大纲领域任务，确认可见整批候选后同步到�
   const candidate = copilot.getByRole('textbox', { name: '卷级大纲候选内容' })
 
   await request.fill('规划全书两卷卷纲')
-  await copilot.getByRole('button', { name: '交给主 Agent', exact: true }).click()
+  await copilot.getByRole('button', { name: '讨论与规划', exact: true }).click()
+  await copilot.getByRole('button', { name: '确认计划并开始', exact: true }).click()
   await expect(candidate).toContainText('第一卷：退潮')
   await copilot.getByRole('button', { name: '拒绝', exact: true }).click()
   await expect(page.locator('main').getByText('第一卷：退潮', { exact: true })).toHaveCount(0)
 
   await request.fill('重新规划全书两卷卷纲')
-  await copilot.getByRole('button', { name: '交给主 Agent', exact: true }).click()
+  await copilot.getByRole('button', { name: '讨论与规划', exact: true }).click()
+  await copilot.getByRole('button', { name: '确认计划并开始', exact: true }).click()
   const edited = [
     { ...modelCandidate[0], summary: '作者确认版：守灯人发现从海床升起的浮空城。' },
     modelCandidate[1],
@@ -2150,7 +2161,7 @@ test('主 Agent 为明确章纲生成正文，拒绝零写入并把可见修订�
 
   await openCleanHome(page)
   await createProject(page, 'E2E 正文副驾确认闭环')
-  await page.getByRole('button', { name: '大纲', exact: true }).click()
+  await openWorkspaceLeaf(page, '大纲')
   await page.getByRole('button', { name: '添加卷', exact: true }).click()
   await page.getByRole('button', { name: '添加章节', exact: true }).click()
   const summary = page.getByPlaceholder('章节摘要（可编辑，失焦自动保存）')
@@ -2162,12 +2173,14 @@ test('主 Agent 为明确章纲生成正文，拒绝零写入并把可见修订�
   const candidate = copilot.getByRole('textbox', { name: '《第1章》正文候选内容' })
 
   await request.fill('写第一章正文')
-  await copilot.getByRole('button', { name: '交给主 Agent', exact: true }).click()
+  await copilot.getByRole('button', { name: '讨论与规划', exact: true }).click()
+  await copilot.getByRole('button', { name: '确认计划并开始', exact: true }).click()
   await expect(candidate).toContainText('模型初稿')
   await copilot.getByRole('button', { name: '拒绝', exact: true }).click()
 
   await request.fill('重新写第一章正文')
-  await copilot.getByRole('button', { name: '交给主 Agent', exact: true }).click()
+  await copilot.getByRole('button', { name: '讨论与规划', exact: true }).click()
+  await copilot.getByRole('button', { name: '确认计划并开始', exact: true }).click()
   const edited = modelDraft.replace('模型初稿', '作者确认稿')
   await candidate.fill(edited)
   await copilot.getByRole('button', { name: '采纳', exact: true }).click()
@@ -2224,7 +2237,7 @@ test('外部文档词条先形成带证据候选，作者确认后才进入 Code
   await openCleanHome(page)
   await createProject(page, 'E2E 词条导入审查')
 
-  await sidebarButton(page, '文档解析').click()
+  await openWorkspaceLeaf(page, '文档解析')
   await page.getByPlaceholder(/把文档内容粘贴在这里/).fill(
     '临渊城扼守海峡，常住十万人，万舟汇聚，是北境最大的贸易港。',
   )
@@ -2241,7 +2254,7 @@ test('外部文档词条先形成带证据候选，作者确认后才进入 Code
 
   await expect(page.getByText(/词条审查已完成：新增 1/)).toBeVisible()
   await page.getByRole('button', { name: '完成', exact: true }).click()
-  await sidebarButton(page, '人文环境').click()
+  await openWorkspaceLeaf(page, '人文环境')
   await page.getByRole('button', { name: /城池重镇/ }).click()
   await expect(page.getByText('新临渊城', { exact: true })).toBeVisible()
 })
@@ -2363,7 +2376,7 @@ test('真实世界观入口可维护修炼 DAG 并关联角色境界', async ({ 
   await expect(page.getByLabel('主修体系').locator('option:checked')).toHaveText('剑修')
   await expect(page.getByLabel('当前设定境界').locator('option:checked')).toHaveText('筑基境')
 
-  await page.getByRole('button', { name: '大纲', exact: true }).click()
+  await openWorkspaceLeaf(page, '大纲')
   await page.getByRole('button', { name: '添加卷', exact: true }).click()
   await expectInputValue(page, '第1卷')
   await page.getByRole('button', { name: '添加章节', exact: true }).click()
@@ -2698,7 +2711,7 @@ test('角色驱动 Skill 隔离选定方案，恢复确认后持久化并导入�
 
   await page.getByRole('button', { name: '导入选中卷到大纲（1 卷）', exact: true }).click()
   await expect(page.getByText('已成功导入到大纲', { exact: true })).toBeVisible()
-  await page.getByRole('button', { name: '大纲', exact: true }).click()
+  await openWorkspaceLeaf(page, '大纲')
   await expect(page.locator('input[value="第一卷 归潮"]')).toBeVisible()
   await expect(page.locator('input[value="第一章 失钟"]')).toBeVisible()
   expect(generationCalls).toBe(2)
@@ -2808,7 +2821,7 @@ test('角色中途重规划保护已写正文，只把审查后的 patch 应用�
     'E2E 角色中途重规划',
     '主角推开旧城门并立下承诺，旧城门后的承诺已经写入正文。',
   )
-  await page.getByRole('button', { name: '大纲', exact: true }).click()
+  await openWorkspaceLeaf(page, '大纲')
   await page.getByRole('button', { name: '添加章节', exact: true }).click()
   const secondTitle = page.locator('input[value="第2章"]')
   await expect(secondTitle).toBeVisible()
@@ -2850,11 +2863,11 @@ test('角色中途重规划保护已写正文，只把审查后的 patch 应用�
   await page.getByRole('button', { name: '应用到大纲', exact: true }).click()
   await expect(page.getByText('已应用 1 项', { exact: true })).toBeVisible()
 
-  await page.getByRole('button', { name: '大纲', exact: true }).click()
+  await openWorkspaceLeaf(page, '大纲')
   await expect(page.locator('input[value="第1章"]')).toBeVisible()
   await expect(page.locator('input[value="归途重排"]')).toBeVisible()
   await page.reload()
-  await page.getByRole('button', { name: '大纲', exact: true }).click()
+  await openWorkspaceLeaf(page, '大纲')
   await expect(page.locator('input[value="第1章"]')).toBeVisible()
   await expect(page.locator('input[value="归途重排"]')).toBeVisible()
 })
@@ -2917,7 +2930,7 @@ test('世界组六字段扩写只产生可恢复候选，作者确认后一次�
   await logline.fill('守灯人必须在共同记忆与港城安全之间作出选择。')
   await logline.blur()
 
-  await sidebarButton(page, '项目概况').click()
+  await openWorkspaceLeaf(page, '项目概况')
   const multiWorldToggle = page.getByText(/多世界模式/)
     .locator('xpath=ancestor::div[contains(@class,"justify-between")][1]/button')
   await multiWorldToggle.click()
@@ -2925,9 +2938,9 @@ test('世界组六字段扩写只产生可恢复候选，作者确认后一次�
   await page.getByRole('button', { name: '继续', exact: true }).click()
   await expect(page.getByRole('heading', { name: '是否立即下载备份(JSON 文件到本地)?' })).toBeVisible()
   await page.getByRole('button', { name: '已备份，继续', exact: true }).click()
-  await expect(sidebarButton(page, '世界总览')).toHaveCount(1)
+  await expect(page.getByRole('navigation', { name: '作品概况三级导航' }).getByRole('button', { name: '多世界设置', exact: true })).toHaveCount(1)
 
-  await sidebarButton(page, '世界总览').click()
+  await openWorkspaceLeaf(page, '世界总览')
   await expect(page.getByRole('heading', { name: '🌐 世界总览' })).toBeVisible()
   const primaryRow = page.getByText('主世界', { exact: true })
     .locator('xpath=ancestor::div[contains(@class,"group")][1]')
@@ -2947,7 +2960,7 @@ test('世界组六字段扩写只产生可恢复候选，作者确认后一次�
   await expect(page.getByText(modelCandidate.worldOrigin, { exact: true })).toHaveCount(0)
 
   await page.reload()
-  await sidebarButton(page, '世界总览').click()
+  await openWorkspaceLeaf(page, '世界总览')
   await expect(page.getByRole('heading', { name: '🌐 世界总览' })).toBeVisible()
   const restoredPrimaryRow = page.getByText('主世界', { exact: true })
     .locator('xpath=ancestor::div[contains(@class,"group")][1]')
@@ -3029,7 +3042,7 @@ test('多世界建议刷新恢复整批候选，作者选择后只创建所选�
   await logline.fill('守灯人必须在共同记忆与港城安全之间作出选择。')
   await logline.blur()
 
-  await sidebarButton(page, '项目概况').click()
+  await openWorkspaceLeaf(page, '项目概况')
   const multiWorldToggle = page.getByText(/多世界模式/)
     .locator('xpath=ancestor::div[contains(@class,"justify-between")][1]/button')
   await multiWorldToggle.click()
@@ -3038,7 +3051,7 @@ test('多世界建议刷新恢复整批候选，作者选择后只创建所选�
   await expect(page.getByRole('heading', { name: '是否立即下载备份(JSON 文件到本地)?' })).toBeVisible()
   await page.getByRole('button', { name: '已备份，继续', exact: true }).click()
 
-  await sidebarButton(page, '世界总览').click()
+  await openWorkspaceLeaf(page, '世界总览')
   await page.getByRole('button', { name: 'AI 建议世界', exact: true }).click()
   const concept = page.getByPlaceholder(/描述你的整体故事概念/)
   await concept.fill('希望下一批世界逐步挑战主角对记忆和身份的选择。')
@@ -3053,7 +3066,7 @@ test('多世界建议刷新恢复整批候选，作者选择后只创建所选�
   const beforeRows = page.locator('section').filter({ hasText: '世界列表' }).first().locator('div.group')
   await expect(beforeRows).toHaveCount(1)
   await page.reload()
-  await sidebarButton(page, '世界总览').click()
+  await openWorkspaceLeaf(page, '世界总览')
   await expect(page.getByText('世界建议候选尚未写入；请选择后统一确认', { exact: true }))
     .toBeVisible({ timeout: 30_000 })
   expect(generationCalls).toBe(1)
@@ -3071,7 +3084,7 @@ test('多世界建议刷新恢复整批候选，作者选择后只创建所选�
   expect(generationCalls).toBe(1)
 
   await page.reload()
-  await sidebarButton(page, '世界总览').click()
+  await openWorkspaceLeaf(page, '世界总览')
   const restoredWorldList = page.locator('section').filter({ hasText: '世界列表' }).first()
   await expect(restoredWorldList.getByText('灰烬钟庭', { exact: true }).first()).toBeVisible()
   await expect(restoredWorldList.getByText('星梯上界', { exact: true }).first()).toBeVisible()
@@ -3136,7 +3149,7 @@ test('世界宪法扫描刷新恢复批次，确认后仍只写待确认事实',
   await page.getByRole('heading', { name: '🌌 世界来源' }).click()
   await expect(page.getByText('曜月界的魔法源于月亮潮汐。', { exact: true })).toBeVisible()
 
-  await sidebarButton(page, '事实库').click()
+  await openWorkspaceLeaf(page, '事实库')
   await page.getByRole('button', { name: '查看世界宪法', exact: true }).click()
   await expect(page.getByRole('heading', { name: '世界宪法（CONSISTENCY-3）' })).toBeVisible()
   await page.getByRole('button', { name: '扫描已登记设定', exact: true }).click()
@@ -3146,7 +3159,7 @@ test('世界宪法扫描刷新恢复批次，确认后仍只写待确认事实',
   expect(generationCalls).toBe(1)
 
   await page.reload()
-  await sidebarButton(page, '事实库').click()
+  await openWorkspaceLeaf(page, '事实库')
   await page.getByRole('button', { name: '查看世界宪法', exact: true }).click()
   await expect(page.getByText('扫描批次待确认（1 条）', { exact: true })).toBeVisible({ timeout: 30_000 })
   await expect(page.getByText(/已恢复待确认扫描批次/)).toBeVisible()
@@ -3160,7 +3173,7 @@ test('世界宪法扫描刷新恢复批次，确认后仍只写待确认事实',
   expect(generationCalls).toBe(1)
 
   await page.reload()
-  await sidebarButton(page, '事实库').click()
+  await openWorkspaceLeaf(page, '事实库')
   await page.getByRole('button', { name: '查看世界宪法', exact: true }).click()
   await expect(page.getByTitle('确认世界宪法')).toHaveCount(1)
   await expect(page.getByText('月亮潮汐', { exact: true })).toBeVisible()
@@ -3719,7 +3732,7 @@ test('影响人工修正后可恢复章纲与年表生成式候选并经确认�
   }, projectId)
 
   await page.reload()
-  await sidebarButton(page, '章节').click()
+  await openWorkspaceLeaf(page, '章节')
   await expect(page.locator('.tiptap-editor')).toContainText('潮门只开启一半')
   await page.getByRole('button', { name: '影响分析', exact: true }).click()
   await expect(page.getByText(/影响图已生成/)).toBeVisible()
@@ -3788,7 +3801,7 @@ test('影响人工修正后可恢复章纲与年表生成式候选并经确认�
   expect(pending.relation).toMatch(/^impact-generative-target:[a-f0-9]{64}:1$/)
 
   await page.reload()
-  await sidebarButton(page, '章节').click()
+  await openWorkspaceLeaf(page, '章节')
   await expect(page.getByText('已恢复一条 H57 生成式后续章纲候选；确认前不会修改正式摘要。', { exact: true }))
     .toBeVisible({ timeout: 20_000 })
   await expect(page.getByText(regeneratedSummary, { exact: true })).toBeVisible()
@@ -3837,7 +3850,7 @@ test('影响人工修正后可恢复章纲与年表生成式候选并经确认�
   expect(generationCalls).toBe(1)
 
   await page.reload()
-  await sidebarButton(page, '章节').click()
+  await openWorkspaceLeaf(page, '章节')
   await expect(page.getByText(/生成式章纲重建回执/)).toBeVisible({ timeout: 20_000 })
   await expect(page.getByLabel('生成式后续章纲目标')).toHaveCount(0)
   expect(generationCalls).toBe(1)
@@ -3900,7 +3913,7 @@ test('影响人工修正后可恢复章纲与年表生成式候选并经确认�
   expect(pendingTimeline.relation).toMatch(/^impact-generative-target:[a-f0-9]{64}:2$/)
 
   await page.reload()
-  await sidebarButton(page, '章节').click()
+  await openWorkspaceLeaf(page, '章节')
   await expect(page.getByText('已恢复一条 H57 故事年表重建候选；确认前不会修改正式事件。', { exact: true }))
     .toBeVisible({ timeout: 20_000 })
   await expect(page.getByText(regeneratedTimelineDescription, { exact: true })).toBeVisible()
@@ -3975,7 +3988,7 @@ test('影响人工修正后可恢复章纲与年表生成式候选并经确认�
   expect(generationCalls).toBe(2)
 
   await page.reload()
-  await sidebarButton(page, '章节').click()
+  await openWorkspaceLeaf(page, '章节')
   await expect(page.getByText(/故事年表重建回执/)).toBeVisible({ timeout: 20_000 })
   await expect(page.getByLabel('生成式故事年表目标')).toHaveCount(0)
   expect(generationCalls).toBe(2)
@@ -4025,7 +4038,7 @@ test('Prompt 示例 AI 只进入编辑草稿，作者保存后才写全局模板
 
   await openCleanHome(page)
   await createProject(page, 'E2E Prompt 草稿边界')
-  await sidebarButton(page, '提示词库').click()
+  await openWorkspaceLeaf(page, '提示词库')
   await page.getByRole('button', { name: '新建', exact: true }).click()
 
   const editor = page.locator('main')
@@ -4094,7 +4107,7 @@ test('Prompt 示例 AI 只进入编辑草稿，作者保存后才写全局模板
   })).toEqual([firstExample, secondExample])
 
   await page.reload()
-  await sidebarButton(page, '提示词库').click()
+  await openWorkspaceLeaf(page, '提示词库')
   await page.getByText('E2E Prompt 示例草稿', { exact: true }).first().click()
   await expect(editor.getByText(firstExample, { exact: true })).toBeVisible()
   expect(generationCalls).toBe(1)

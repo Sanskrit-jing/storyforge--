@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState, useMemo, lazy, Suspense } from 'react'
+import LongformCompletion from '../components/longform/LongformCompletion'
+import { useCallback, useEffect, useRef, useState, useMemo, lazy, Suspense, Fragment } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import { useProjectStore } from '../stores/project'
 import { useWorldviewStore } from '../stores/worldview'
@@ -89,6 +90,10 @@ import { switchNovelProfile } from '../lib/workspace/works'
 import { secondaryNovelWorkflowModules } from '../lib/novel/workflow'
 import WorldDerivationActions from '../components/world-engine/WorldDerivationActions'
 
+import LongformLayout from '../components/longform/LongformLayout'
+import { LONGFORM_SECTIONS, sectionForModule, type LongformSection, type LongformMode } from '../components/longform/navigation'
+const LongformWorlds = lazy(() => import('../components/longform/LongformWorlds'))
+
 export default function WorkspacePage() {
   const { projectId } = useParams()
   const location = useLocation()
@@ -99,10 +104,14 @@ export default function WorkspacePage() {
   const initialSidebarModule = initialModule && Object.prototype.hasOwnProperty.call(MODULE_CONTENT_TYPES, initialModule)
     ? initialModule as SidebarModule
     : null
+  const query = new URLSearchParams(location.search)
+  const explicitSection = query.get('section')
+  const longSection: LongformSection = LONGFORM_SECTIONS.some(([id]) => id === explicitSection) ? explicitSection as LongformSection : sectionForModule(initialSidebarModule ?? 'info')
+  const longMode: LongformMode = query.get('mode') === 'agent' ? 'agent' : initialSidebarModule === 'visual-workflows' ? 'nodes' : 'steps'
   const backPath = '/'
   const [activeModule, setActiveModule] = useState<SidebarModule>(initialSidebarModule ?? 'info')
   const [loading, setLoading] = useState(true)
-  const [editorNodeId, setEditorNodeId] = useState<number | null>(null)
+  const [editorNodeId, setEditorNodeId] = useState<number | null>(() => { const id = Number(query.get('chapter')); return Number.isInteger(id) && id > 0 ? id : null })
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [showProperties, setShowProperties] = useState(false)
   const [showCopilot, setShowCopilot] = useState(false)
@@ -136,8 +145,9 @@ export default function WorkspacePage() {
       setImpactHandoffTarget(null)
       setActiveModule(module)
       if (module !== 'editor') setEditorNodeId(null)
+      navigate(`/workspace/${projectId}?module=${module}`)
     }, '当前编辑未能保存，已阻止切换页面')
-  }, [afterPendingEdits])
+  }, [afterPendingEdits, navigate, projectId])
 
   // 从 Zustand Store 中动态获取当前项目，实现全局响应式更新
   const project = useMemo(() => {
@@ -145,6 +155,20 @@ export default function WorkspacePage() {
     return projects.find(p => p.id === currentProjectId) || null
   }, [projects, currentProjectId])
   const activeWork = useActiveWork(project)
+  const isLongform = project?.workspacePurpose === 'independent-work' && activeWork != null && effectiveWorkKind(activeWork) === 'novel' && effectiveNovelProfile(activeWork) === 'long'
+  const changeLongSection = (section: LongformSection) => afterPendingEdits(() => {
+    if (section === 'library') { navigate('/long'); return }
+    const module = section === 'versions' ? 'version-history' : section === 'import' ? 'import-doc' : section === 'settings' ? 'settings' : 'info'
+    setActiveModule(module)
+    setShowCopilot(false)
+    navigate(`/workspace/${projectId}?section=${section}&module=${module}`)
+  }, '当前编辑未能保存，已阻止切换页面')
+  const changeLongMode = (mode: LongformMode) => afterPendingEdits(() => {
+    const module = mode === 'nodes' ? 'visual-workflows' : 'info'
+    setActiveModule(module)
+    setShowCopilot(false)
+    navigate(`/workspace/${projectId}?module=${module}&mode=${mode}`)
+  }, '当前编辑未能保存，已阻止切换模式')
 
   // 侧栏隐藏模块（多世界关闭时隐藏世界总览）。必须在所有提前 return 之前调用，
   // 否则 hook 数量在不同渲染间不一致，会报 "Rendered more hooks than..."
@@ -158,6 +182,11 @@ export default function WorkspacePage() {
       ? secondaryNovelWorkflowModules('short')
       : undefined
   ), [activeWork])
+
+  useEffect(() => {
+    const id = Number(new URLSearchParams(location.search).get('chapter'))
+    setEditorNodeId(Number.isInteger(id) && id > 0 ? id : null)
+  }, [location.search])
 
   // 自动定时备份（每 5 分钟本地快照）
   useAutoBackup(project?.id ?? null)
@@ -264,7 +293,7 @@ export default function WorkspacePage() {
     load()
   }, [projectId, loadProject, navigate])
 
-  if (loading || !project) {
+  if (loading || !project || (project.activeWorkId != null && !activeWork)) {
     return (
       <div className="min-h-screen bg-bg-base flex items-center justify-center">
         <span className="text-text-muted">加载中...</span>
@@ -273,8 +302,11 @@ export default function WorkspacePage() {
   }
 
   const handleOpenChapter = (nodeId: number) => {
-    setEditorNodeId(nodeId)
-    setActiveModule('chapters-list')
+    afterPendingEdits(() => {
+      setEditorNodeId(nodeId)
+      setActiveModule('chapters-list')
+      navigate(`/workspace/${projectId}?module=chapters-list&chapter=${nodeId}`)
+    }, '当前编辑未能保存，已阻止打开章节')
   }
 
   const handleProfileSwitch = async () => {
@@ -488,7 +520,7 @@ export default function WorkspacePage() {
       case 'chapters-list':
         return <ChaptersListPanel project={project} initialNodeId={handoffChapterNodeId ?? editorNodeId} />
       case 'editor':
-        return <ChaptersListPanel project={project} initialNodeId={handoffChapterNodeId ?? editorNodeId} />
+        return <div className="h-full flex flex-col"><section className="p-4 border-b border-border"><h3 className="text-xl">改稿影响</h3><p className="mt-2 text-sm text-text-secondary">选择需要修改的章节，使用编辑器中的“改稿影响”检查事实、记忆和后续章节，再逐项确认修正。</p></section><div className="min-h-0 flex-1"><ChaptersListPanel project={project} initialNodeId={handoffChapterNodeId ?? editorNodeId} /></div></div>
       case 'foreshadow':
         return <ForeshadowPanel project={project} />
       case 'style-learning':
@@ -574,10 +606,13 @@ export default function WorkspacePage() {
     }
   }
 
+  const Layout = isLongform ? LongformLayout : Fragment
+  const layoutProps = isLongform ? { title: activeWork.title, section: longSection, mode: longMode, module: activeModule, hiddenModules, onSection: changeLongSection, onMode: changeLongMode, onModule: selectModule, onNavigate: (path: string) => afterPendingEdits(() => navigate(path), '编辑保存失败'), onHome: () => afterPendingEdits(() => navigate('/'), '编辑保存失败') } : {}
   return (
-    <div className="h-screen bg-bg-base flex overflow-hidden">
+    <Layout {...layoutProps as React.ComponentProps<typeof LongformLayout>}>
+    <div data-workspace-ready={isLongform ? 'longform' : 'legacy'} className={isLongform ? 'h-full flex min-w-0' : 'h-screen bg-bg-base flex overflow-hidden'}>
       {/* 左侧导航 */}
-      <Sidebar
+      {!isLongform && <Sidebar
         active={activeModule}
         onSelect={selectModule}
         onBack={() => afterPendingEdits(() => navigate(backPath), '当前编辑未能保存，已阻止离开工作区')}
@@ -586,7 +621,7 @@ export default function WorkspacePage() {
         onToggleCollapse={() => setSidebarCollapsed(v => !v)}
         hiddenModules={hiddenModules}
         secondaryModules={secondaryModules}
-      />
+      />}
 
       {/* 主面板 */}
       <main
@@ -613,11 +648,11 @@ export default function WorkspacePage() {
             {profileSwitchError && <span className="max-w-72 truncate text-[11px] text-red-600" title={profileSwitchError}>{profileSwitchError}</span>}
           </div>
           <div className="flex items-center gap-1">
-            <WorldDerivationActions
+            {!isLongform && <WorldDerivationActions
               project={project}
               compact
               onDerived={targetProjectId => navigate(`/workspace/${targetProjectId}?module=info`)}
-            />
+            />}
             <button
               onClick={() => {
                 setShowCopilot(value => {
@@ -693,7 +728,10 @@ export default function WorkspacePage() {
         <div className={`min-h-0 flex-1 overflow-y-auto ${isImmersiveModule ? '' : 'p-6'}`}>
           {/* Phase 3.5: 懒加载面板(地图类)加载时显示 fallback */}
           <Suspense fallback={<div className="flex items-center justify-center h-64 text-text-muted text-sm">面板加载中…</div>}>
-            {renderMainPanel()}
+            {isLongform && longSection === 'versions' && <nav className="lf-subtabs" aria-label="版本与导出">{([['version-history', '版本历史'], ['export', '导出与备份']] as const).map(([id, label]) => <button key={id} aria-current={activeModule === id ? 'page' : undefined} onClick={() => selectModule(id)}>{label}</button>)}</nav>}
+            {isLongform && longSection === 'versions' && <LongformCompletion project={project}/>}
+            {isLongform && longSection === 'settings' && <nav className="lf-subtabs" aria-label="通用设置">{([['settings', '通用设置'], ['usage-stats', '用量统计']] as const).map(([id, label]) => <button key={id} aria-current={activeModule === id ? 'page' : undefined} onClick={() => selectModule(id)}>{label}</button>)}</nav>}
+            {isLongform && ['derive', 'community'].includes(longSection) ? <LongformWorlds project={project} community={longSection === 'community'} onOpen={id => navigate(`/workspace/${id}`)} /> : isLongform && longMode === 'agent' ? <ChatCopilotPanel embedded project={project} worldGroupId={copilotWorldGroupId} worldName={copilotWorldName} onClose={() => changeLongMode('steps')} /> : renderMainPanel()}
           </Suspense>
         </div>
       </main>
@@ -705,7 +743,7 @@ export default function WorkspacePage() {
           onClose={() => setShowProperties(false)}
         />
       )}
-      {showCopilot && (
+      {showCopilot && longMode !== 'agent' && (
         <Suspense fallback={(
           <aside className="fixed inset-y-0 right-0 z-30 flex h-full w-[min(24rem,calc(100vw-3rem))] shrink-0 items-center justify-center border-l border-border bg-bg-surface text-xs text-text-muted shadow-xl lg:static lg:z-auto lg:w-[24rem] lg:shadow-none">
             AI 对话副驾加载中…
@@ -720,5 +758,6 @@ export default function WorkspacePage() {
         </Suspense>
       )}
     </div>
+    </Layout>
   )
 }
