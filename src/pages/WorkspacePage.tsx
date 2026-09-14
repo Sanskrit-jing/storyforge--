@@ -635,14 +635,14 @@ export default function WorkspacePage() {
           <div className="flex min-w-0 items-center gap-2">
             <ContentTypeBadge contentType={getModuleContentType(activeModule)} showDescription />
             {activeWork && <WorkKindBadge work={activeWork} />}
-            {activeWork && effectiveWorkKind(activeWork) === 'novel' && (
+            {activeWork && effectiveWorkKind(activeWork) === 'novel' && effectiveNovelProfile(activeWork) === 'short' && (
               <button
                 type="button"
                 onClick={() => void handleProfileSwitch()}
                 disabled={profileSwitching}
                 className="rounded border border-border px-2 py-1 text-[11px] text-text-secondary hover:bg-bg-hover disabled:opacity-50"
               >
-                {profileSwitching ? '切换中…' : effectiveNovelProfile(activeWork) === 'short' ? '扩写为长篇' : '切换为短篇'}
+                {profileSwitching ? '切换中…' : '扩写为长篇'}
               </button>
             )}
             {profileSwitchError && <span className="max-w-72 truncate text-[11px] text-red-600" title={profileSwitchError}>{profileSwitchError}</span>}
