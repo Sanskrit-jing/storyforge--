@@ -24,6 +24,8 @@
 | BASE-MEDIA-01 | partial | 共享 blob/OPFS、媒资需求/资产与 build 绑定基础存在 | 跨 provider 生产、一致性、license 和完整 UI 仍不统一 |
 | BASE-PROVIDER-01 | partial | 多 provider 配置、任务路由、能力/上下文配置和连接测试存在 | 市面模型兼容、错误分类与持续契约测试不完整 |
 
+> UI 展示预览（2026-09-14）：首页可显式进入 `/storyforge/ui-preview/index.html`，查看正在调整的 199 个示例页面。该入口独立于正式业务，不读取/写入作品数据库或调用 AI，不改变以下产品能力状态。
+
 ## B · 分步骤长篇与节点
 
 | ID | 状态 | 当前事实与证据 | 缺口 |

@@ -86,8 +86,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        globIgnores: ['ui-preview/**', 'assets/ui-preview-*'],
         navigateFallback: '/storyforge/index.html',
-        navigateFallbackDenylist: [/^\/(?!storyforge)/],
+        navigateFallbackDenylist: [/^\/(?!storyforge)/, /^\/storyforge\/ui-preview(?:\/|$)/],
         // 主 bundle 已随功能增多突破 2 MiB（pdf.js + mammoth + 分块流水线），
         // 放宽到 5 MiB 让它被精确预缓存而不是只靠 runtime cache。
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
@@ -198,6 +199,7 @@ export default defineConfig({
     outDir: 'dist',
     chunkSizeWarningLimit: 1200,
     rollupOptions: {
+      input: { main: 'index.html', 'ui-preview': 'ui-preview/index.html' },
       output: {
         // 只把 react 固定成独立 vendor chunk（便于缓存）。
         // pdfjs / mammoth / three / jszip 均已通过「动态 import() 按需加载」自然分块，
