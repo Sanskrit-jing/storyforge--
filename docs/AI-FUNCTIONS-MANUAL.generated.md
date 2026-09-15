@@ -277,7 +277,7 @@ AI 输出经 `adopt({ target, data })` 写回,只有这里登记的字段可写(
 | `workspace-root-lifecycle` | `projects` | `PROJECT_TABLES + workspace purpose + import trust + world lifecycle` | `src/lib/export/registry-import.ts`<br/>`src/lib/memory/workspace-projection.ts`<br/>`src/lib/world-engine/world-package.ts`<br/>`src/lib/workspace/lifecycle.ts`<br/>`src/lib/workspace/ownership.ts`<br/>`src/lib/world-engine/releases.ts`<br/>`src/lib/workspace/works.ts`<br/>`src/lib/workspace/create-workspace.ts`<br/>`src/lib/world-engine/derivation.ts`<br/>`src/lib/world-engine/promotion.ts`<br/>`src/lib/adaptation/source-manifest.ts` | 2027-08-01 |
 | `world-root-lifecycle` | `worlds` | `PROJECT_TABLES refs + world package trust + world release lifecycle` | `src/lib/world-engine/world-package.ts`<br/>`src/lib/workspace/lifecycle.ts`<br/>`src/lib/workspace/ownership.ts`<br/>`src/lib/world-engine/releases.ts`<br/>`src/lib/workspace/create-workspace.ts`<br/>`src/lib/world-engine/derivation.ts`<br/>`src/lib/world-engine/promotion.ts`<br/>`src/lib/world-engine/draft.ts` | 2027-08-01 |
 | `work-root-lifecycle` | `works` | `PROJECT_TABLES refs + WorkspaceScope + stable work code + narrative lifecycle` | `src/lib/memory/workspace-projection.ts`<br/>`src/lib/workspace/lifecycle.ts`<br/>`src/lib/workspace/ownership.ts`<br/>`src/lib/workspace/works.ts`<br/>`src/lib/workspace/create-workspace.ts`<br/>`src/lib/world-engine/derivation.ts`<br/>`src/lib/adaptation/source-manifest.ts`<br/>`src/lib/adaptation/completion.ts`<br/>`src/lib/short-novel/service.ts`<br/>`src/lib/screenplay/release.ts`<br/>`src/lib/comic/release.ts` | 2027-08-01 |
-| `adaptation-root-lifecycle` | `adaptationProjects` | `PROJECT_TABLES + ADOPTION_SCHEMAS + adaptation state machine + source manifest CAS` | `src/lib/adaptation/source-manifest.ts`<br/>`src/lib/adaptation/completion.ts`<br/>`src/lib/adaptation/analysis.ts`<br/>`src/lib/screenplay/production.ts`<br/>`src/lib/screenplay/release.ts`<br/>`src/lib/comic/production.ts`<br/>`src/lib/comic/release.ts`<br/>`src/lib/motion-drama/service.ts`<br/>`src/lib/motion-drama/release.ts` | 2027-08-01 |
+| `adaptation-root-lifecycle` | `adaptationProjects` | `PROJECT_TABLES + ADOPTION_SCHEMAS + adaptation state machine + source manifest CAS` | `src/lib/adaptation/source-manifest.ts`<br/>`src/lib/adaptation/completion.ts`<br/>`src/lib/adaptation/analysis.ts`<br/>`src/lib/screenplay/production.ts`<br/>`src/lib/screenplay/release.ts`<br/>`src/lib/comic/production.ts`<br/>`src/lib/comic/release.ts`<br/>`src/lib/comic/authoring.ts`<br/>`src/lib/motion-drama/service.ts`<br/>`src/lib/motion-drama/release.ts` | 2027-08-01 |
 | `adaptation-source-manifest-lifecycle` | `adaptationSourceUnits` | `PROJECT_TABLES + immutable source manifest policy + canonical chapter sequence` | `src/lib/adaptation/source-manifest.ts` | 2027-08-01 |
 | `adaptation-source-fact-lifecycle` | `adaptationSourceFacts` | `PROJECT_TABLES + FIELD_REGISTRY + closed source-fact contract + adaptation manifest CAS` | `src/lib/adaptation/analysis.ts` | 2027-09-01 |
 | `adaptation-causal-edge-lifecycle` | `adaptationCausalEdges` | `PROJECT_TABLES + FIELD_REGISTRY + closed causal-edge contract + same-manifest fact graph validator` | `src/lib/adaptation/analysis.ts` | 2027-09-01 |
@@ -291,9 +291,9 @@ AI 输出经 `adopt({ target, data })` 写回,只有这里登记的字段可写(
 | `comic-page-plan-lifecycle` | `comicPagePlans` | `PROJECT_TABLES + FIELD_REGISTRY + closed page rhythm contract + script beat CAS` | `src/lib/comic/production.ts` | 2027-09-01 |
 | `comic-review-issue-lifecycle` | `comicReviewIssues` | `PROJECT_TABLES + FIELD_REGISTRY + page/panel/subject/asset/revision validator` | `src/lib/comic/production.ts` | 2027-09-01 |
 | `creation-release-asset-lifecycle` | `creationReleaseAssets` | `PROJECT_TABLES + immutable release manifest + content hash + registered media strong reference` | `src/lib/comic/release.ts`<br/>`src/lib/motion-drama/release.ts` | 2027-09-01 |
-| `comic-panel-lifecycle` | `comicPanels` | `PROJECT_TABLES + FIELD_REGISTRY + ADOPTION_SCHEMAS + comic panel validator` | `src/lib/comic/service.ts`<br/>`src/lib/comic/media-service.ts`<br/>`src/lib/comic/production.ts` | 2027-08-01 |
+| `comic-panel-lifecycle` | `comicPanels` | `PROJECT_TABLES + FIELD_REGISTRY + ADOPTION_SCHEMAS + comic panel validator` | `src/lib/comic/service.ts`<br/>`src/lib/comic/media-service.ts`<br/>`src/lib/comic/production.ts`<br/>`src/lib/comic/authoring.ts` | 2027-08-01 |
 | `comic-visual-subject-lifecycle` | `comicVisualSubjects` | `PROJECT_TABLES + FIELD_REGISTRY + ADOPTION_SCHEMAS + Work cast/source/asset stable-key validator` | `src/lib/comic/service.ts`<br/>`src/lib/comic/media-service.ts`<br/>`src/lib/comic/production.ts` | 2027-08-01 |
-| `comic-media-asset-lifecycle` | `comicMediaAssets` | `PROJECT_TABLES + media capability registry + hash/rights/provider receipt + stable-key reference checks` | `src/lib/comic/media-service.ts`<br/>`src/lib/comic/service.ts` | 2027-08-01 |
+| `comic-media-asset-lifecycle` | `comicMediaAssets` | `PROJECT_TABLES + media capability registry + hash/rights/provider receipt + stable-key reference checks` | `src/lib/comic/media-service.ts`<br/>`src/lib/comic/service.ts`<br/>`src/lib/comic/production.ts` | 2027-08-01 |
 | `motion-drama-production-lifecycle` | `motionDramaProductions` | `PROJECT_TABLES + motion-drama state machine + adaptation source manifest CAS` | `src/lib/adaptation/source-manifest.ts`<br/>`src/lib/motion-drama/service.ts`<br/>`src/lib/motion-drama/prompts.ts`<br/>`src/lib/motion-drama/prompt-pack.ts`<br/>`src/lib/motion-drama/release.ts` | 2027-09-09 |
 | `motion-drama-series-bible-lifecycle` | `motionDramaSeriesBibles` | `PROJECT_TABLES + FIELD_REGISTRY + append-only bible version + adaptation CAS` | `src/lib/motion-drama/service.ts` | 2027-09-09 |
 | `motion-drama-episode-lifecycle` | `motionDramaEpisodes` | `PROJECT_TABLES + FIELD_REGISTRY + episode contract + source manifest CAS` | `src/lib/motion-drama/service.ts` | 2027-09-09 |
@@ -399,7 +399,7 @@ AI 输出经 `adopt({ target, data })` 写回,只有这里登记的字段可写(
 - `src/lib/agent/worldview-field-copilot.ts:890 · chat`
 - `src/lib/avg/consultation.ts:164 · chat`
 - `src/lib/character-interaction/harness.ts:403 · chat`
-- `src/lib/comic/durable-production.ts:269 · chat`
+- `src/lib/comic/durable-production.ts:270 · chat`
 - `src/lib/evals/agent-harness/story-arc-main-path-browser.ts:98 · chat`
 - `src/lib/evals/creative-reliability/browser.ts:89 · chat`
 - `src/lib/generation/workflow-generation-node.ts:23 · ai.start`
@@ -457,4 +457,4 @@ AI 输出经 `adopt({ target, data })` 写回,只有这里登记的字段可写(
 
 ---
 
-生成时间基准:commit `62b53d35`
+生成时间基准:commit `5b9e78e1`

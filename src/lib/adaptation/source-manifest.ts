@@ -773,6 +773,7 @@ export async function saveAdaptationBriefDraft(input: { adaptationProjectId: num
   return updateAdaptationRootContent(input.adaptationProjectId, input.expectedRevision, root => ({
     ...root,
     brief: structuredClone(input.brief),
+    ...(root.medium === 'comic' ? { planSourceManifestVersion: null } : {}),
     briefSourceManifestVersion: null,
     status: 'brief-review',
   }))

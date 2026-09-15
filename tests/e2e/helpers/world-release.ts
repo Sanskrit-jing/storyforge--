@@ -35,5 +35,11 @@ export async function openWorldSection(page:Page, section:string):Promise<void> 
     await page.locator('.lf-library-grid article').first().getByRole('button',{name:'编辑世界',exact:true}).click()
   }
   if(!await page.getByRole('navigation',{name:'世界页面导航'}).isVisible())await page.getByRole('button',{name:'世界目录',exact:true}).click()
-  await page.getByRole('navigation',{name:'世界页面导航'}).getByRole('button',{name:labels[section],exact:true}).click()
+  if(section==='story') {
+    // Story is content inside worldbuilding, not a primary operation.
+    await page.getByRole('navigation',{name:'世界页面导航'}).getByRole('button',{name:'世界设定',exact:true}).click()
+    await expect(page.getByRole('navigation',{name:'世界内容导航'})).toBeAttached()
+    if(!await page.getByRole('navigation',{name:'世界内容导航'}).isVisible())await page.getByRole('button',{name:'设定目录',exact:true}).click()
+    await page.getByRole('navigation',{name:'世界内容导航'}).getByRole('button',{name:labels[section],exact:true}).click()
+  } else await page.getByRole('navigation',{name:'世界页面导航'}).getByRole('button',{name:labels[section],exact:true}).click()
 }
