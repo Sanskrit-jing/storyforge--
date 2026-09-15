@@ -90,7 +90,7 @@ p('review','质量审查','review','审校与交付','C10','检查连续性、�
 p('preview','阅读预览','comic','审校与交付','C11','以读者的视角，翻开这一章。'),
 p('versions','版本与导出','versions','审校与交付','C11','分镜稿与完成画面，分别留下版本。')
 ]};
-const motion:Product={id:'motion',name:'漫剧工坊',short:'漫剧',en:'MOTION DRAMA STUDIO',book:'潮声未寄',tagline:'从一个念头，到每一个镜头。',image:'mist-bg-lighthouse.webp',pages:[
+const motion:Product={id:'motion',name:'漫剧素材',short:'漫剧素材',en:'MOTION DRAMA STUDIO',book:'潮声未寄',tagline:'从一个念头，到每一个镜头。',image:'mist-bg-lighthouse.webp',pages:[
 p('library','我的漫剧','library','作品','M01','为每一集，准备可以执行的镜头方案。'),
 p('source','小说来源','adaptation','来源与设定','M02','一句话、已有小说，或一份尚未完成的灵感。'),
 p('series','系列设定','form','来源与设定','M03','确定这个系列持久的叙事动力。',['系列名|潮声未寄','集数与时长|12 集 · 每集 90 秒','画幅|9:16 竖屏|select','叙事承诺|每一封信揭开一个秘密，每一次退潮改变一个人。|area','系列风格|克制的悬疑，温暖的人物关系，海港旧物的质感。|area']),

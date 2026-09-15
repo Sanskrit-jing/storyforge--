@@ -20,6 +20,8 @@ test('approved home, every product and live longform share complete navigation',
     else if (product.id === 'short') await expect(page.getByRole('navigation', {name:'短篇页面导航'})).toBeVisible()
     else if(product.id==='avg') await expect(page.getByTestId('avg-page')).toBeVisible()
     else if(product.id==='script') await expect(page.getByRole('navigation',{name:'剧本页面导航'})).toBeVisible()
+    else if(product.id==='motion') await expect(page.getByRole('navigation',{name:'漫剧素材页面导航'})).toBeVisible()
+    else if(product.id==='ttrpg') await expect(page.getByTestId('ttrpg-author-page')).toBeVisible()
     else await expect(page.getByTestId('approved-product-ui')).toBeVisible()
     const url = page.url()
     await page.reload()

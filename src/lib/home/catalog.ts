@@ -8,9 +8,10 @@ import { flushPendingEditsV1 } from '../authoring/pending-edit-coordinator'
 import { useProjectStore } from '../../stores/project'
 
 export type HomeWork = {work: Work; project: Project; world: World}
-export const workLabel = (w: Work) => w.kind === 'novel' ? effectiveNovelProfile(w) === 'short' ? '短篇' : '长篇' : ({screenplay:'剧本',comic:'漫画','motion-drama':'漫剧',avg:'AVG',ttrpg:'跑团'}[w.kind])
+export const workLabel = (w: Work) => w.kind === 'novel' ? effectiveNovelProfile(w) === 'short' ? '短篇' : '长篇' : ({screenplay:'剧本',comic:'漫画','motion-drama':'漫剧素材',avg:'AVG',ttrpg:'跑团'}[w.kind])
 export function workPath(row: HomeWork, module = 'info'): string {
  const {work:w,project:p}=row
+ if(w.kind==='motion-drama')return `/motion/${module==='versions'?'versions':'source'}?work=${w.id}`
  if(w.kind==='ttrpg')return `/ttrpg/${module==='versions'?'release':'vision'}?project=${p.id}&work=${w.id}`
  if(w.kind==='avg')return `/avg/${module==='versions'?'release':'vision'}?project=${p.id}`
  if(p.workspacePurpose==='world-engine')return worldModulePath(p.id!,module)
@@ -46,6 +47,7 @@ export function validWorkPath(row:HomeWork,path:string){
  if(u.origin!=='https://storyforge.local')return false
  const w=row.work
  if(w.kind==='ttrpg')return /^\/ttrpg\//.test(u.pathname)&&u.searchParams.get('project')===String(w.projectId)&&u.searchParams.get('work')===String(w.id)
+ if(w.kind==='motion-drama')return /^\/motion\/(source|series|episodes|assets|beats|script|shots|frames|image|video|pack|review|versions|prompts|settings)$/.test(u.pathname)&&u.searchParams.get('work')===String(w.id)
  if(w.kind==='avg')return /^\/avg\//.test(u.pathname)&&u.searchParams.get('project')===String(w.projectId)
  if(w.kind==='novel'&&effectiveNovelProfile(w)==='long')return u.pathname===`/workspace/${w.projectId}`
  if(w.kind==='novel')return /^\/short\/(intent|story|chapters|editor|review|versions|derive)$/.test(u.pathname)&&u.searchParams.get('project')===String(w.projectId)
