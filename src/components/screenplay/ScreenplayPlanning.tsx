@@ -21,7 +21,8 @@ export default function ScreenplayPlanning({scope,root,units,stage,onChanged}:{s
  const [value,setValue]=useState<any>(null),[options,setOptions]=useState<Record<string,FieldOption[]>>({}),[busy,setBusy]=useState(false),[error,setError]=useState(''),[loaded,setLoaded]=useState(false)
  const dialog=useDialog();const edit=useRef(0);const prefix=`screenplay:${scope.workId}:`;const draftKey=`planning:${stage}:r${root.revision}`
  useEffect(()=>registerPendingDraftFlusherV1(()=>flushCandidateDraftsV1(prefix)),[prefix])
- useEffect(()=>{let cancelled=false;setLoaded(false);const initial=edit.current
+ // Same-revision parent refreshes must not hide the editable form or discard newer input.
+ useEffect(()=>{let cancelled=false;const initial=edit.current
  void Promise.all([listAdaptationAnalysisV1({scope,adaptationProjectId:root.id!}),listScreenplayProductionV1(scope),readScreenplayAuthorDraft(scope,draftKey)]).then(([a,p,saved])=>{
  if(cancelled||initial!==edit.current)return
  const facts=a.facts.filter(x=>x.authorStatus==='confirmed');const decisions=a.decisions.filter(x=>x.authorStatus==='confirmed')

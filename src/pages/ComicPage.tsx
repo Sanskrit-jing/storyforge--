@@ -1,8 +1,9 @@
+import BrandIcon from '../components/shared/BrandIcon'
 import ExampleLibrary from '../components/examples/ExampleLibrary'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { liveQuery } from 'dexie'
-import { BookOpen, Flame } from 'lucide-react'
+import { BookOpen } from 'lucide-react'
 import { db } from '../lib/db/schema'
 import type { Project, Work, WorkspaceScope } from '../lib/types'
 import { effectiveWorkKind } from '../lib/workspace/work-kind'
@@ -62,7 +63,7 @@ export default function ComicPage(){
  const rename=async(w:Work)=>{const title=await dialog.prompt({title:'漫画名称',defaultValue:w.title});if(!title?.trim())return;try{await switchActiveWork(w.projectId,w.id!);await updateActiveWork(w.projectId,{title:title.trim()})}catch(c){setError(String(c))}}
  const remove=async(w:Work)=>{if(!await dialog.confirm({title:'删除这部漫画？',message:'只删除这部漫画及其改编数据、版本，不删除源小说。建议先下载备份。',confirmText:'删除漫画'}))return;try{await flushPendingEditsV1();await deleteWork(w.id!);if(workId===w.id)await go('/comic/library')}catch(c){setError(String(c))}}
  return <div className={`longform-app comic-app ${menu?'lf-navigation-open':''}`}>
- <header className="lf-top"><button className="lf-brand" aria-label="返回首页" onClick={()=>void go('/')}><Flame/><span><strong>StoryForge</strong><small>故事熔炉</small></span></button><nav aria-label="产品导航">{PRODUCT_NAVIGATION.map(item=><Link key={item.id} to={item.path} aria-current={item.id==='comic'?'page':undefined} onClick={e=>{e.preventDefault();void go(item.path)}}>{item.label}</Link>)}</nav></header>
+ <header className="lf-top"><button className="lf-brand" aria-label="返回首页" onClick={()=>void go('/')}><BrandIcon/><span><strong>StoryForge</strong><small>故事熔炉</small></span></button><nav aria-label="产品导航">{PRODUCT_NAVIGATION.map(item=><Link key={item.id} to={item.path} aria-current={item.id==='comic'?'page':undefined} onClick={e=>{e.preventDefault();void go(item.path)}}>{item.label}</Link>)}</nav></header>
  <aside className="lf-sidebar"><small>COMIC ADAPTATION</small><h1>小说转漫画</h1><p>把故事，留在翻页的一瞬间。</p><button className="lf-current" onClick={()=>setCreating(!creating)}><BookOpen/><span>{work?.title??'选择或创建漫画'}</span></button><nav aria-label="漫画页面导航">{COMIC_GROUPS.map(group=><button key={group.id} aria-current={group.pages.includes(current)?'page':undefined} onClick={()=>void go(path(group.id))}>{group.label}</button>)}</nav></aside>
  <section ref={main} className="lf-main"><header className="lf-heading"><small>小说转漫画 › {pages.find(([id])=>id===current)?.[1]}</small><h2>{COMIC_GROUPS.find(g=>g.pages.includes(current))?.label}</h2><div className="lf-mobile-controls"><button onClick={()=>setMenu(!menu)}>漫画导航</button></div></header><div className="lf-body"><div className="lf-content">{(COMIC_GROUPS.find(group=>group.pages.includes(current))?.pages.length??0)>1&&<nav className="cp-subnav" aria-label="漫画内容分类">{COMIC_CONTENT_GROUPS.map(group=>{const items=group.pages.filter(id=>COMIC_GROUPS.find(g=>g.pages.includes(current))?.pages.includes(id));return items.length>0&&<section key={group.id}><small>{items.length>1?group.label:null}</small>{items.map(id=><button key={id} aria-current={id===current?'page':undefined} onClick={()=>void go(path(id))}>{pages.find(([key])=>key===id)?.[1]}</button>)}</section>})}</nav>}
  {error&&<p role="alert" className="cp-error">{error}</p>}

@@ -1,8 +1,9 @@
+import BrandIcon from '../components/shared/BrandIcon'
 import WorldDraftSummary from '../components/world-engine/WorldDraftSummary'
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { liveQuery } from 'dexie'
-import { ArrowRight, BookOpen, CheckCircle2, Database, Flame, Globe2, Layers, Map, ScrollText, Sparkles, Users, Waypoints } from 'lucide-react'
+import { ArrowRight, BookOpen, CheckCircle2, Database, Globe2, Layers, Map, ScrollText, Sparkles, Users, Waypoints } from 'lucide-react'
 import { db } from '../lib/db/schema'
 import type { Project, World, Work, ProductProductionHandoffV1 } from '../lib/types'
 import { isShareableWorld } from '../lib/world-engine/world-identity'
@@ -70,7 +71,7 @@ export default function WorldEnginePage(){
  const hasContentNav=isWorldbuilding||modules.length>1
  useEffect(()=>{contentNavRef.current?.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView({block:'nearest'})},[definition.id,module,contentMenu])
  return <div className={`longform-app world-engine-app ${menu?'lf-navigation-open':''} ${contentMenu?'lf-step-menu-open':''}`} data-testid="world-engine-page">
-  <header className="lf-top"><button className="lf-brand" aria-label="返回首页" onClick={()=>void go('/')}><Flame/><span><strong>StoryForge</strong><small>故事熔炉</small></span></button><nav aria-label="产品导航">{PRODUCT_NAVIGATION.map(item=><Link key={item.id} to={item.path} aria-current={item.id==='world'?'page':undefined} onClick={e=>{e.preventDefault();void go(item.path)}}>{item.label}</Link>)}</nav></header>
+  <header className="lf-top"><button className="lf-brand" aria-label="返回首页" onClick={()=>void go('/')}><BrandIcon/><span><strong>StoryForge</strong><small>故事熔炉</small></span></button><nav aria-label="产品导航">{PRODUCT_NAVIGATION.map(item=><Link key={item.id} to={item.path} aria-current={item.id==='world'?'page':undefined} onClick={e=>{e.preventDefault();void go(item.path)}}>{item.label}</Link>)}</nav></header>
   <aside className="lf-sidebar"><small>WORLD ENGINE</small><h1>世界引擎</h1><p>让世界成为故事的土壤。</p><button className="lf-current" onClick={()=>setChoosing(!choosing)}><Globe2/><span>{row?.world.name??'选择或创建世界'}</span></button><nav aria-label="世界页面导航">{WORLD_PRIMARY_PAGES.map(p=><button key={p.id} aria-current={p.id===primaryId?'page':undefined} onClick={()=>void go(path(p.id))}>{p.label}</button>)}</nav></aside>
   <section className="lf-main"><header className="lf-heading"><small>世界引擎 › {isWorldbuilding&&definition.id!=='worldbuilding'?'世界设定 › ':''}{definition.label}{row?` · ${row.world.code}`:''}</small><h2>{isWorldbuilding?'世界设定':definition.label}</h2>{row&&definition.id==='story'&&<small>当前叙事：{row.work.title}</small>}<div className="lf-mobile-controls"><button aria-expanded={menu} onClick={()=>{setMenu(!menu);setContentMenu(false)}}>世界目录</button>{hasContentNav&&<button aria-expanded={contentMenu} onClick={()=>{setContentMenu(!contentMenu);setMenu(false)}}>{isWorldbuilding?'设定目录':'内容目录'}</button>}</div></header>
   <div className={`lf-body ${hasContentNav?'lf-with-steps':''}`}>

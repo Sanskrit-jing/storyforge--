@@ -1,8 +1,9 @@
+import BrandIcon from '../components/shared/BrandIcon'
 import { safeSettingsReturn } from '../components/navigation/retired-routes'
 import ExampleLibrary, { ExampleShelf, type ExampleKind } from '../components/examples/ExampleLibrary'
 import { Fragment, lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
-import { ArrowRight, BookOpen, Clock, Compass, Flame, FolderOpen, Globe2, Library, Menu, Search, Settings, X } from 'lucide-react'
+import { ArrowRight, BookOpen, Clock, Compass, FolderOpen, Globe2, Library, Menu, Search, Settings, X } from 'lucide-react'
 import { PRODUCT_NAVIGATION } from '../components/navigation/product-navigation'
 import { useHomeData } from '../components/home/useHomeData'
 import { HomeBackup, HomeCover, HomeSearch, HomeTasks } from '../components/home/HomeTools'
@@ -29,7 +30,7 @@ export default function HomePage(){
  if(pageId==='worlds')return <Navigate replace to="/world/worlds"/>
  if(pageId==='styles')return <Navigate replace to="/home/products"/>
  return <div className={`longform-app home-app ${pageId==='today'?'home-today':''} ${menu?'home-menu-open':''}`} data-testid="home-page">
- <header className="lf-top"><button className="lf-brand" aria-label="返回首页" onClick={()=>void open('/')}><Flame/><span><strong>StoryForge</strong><small>故事熔炉</small></span></button><nav aria-label="产品导航">{PRODUCT_NAVIGATION.map(p=><Link key={p.id} to={p.path} aria-current={p.id==='home'?'page':undefined} onClick={e=>{e.preventDefault();void open(p.path)}}>{p.label}</Link>)}</nav><div className="home-top-actions"><button aria-label="搜索" onClick={()=>void open('/home/search')}><Search size={19}/></button><button aria-label="任务中心" onClick={()=>void open('/home/tasks')}><Clock size={19}/></button><button className="home-menu-button" aria-label="页面目录" aria-expanded={menu} onClick={()=>setMenu(!menu)}>{menu?<X/>:<Menu/>}</button></div></header>
+ <header className="lf-top"><button className="lf-brand" aria-label="返回首页" onClick={()=>void open('/')}><BrandIcon/><span><strong>StoryForge</strong><small>故事熔炉</small></span></button><nav aria-label="产品导航">{PRODUCT_NAVIGATION.map(p=><Link key={p.id} to={p.path} aria-current={p.id==='home'?'page':undefined} onClick={e=>{e.preventDefault();void open(p.path)}}>{p.label}</Link>)}</nav><div className="home-top-actions"><button aria-label="搜索" onClick={()=>void open('/home/search')}><Search size={19}/></button><button aria-label="任务中心" onClick={()=>void open('/home/tasks')}><Clock size={19}/></button><button className="home-menu-button" aria-label="页面目录" aria-expanded={menu} onClick={()=>setMenu(!menu)}>{menu?<X/>:<Menu/>}</button></div></header>
  {menu&&<button className="home-menu-scrim" aria-label="关闭页面目录" onClick={()=>setMenu(false)}/>}
  <aside className="lf-sidebar"><small>YOUR CREATIVE SPACE</small><h1>首页</h1><p>让故事，在此生长。</p><nav aria-label="首页导航">{NAV.map(([id,label,Icon])=><Fragment key={id}>{id==='data'&&selected&&<><button aria-current={pageId==='detail'?'page':undefined} onClick={()=>void open(`/home/detail?work=${selected.work.id}`)}>作品详情</button><button aria-current={pageId==='cover'?'page':undefined} onClick={()=>void open(`/home/cover?work=${selected.work.id}`)}>作品封面</button></>}<button aria-current={pageId===id?'page':undefined} onClick={()=>void open(id==='worlds'?'/world/worlds':id==='today'?'/':`/home/${id}`)}><Icon size={18}/>{label}</button></Fragment>)}</nav><footer><button onClick={()=>void open('/home/products')}>浏览全部产品 <ArrowRight size={15}/></button><p>本地创作 · 自由生长</p></footer></aside>
  <main className="lf-main home-main" ref={content}>{pageId!=='today'&&<div className="home-breadcrumb">首页 › {TITLES[pageId]||'页面'}<span className="home-desktop-hint">本地工作空间</span><span className="home-mobile-hint">顶部产品可左右滑动</span></div>}{(error||loadError)&&<p className="home-error" role="alert">{error||loadError}</p>}

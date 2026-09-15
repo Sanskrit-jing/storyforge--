@@ -1,7 +1,8 @@
+import BrandIcon from '../components/shared/BrandIcon'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { liveQuery } from 'dexie';
-import { Flame, BookOpen } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
 import { db } from '../lib/db/schema';
 import type { Project, Work, WorkspaceScope } from '../lib/types';
 import { DEFAULT_CHAT_SETTINGS, type ChatAuthoringDraftV1, type ChatAuthoringSettingsV1 } from '../lib/character-interaction/authoring-contract';
@@ -116,7 +117,7 @@ export default function CharacterChatPage() {
         next.delete('production'); if (next.toString() !== params.toString())
         navigate({ search: next.toString() }, { replace: true }); }, [params, navigate, productionId]);
     const pageLinks = CHAT_PAGES.filter(p => chatPrimary(p[0]) === primary);
-    return <div className={`longform-app avg-app chat-app ${menu ? 'lf-navigation-open' : ''}`} data-testid="character-chat-page"><header className="lf-top"><Link className="lf-brand" to="/"><Flame /><span><strong>StoryForge</strong><small>故事熔炉</small></span></Link><nav aria-label="产品导航">{PRODUCT_NAVIGATION.map(p => <Link key={p.id} to={p.path} aria-current={p.id === 'chat' ? 'page' : undefined}>{p.label}</Link>)}</nav></header>
+    return <div className={`longform-app avg-app chat-app ${menu ? 'lf-navigation-open' : ''}`} data-testid="character-chat-page"><header className="lf-top"><Link className="lf-brand" to="/"><BrandIcon/><span><strong>StoryForge</strong><small>故事熔炉</small></span></Link><nav aria-label="产品导航">{PRODUCT_NAVIGATION.map(p => <Link key={p.id} to={p.path} aria-current={p.id === 'chat' ? 'page' : undefined}>{p.label}</Link>)}</nav></header>
  <aside className="lf-sidebar"><small>CHARACTER CONVERSATIONS</small><h1>角色聊天</h1><p>每一次对话，都让彼此更近一些。</p><button className="lf-current" onClick={() => go('library')}><BookOpen />{row?.work.title ?? '选择或新建作品'}</button><nav aria-label="角色聊天主导航">{CHAT_PRIMARY.map(([key, label, entry]) => <button key={key} aria-current={primary === key ? 'page' : undefined} onClick={() => go(entry)}>{label}</button>)}<Link to="/community/releases">社区与发行</Link><Link to="/home/settings">通用设置</Link></nav></aside>
  <main className="lf-main"><div className="lf-breadcrumb"><button onClick={() => setMenu(!menu)} aria-label="打开页面目录">目录</button>角色聊天 › {page[1]}</div><div ref={contentRef} className="lf-content"><h2>{CHAT_PRIMARY.find(p => p[0] === primary)?.[1]}</h2>{error && <p role="alert">{error}</p>}{dirty && <p>有尚未保存的方案修改</p>}{notice && <p role="status">{notice}</p>}
  {primary === 'workbench' && <div className="avg-phases"><button onClick={() => go('source')}>S1 世界来源</button><button onClick={() => go('vision')}>S2 产品定向</button><button onClick={() => go('production')}>S3 制作与运行</button></div>}

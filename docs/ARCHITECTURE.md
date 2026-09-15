@@ -101,7 +101,7 @@ flowchart TB
 | 当前事实 | 数值 | 单一事实源 |
 |---|---:|---|
 | 应用语义版本 | `3.9.1` | `package.json` |
-| TypeScript 生产源码 | 1142 个文件 / 355688 行 | `tsconfig.json` |
+| TypeScript 生产源码 | 1143 个文件 / 355707 行 | `tsconfig.json` |
 | IndexedDB schema | v10 / 123 张 required tables | `schema.ts` / `REQUIRED_TABLES` |
 | PROJECT_TABLES | 123 张表 | `project-tables.ts` |
 | Prompt 主线 | 65 个 moduleKey / 210 条内置模板 | `PromptModuleKey` / `prompt-seeds*.ts` |
@@ -277,3 +277,5 @@ AVG 会谈使用 `avg.consult.v1` 和 `avg.authoring` 注册上下文，经 dura
 - 通用设置提供 14 套皮肤：青绿山水、水墨远山、雾青桃陶、纸与墨、暖杏书笺、羊皮古卷、古卷鎏金、青绿金笺、熔炉余烬、银蓝书房、暮紫星灯、星夜萤黄、星夜萤黄全暗版、星穹透光版，可按浅色 / 深色 / 混合筛选。`THEME_OPTIONS` 是主题 ID、名称、说明和分组的统一注册表。`src/lib/theme.ts` 只保存本机 `storyforge-theme` 偏好并通知编辑器，刷新后恢复。水墨山景用于外框和留白，正文纸面不透明；星夜萤黄使用深色工具区与象牙白正文，全暗版和星穹透光版使用深色正文。星穹工作面板约 94%–96% 不透明，模糊仅用于外框与面板，减少透明度偏好或浏览器不支持模糊时回退实色。主按钮使用独立 on-accent 前景色保证明亮强调色上的文字对比度；作品媒资和状态色保持其原语义。Shadow DOM 预览继承同一套变量，独立预览仅读取已有偏好并加载同一来源，不写本机数据。旧保存主题值仍迁移为青绿默认，不改正文格式和用户数据。项目文件夹设置、作品导入导出、版本和存档仍使用原领域服务。
 
 UI 清理回归覆盖：历史查询入口与对象参数、设置安全返回、世界封存与交接、真实跑团存档恢复、独立作品创建、文件夹绑定及示例体验。不得为兼容旧测试而恢复旧页面或全局创建流程。
+
+品牌图标统一通过 `BrandIcon` 使用作者提供的 `public/brand/storyforge-icon.png`；浏览器图标、安装图标和 README 同源。应用名称继续为 StoryForge / 故事熔炉。新增产品页面复用该组件，不重新引入火焰标志。

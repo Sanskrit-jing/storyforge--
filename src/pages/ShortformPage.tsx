@@ -1,3 +1,4 @@
+import BrandIcon from '../components/shared/BrandIcon'
 import ExampleLibrary from '../components/examples/ExampleLibrary'
 import { ensureShortNovelProductionV1, reopenShortNovelProductionV1 } from '../lib/short-novel/service'
 import { useAutoBackup } from '../hooks/useAutoBackup'
@@ -5,7 +6,7 @@ import { useGistAutoBackup } from '../hooks/useGistAutoBackup'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { liveQuery } from 'dexie'
-import { Flame, BookOpen } from 'lucide-react'
+import { BookOpen } from 'lucide-react'
 import { db } from '../lib/db/schema'
 import type { Project, Work } from '../lib/types'
 import { createWorkspace } from '../lib/workspace/create-workspace'
@@ -129,7 +130,7 @@ export default function ShortformPage() {
     }catch(cause){setError(String(cause))}finally{setBusy(false)}
   }
   return <div className={`longform-app shortform-app ${menu?'lf-navigation-open':''}`}>
-    <header className="lf-top"><button className="lf-brand" aria-label="返回首页" onClick={()=>void go('/')}><Flame/><span><strong>StoryForge</strong><small>故事熔炉</small></span></button><nav aria-label="产品导航">{PRODUCT_NAVIGATION.map(item=><Link key={item.id} to={item.path} aria-current={item.id==='short'?'page':undefined} onClick={event=>{event.preventDefault();void go(item.path)}}>{item.label}</Link>)}</nav></header>
+    <header className="lf-top"><button className="lf-brand" aria-label="返回首页" onClick={()=>void go('/')}><BrandIcon/><span><strong>StoryForge</strong><small>故事熔炉</small></span></button><nav aria-label="产品导航">{PRODUCT_NAVIGATION.map(item=><Link key={item.id} to={item.path} aria-current={item.id==='short'?'page':undefined} onClick={event=>{event.preventDefault();void go(item.path)}}>{item.label}</Link>)}</nav></header>
     <aside className="lf-sidebar"><small>SHORT FICTION</small><h1>短篇创作</h1><p>短短一篇，也能容纳完整的余韵。</p>{row&&<button className="lf-current" onClick={()=>setChoosing(true)}><BookOpen/><span>{row.work.title}</span></button>}<nav aria-label="短篇页面导航">{pages.map(([id,label])=><button key={id} aria-current={id===current?'page':undefined} onClick={()=>void go(pagePath(id))}>{label}</button>)}</nav></aside>
     <section className="lf-main"><header className="lf-heading"><small>短篇创作 › {pages.find(([id])=>id===current)?.[1]}</small><h2>{pages.find(([id])=>id===current)?.[1]}</h2><div className="lf-mobile-controls"><button onClick={()=>setMenu(!menu)}>短篇导航</button></div></header><div className="lf-body"><div className="lf-content">
       {error&&<p className="short-error" role="alert">{error}</p>}
