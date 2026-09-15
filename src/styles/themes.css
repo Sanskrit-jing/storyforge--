@@ -1,0 +1,112 @@
+/* Shared palette: application, portal dialogs, editors and isolated product previews. */
+:root {
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-serif: 'Songti SC', 'STSong', 'Noto Serif CJK SC', 'SimSun', Georgia, serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+  --bg-base: #e4eee7;
+  --bg-surface: #faf8f1;
+  --bg-elevated: #fffef9;
+  --bg-hover: #e5ecde;
+  --text-primary: #244842;
+  --text-secondary: #5d786a;
+  --text-muted: #718572;
+  --accent: #286a5d;
+  --accent-hover: #20584d;
+  --accent-muted: #a7c5b1;
+  --accent-soft: #dce6cf;
+  --success: #237348;
+  --warning: #946012;
+  --error: #ae3434;
+  --info: #326d89;
+  --border: #d1decd;
+  --border-hover: #a7c5b1;
+  --border-subtle: #dce5d5;
+  --shadow-sm: 0 2px 4px #24484208;
+  --shadow-md: 0 8px 24px #24484212;
+  --shadow-lg: 0 20px 60px #153e3729;
+  --editor-page-bg: #fffef9;
+  --editor-ruled-line: #dce5d5;
+  --editor-selection-bg: #cbdcc5;
+  --editor-selection-text: #244842;
+  --editor-ink-primary: #244842;
+  --editor-ink-strong: #153e37;
+  --editor-ink-cream: #6E421F;
+  --editor-ink-muted: #5d786a;
+  --editor-ink-gold: #8A5B00;
+  --editor-ink-orange: #B54708;
+  --editor-ink-red: #B91C1C;
+  --editor-ink-blue: #1D4ED8;
+  --editor-ink-green: #15803D;
+  --editor-ink-purple: #7E22CE;
+  --editor-mark-yellow: #FFE45C;
+  --editor-mark-red: #FFD6D6;
+  --editor-mark-blue: #D7E8FF;
+  --editor-mark-green: #D8F5DF;
+  --editor-mark-purple: #EAD7FF;
+  --editor-mark-brown: #F1E3CD;
+  --editor-mark-ink: #E9DAC3;
+}
+
+/* Shell and decorative surfaces. Legacy green nuances remain as local fallbacks;
+   a skin overrides these semantic roles without duplicating page layouts. */
+:root {
+  --shell-art: url('../../ui-preview/assets/shell.jpg');
+  --shell-background: var(--shell-art) left top / 100vw auto no-repeat #153e37;
+  --shell-base: #153e37;
+  --shell-wash: transparent;
+  --main-background: linear-gradient(115deg, #dcebe3, #edf0e2);
+  --hero-background: linear-gradient(90deg, #1d554aba, transparent 85%), var(--shell-art) center 27% / cover;
+  --preview-background: var(--shell-art) left top / 100vw auto no-repeat #153e37;
+  --preview-main-background: radial-gradient(ellipse at 80% 0%, #edf3e5, transparent 55%), linear-gradient(140deg, #dbe9e0, #e9efe4 65%, #dbe7de);
+}
+
+:root[data-theme='inkwash'] {
+  --bg-base: #eee8dc;
+  --bg-surface: #faf7ed;
+  --bg-elevated: #fdfaf3;
+  --bg-hover: #e9e5d8;
+  --text-primary: #333d38;
+  --text-secondary: #555e54;
+  --text-muted: #61695e;
+  --accent: #934d3e;
+  --accent-hover: #783e32;
+  --accent-muted: #c3a090;
+  --accent-soft: #eaded0;
+  --border: #c9cbbd;
+  --border-hover: #a5ab9b;
+  --border-subtle: #dcdcd0;
+  --shadow-sm: 0 2px 4px #313a3108;
+  --shadow-md: 0 8px 24px #313a3112;
+  --shadow-lg: 0 20px 60px #313a3129;
+  --editor-page-bg: #faf7ed;
+  --editor-ruled-line: #deded1;
+  --editor-selection-bg: #dfd3bd;
+  --editor-selection-text: #333d38;
+  --editor-ink-primary: #333d38;
+  --editor-ink-strong: #252d28;
+  --editor-ink-muted: #555e54;
+  --shell-art: url('../assets/themes/inkwash.webp');
+  --shell-background: var(--shell-art) center top / cover no-repeat #ede7d9;
+  --shell-base: #ede7d9;
+  --shell-wash: #f0eadaad;
+  --main-background: #faf7ed30;
+  --hero-background: linear-gradient(90deg, #faf7edb3, #faf7ed00 78%);
+  --preview-background: var(--shell-background);
+  --preview-main-background: var(--main-background);
+  --skin-shell-ink: #353d38;
+  --skin-shell-muted: #555e54;
+  --skin-shell-border: #b6b9a866;
+  --skin-shell-card: #faf7ed66;
+  --skin-ink: #333d38;
+  --skin-muted: #555e54;
+  --skin-accent: #934d3e;
+  --skin-on-accent: #fff9ef;
+  --skin-selected: #ded5c3;
+  --skin-selected-ink: #533e31;
+  --skin-paper: #faf7edf5;
+  --skin-elevated: #fdfaf3;
+  --skin-note: #e9e5d8f5;
+  --skin-soft: #e9e5d8;
+  --skin-border: #c9cbbd;
+  --skin-shadow: #313a3112;
+}

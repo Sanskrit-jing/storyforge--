@@ -101,7 +101,7 @@ flowchart TB
 | 当前事实 | 数值 | 单一事实源 |
 |---|---:|---|
 | 应用语义版本 | `3.9.1` | `package.json` |
-| TypeScript 生产源码 | 1141 个文件 / 355568 行 | `tsconfig.json` |
+| TypeScript 生产源码 | 1141 个文件 / 355601 行 | `tsconfig.json` |
 | IndexedDB schema | v10 / 123 张 required tables | `schema.ts` / `REQUIRED_TABLES` |
 | PROJECT_TABLES | 123 张表 | `project-tables.ts` |
 | Prompt 主线 | 65 个 moduleKey / 210 条内置模板 | `PromptModuleKey` / `prompt-seeds*.ts` |
@@ -266,13 +266,13 @@ AVG 会谈使用 `avg.consult.v1` 和 `avg.authoring` 注册上下文，经 dura
 
 ## 当前 UI 开发基线（2026-09-15）
 
-当前青绿山水、奶油纸面 UI 是应用的唯一外壳。新功能沿用各产品的导航和编辑区域：主要操作在产品左侧，内容分类在页内左侧；创建位于各自产品页，浏览不以先有作品或世界为前置条件。
+当前重构 UI 是应用的唯一外壳，默认使用青绿山水、奶油纸面；水墨远山是同一布局的可选皮肤。新功能沿用各产品的导航和编辑区域：主要操作在产品左侧，内容分类在页内左侧；创建位于各自产品页，浏览不以先有作品或世界为前置条件。
 
-- `src/index.css` 定义全站唯一配色、字体和编辑器变量，包括 portal 弹窗；`src/components/longform/longform.css` 提供已确认的共享页面样式。不得重新引入旧六主题或独立暖色应用外壳。
+- `src/styles/themes.css` 是全站配色、字体、山水背景和编辑器变量的单一来源，由 `src/index.css` 引入，包括 portal 弹窗；`src/components/longform/longform.css` 提供已确认的共享页面样式。共享外框和产品制作面板通过语义变量换肤，局部 fallback 保留原青绿细节。不得重新引入旧六主题或独立应用外壳。
 - `src/components/navigation/ProductFrame.tsx` 为跨产品工具提供相同的页面外壳；现有产品保留各自更完整的导航和操作。`retired-routes.ts` 只转换旧书签，不渲染旧页面。
 - `ProductHubPage`、旧 `Sidebar` 视图、旧全局创建弹层与旧引导已下线。模块类型树继续供现行编辑器、内容分类和 AI 元信息使用；它不是另一套 UI。
 - `src/components/world-engine/panels.css` 仅维护现行世界分享、版本和资源控件；不依赖已删除的 `product-hub.css`。
 - `ui-preview/` 是本轮获认可的设计参考，且仍支撑两个开发中产品的预览页；它不是已退役的旧 UI。首页不再宣传尚待上线的整站预览。共享山水背景和真实作品、漫画、游戏媒资保留。
-- 全局设置说明当前样式；旧保存主题值只迁移为当前主题，不改正文格式和用户数据。项目文件夹设置、作品导入导出、版本和存档仍使用原领域服务。
+- 通用设置提供青绿山水 / 水墨远山切换，`src/lib/theme.ts` 只保存本机 `storyforge-theme` 偏好并通知编辑器，刷新后恢复。水墨山景用于外框和留白，工作面板保持约 96% 不透明，正文纸面不透明；作品媒资和状态色保持其原语义。Shadow DOM 预览继承同一套变量，独立预览仅读取已有偏好并加载同一来源，不写本机数据。旧保存主题值仍迁移为青绿默认，不改正文格式和用户数据。项目文件夹设置、作品导入导出、版本和存档仍使用原领域服务。
 
 UI 清理回归覆盖：历史查询入口与对象参数、设置安全返回、世界封存与交接、真实跑团存档恢复、独立作品创建、文件夹绑定及示例体验。不得为兼容旧测试而恢复旧页面或全局创建流程。

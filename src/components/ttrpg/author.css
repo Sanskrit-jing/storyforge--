@@ -1,14 +1,14 @@
 .ttrpg-author-app .ttrpg-wizard{grid-column:1/-1;min-width:0}
-.ttrpg-author-app .ttrpg-wizard>section{border-radius:24px;padding:24px;background:#f9f8f1;border-color:#d2dfce}
+.ttrpg-author-app .ttrpg-wizard>section{border-radius:24px;padding:24px;background:var(--skin-paper, #f9f8f1);border-color:var(--skin-border, #d2dfce)}
 .ttrpg-author-app .ttrpg-wizard h3{font-size:23px}
 .ttrpg-author-app .ttrpg-wizard label,.ttrpg-author-app .ttrpg-wizard p{font-size:14px;line-height:1.7}
 .ttrpg-author-app .ttrpg-wizard button{font-size:13px}
-.ttrpg-author-app .ttrpg-wizard input:not([type=checkbox]),.ttrpg-author-app select,.ttrpg-author-app textarea{border-radius:14px;border:1px solid #cedccb;background:#fffef9;padding:12px;color:#345b50;max-width:100%}
+.ttrpg-author-app .ttrpg-wizard input:not([type=checkbox]),.ttrpg-author-app select,.ttrpg-author-app textarea{border-radius:14px;border:1px solid var(--skin-border, #cedccb);background:var(--skin-elevated, #fffef9);padding:12px;color:var(--skin-ink, #345b50);max-width:100%}
 .ttrpg-author-app textarea{width:100%;min-height:110px}
 .ttrpg-author-app fieldset:disabled{opacity:.65}
 .ttrpg-check{display:flex;align-items:center;gap:10px;padding:8px}
 .ttrpg-author-app .lf-paper fieldset{min-width:0;margin:16px 0}
-.ttrpg-object{border:1px solid #d2dfce;border-radius:18px;padding:18px;margin:12px 0}
+.ttrpg-object{border:1px solid var(--skin-border, #d2dfce);border-radius:18px;padding:18px;margin:12px 0}
 .ttrpg-object summary{cursor:pointer;font-family:var(--lf-serif);font-size:20px}
 .ttrpg-object-value{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px}
 .ttrpg-author-app img{max-width:100%;border-radius:18px}

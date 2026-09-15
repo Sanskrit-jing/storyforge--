@@ -21,7 +21,8 @@ describe('current UI is the only application foundation', () => {
   it('settings return is local and retired saved palettes resolve to the current palette', () => {
     expect(safeSettingsReturn('/ttrpg/play?project=1&session=9')).toBe('/ttrpg/play?project=1&session=9')
     for(const value of ['https://other.test','//other.test','/play/../settings','/play\\other',null])expect(safeSettingsReturn(value)).toBeNull()
-    for(const value of ['warm','jade','slate','forge','scroll','paper','storyforge',null])expect(resolveStoryForgeTheme(value)).toBe('storyforge')
+    expect(resolveStoryForgeTheme('inkwash')).toBe('inkwash')
+    for(const value of ['unknown','warm','jade','slate','forge','scroll','paper','storyforge',null])expect(resolveStoryForgeTheme(value)).toBe('storyforge')
   })
   it('retired UI files and loading escape hatches cannot return', () => {
     for(const file of ['src/pages/ProductHubPage.tsx','src/pages/product-hub.css','src/components/layout/Sidebar.tsx','src/components/guide/WelcomeGuide.tsx','public/world-map-cangyun.svg'])expect(existsSync(file),file).toBe(false)
