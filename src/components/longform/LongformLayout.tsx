@@ -1,6 +1,7 @@
+import BrandIcon from '../shared/BrandIcon'
 import { Link } from 'react-router'
 import { useState, type ReactNode } from 'react'
-import { BookOpen, Flame } from 'lucide-react'
+import { BookOpen } from 'lucide-react'
 import { LONGFORM_SECTIONS, LONGFORM_STEPS, type LongformSection, type LongformMode } from './navigation'
 import type { SidebarModule } from '../layout/sidebar-tree'
 import { PRODUCT_NAVIGATION } from '../navigation/product-navigation'
@@ -17,7 +18,7 @@ export default function LongformLayout({ children, title, section, mode = 'steps
   const selectModule = (next: SidebarModule) => { setStepsOpen(false); onModule?.(next) }
   const current = LONGFORM_STEPS.find(step => step.modules.some(([id]) => id === module))
   return <div className={`longform-app ${navigationOpen ? 'lf-navigation-open' : ''} ${stepsOpen ? 'lf-step-menu-open' : ''}`}>
-    <header className="lf-top"><button className="lf-brand" aria-label="返回首页" onClick={onHome}><Flame/><span><strong>StoryForge</strong><small>故事熔炉</small></span></button><nav aria-label="产品导航">{PRODUCT_NAVIGATION.map(item => <Link key={item.id} to={item.path} aria-current={item.id === 'long' ? 'page' : undefined} onClick={event => {
+    <header className="lf-top"><button className="lf-brand" aria-label="返回首页" onClick={onHome}><BrandIcon/><span><strong>StoryForge</strong><small>故事熔炉</small></span></button><nav aria-label="产品导航">{PRODUCT_NAVIGATION.map(item => <Link key={item.id} to={item.path} aria-current={item.id === 'long' ? 'page' : undefined} onClick={event => {
       if (item.id === 'home') { event.preventDefault(); onHome() }
       else if (item.id === 'long') { event.preventDefault(); selectSection('library') }
       else if (onNavigate) { event.preventDefault(); onNavigate(item.path) }

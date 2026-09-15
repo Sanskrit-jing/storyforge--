@@ -1,8 +1,9 @@
+import BrandIcon from '../components/shared/BrandIcon'
 import ExampleLibrary from '../components/examples/ExampleLibrary'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { liveQuery } from 'dexie'
-import { BookOpen, Flame } from 'lucide-react'
+import { BookOpen } from 'lucide-react'
 import { db } from '../lib/db/schema'
 import type { Project, Work, WorkspaceScope, ScreenplayTargetSpecV1 } from '../lib/types'
 import { effectiveWorkKind } from '../lib/workspace/work-kind'
@@ -59,7 +60,7 @@ export default function ScreenplayPage(){
  const rename=async(w:Work)=>{const title=await dialog.prompt({title:'剧本名称',defaultValue:w.title});if(!title?.trim())return;try{await switchActiveWork(w.projectId,w.id!);await updateActiveWork(w.projectId,{title:title.trim()})}catch(c){setError(String(c))}}
  const remove=async(w:Work)=>{if(!await dialog.confirm({title:'删除这部剧本？',message:'只删除这部剧本及其改编数据、版本，不删除源小说。建议先下载备份。',confirmText:'删除剧本'}))return;try{await flushPendingEditsV1();await deleteWork(w.id!);if(workId===w.id)await go('/script/library')}catch(c){setError(String(c))}}
  return <div className={`longform-app screenplay-app ${menu?'lf-navigation-open':''}`}>
- <header className="lf-top"><button className="lf-brand" aria-label="返回首页" onClick={()=>void go('/')}><Flame/><span><strong>StoryForge</strong><small>故事熔炉</small></span></button><nav aria-label="产品导航">{PRODUCT_NAVIGATION.map(item=><Link key={item.id} to={item.path} aria-current={item.id==='script'?'page':undefined} onClick={e=>{e.preventDefault();void go(item.path)}}>{item.label}</Link>)}</nav></header>
+ <header className="lf-top"><button className="lf-brand" aria-label="返回首页" onClick={()=>void go('/')}><BrandIcon/><span><strong>StoryForge</strong><small>故事熔炉</small></span></button><nav aria-label="产品导航">{PRODUCT_NAVIGATION.map(item=><Link key={item.id} to={item.path} aria-current={item.id==='script'?'page':undefined} onClick={e=>{e.preventDefault();void go(item.path)}}>{item.label}</Link>)}</nav></header>
  <aside className="lf-sidebar"><small>SCREENPLAY ADAPTATION</small><h1>小说转剧本</h1><p>让文字成为可以被看见的行动。</p><button className="lf-current" onClick={()=>setCreating(!creating)}><BookOpen/><span>{work?.title??'选择或创建剧本'}</span></button><nav aria-label="剧本页面导航">{pages.map(([id,label])=><button key={id} aria-current={id===current?'page':undefined} onClick={()=>void go(path(id))}>{label}</button>)}</nav></aside>
  <section ref={main} className="lf-main"><header className="lf-heading"><small>小说转剧本 › {pages.find(([id])=>id===current)?.[1]}</small><h2>{pages.find(([id])=>id===current)?.[1]}</h2><div className="lf-mobile-controls"><button onClick={()=>setMenu(!menu)}>剧本导航</button></div></header><div className="lf-body"><div className="lf-content">
  {error&&<p role="alert" className="sp-error">{error}</p>}

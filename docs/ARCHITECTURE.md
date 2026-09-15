@@ -101,7 +101,7 @@ flowchart TB
 | 当前事实 | 数值 | 单一事实源 |
 |---|---:|---|
 | 应用语义版本 | `3.9.1` | `package.json` |
-| TypeScript 生产源码 | 1141 个文件 / 355568 行 | `tsconfig.json` |
+| TypeScript 生产源码 | 1142 个文件 / 355584 行 | `tsconfig.json` |
 | IndexedDB schema | v10 / 123 张 required tables | `schema.ts` / `REQUIRED_TABLES` |
 | PROJECT_TABLES | 123 张表 | `project-tables.ts` |
 | Prompt 主线 | 65 个 moduleKey / 210 条内置模板 | `PromptModuleKey` / `prompt-seeds*.ts` |
@@ -276,3 +276,5 @@ AVG 会谈使用 `avg.consult.v1` 和 `avg.authoring` 注册上下文，经 dura
 - 全局设置说明当前样式；旧保存主题值只迁移为当前主题，不改正文格式和用户数据。项目文件夹设置、作品导入导出、版本和存档仍使用原领域服务。
 
 UI 清理回归覆盖：历史查询入口与对象参数、设置安全返回、世界封存与交接、真实跑团存档恢复、独立作品创建、文件夹绑定及示例体验。不得为兼容旧测试而恢复旧页面或全局创建流程。
+
+品牌图标统一通过 `BrandIcon` 使用作者提供的 `public/brand/storyforge-icon.png`；浏览器图标、安装图标和 README 同源。应用名称继续为 StoryForge / 故事熔炉。新增产品页面复用该组件，不重新引入火焰标志。

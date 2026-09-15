@@ -1,3 +1,4 @@
+import BrandIcon from '../components/shared/BrandIcon'
 import ExampleLibrary from '../components/examples/ExampleLibrary'
 import {
   lazy,
@@ -10,7 +11,7 @@ import {
 } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { liveQuery } from "dexie";
-import { Flame, BookOpen } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { db } from "../lib/db/schema";
 import type { Project, Work, WorkspaceScope } from "../lib/types";
 import {
@@ -288,7 +289,7 @@ export default function AvgPage() {
     >
       <header className="lf-top">
         <Link className="lf-brand" to="/" aria-label="返回首页">
-          <Flame />
+          <BrandIcon/>
           <span>
             <strong>StoryForge</strong>
             <small>故事熔炉</small>

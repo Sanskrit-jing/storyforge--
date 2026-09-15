@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./public/icon.svg" alt="StoryForge 标志" width="80" />
+  <img src="./public/brand/storyforge-icon.png" alt="StoryForge 标志" width="80" />
 </p>
 
 <h1 align="center">StoryForge · 故事熔炉</h1>
@@ -79,7 +79,7 @@
 
 ### 在线打开
 
-访问 **[StoryForge 在线版](https://yuanbw.vercel.app/storyforge/)**。首页提供「新版 UI 预览」独立入口，展示正在优化调整中的界面；预览使用示例内容，尚未接入真实功能。
+访问 **[StoryForge 在线版](https://yuanbw.vercel.app/storyforge/)**。当前源码以新版青绿 UI 为正式入口，各产品在自己的页面内创建与管理作品；首页「示例作品」提供已有作品的阅读与体验。文字冒险和文字开放世界仍标注为开发中、非正式功能。
 
 核心本地创作无需注册 StoryForge 账号；AI 生成需要你配置模型服务。第一次使用可以先手工创建作品、填写设定，再接入 AI。
 

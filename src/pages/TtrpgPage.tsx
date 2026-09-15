@@ -1,7 +1,8 @@
+import BrandIcon from '../components/shared/BrandIcon'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { liveQuery } from "dexie";
-import { Flame, BookOpen } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { db } from "../lib/db/schema";
 import type {
   Project,
@@ -325,7 +326,7 @@ export default function TtrpgPage() {
     >
       <header className="lf-top">
         <Link className="lf-brand" to="/" onClick={(event) => { event.preventDefault(); leave("/"); }}>
-          <Flame />
+          <BrandIcon/>
           <span>
             <strong>StoryForge</strong>
             <small>故事熔炉</small>
