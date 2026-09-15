@@ -1,8 +1,8 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { createMemoryRouter, RouterProvider } from 'react-router'
+import { createMemoryRouter, RouterProvider, useSearchParams } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import TtrpgSessionPage from '../../src/pages/TtrpgSessionPage'
+import TtrpgSessionPage, { TtrpgSessionView } from '../../src/pages/TtrpgSessionPage'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 const mocks = vi.hoisted(() => ({ session: vi.fn(), state: vi.fn(), checkpoints: vi.fn(), verify: vi.fn(), branch: vi.fn() }))
@@ -20,8 +20,9 @@ vi.mock('../../src/components/ttrpg/TtrpgPlayTable', () => ({ default: (props: {
 const session = (id: number) => ({ id, title: `冒险 ${id}`, kind: 'ttrpg', projectId: id, worldId: id, workId: id })
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done }); return { resolve, promise } }
 let root: Root, host: HTMLDivElement
+function CurrentSessionRoute() { const [params] = useSearchParams(); const id=Number(params.get('session')); return <TtrpgSessionView key={id} sessionId={id} embedded/> }
 async function open(path = '/play/session/1') {
-  const router = createMemoryRouter([{ path: '/play/session/:sessionId', element: <TtrpgSessionPage /> }], { initialEntries: [path] })
+  const router = createMemoryRouter([{ path: '/play/session/:sessionId', element: <TtrpgSessionPage /> },{path:'/ttrpg/play',element:<CurrentSessionRoute/>}], { initialEntries: [path] })
   await act(async () => root.render(<RouterProvider router={router} />))
   return router
 }

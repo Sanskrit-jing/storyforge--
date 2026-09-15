@@ -1,7 +1,6 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense } from 'react'
 import { BookOpen } from 'lucide-react'
 import AIConfigPanel from './AIConfigPanel'
-import { resetWelcomeGuide } from '../guide/WelcomeGuide'
 import CreativeReliabilityCommunityPanel from './CreativeReliabilityCommunityPanel'
 import ProjectStorageWorkspacePanel from './ProjectStorageWorkspacePanel'
 import type { Project } from '../../lib/types'
@@ -21,7 +20,6 @@ interface Props {
  * 项目内设置同时承载存储工作区；全局设置会诚实显示“先进入项目”。
  */
 export default function SettingsPage({ project, onOpenDataManagement }: Props) {
-  const [guideReset, setGuideReset] = useState(false)
 
   return (
     <div className="h-full overflow-auto p-6">
@@ -42,16 +40,15 @@ export default function SettingsPage({ project, onOpenDataManagement }: Props) {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-text-secondary">新手引导</p>
-            <p className="text-xs text-text-muted">重新显示首次使用时的新手引导教程</p>
+            <p className="text-xs text-text-muted">浏览示例作品，了解各产品的创作与游玩方式</p>
           </div>
-          <button
-            onClick={() => { resetWelcomeGuide(); setGuideReset(true) }}
-            disabled={guideReset}
+          <a
+            href={`${import.meta.env.BASE_URL}home/examples`}
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-bg-elevated text-text-secondary rounded-lg hover:bg-bg-hover disabled:opacity-50 transition-colors"
           >
             <BookOpen className="w-3.5 h-3.5" />
-            {guideReset ? '已重置（刷新生效）' : '重新引导'}
-          </button>
+            浏览作品示例
+          </a>
         </div>
       </div>
     </div>

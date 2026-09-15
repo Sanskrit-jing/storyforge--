@@ -22,7 +22,7 @@ StoryForge ist ein quelloffenes, lokal orientiertes Werkzeug für KI-gestütztes
 
 Untersuche mit zwei KI-Begleitern ein altes Schiffsunglück, bewahre die Geheimnisse deiner Figur und entscheide über die Heimkehr der Schiffe in dieser Nacht. Eine KI-Spielleitung (KP) führt durch **7 Szenen, 6 Hinweise und 3 Enden**, mit eigenen **2W6-Regeln**.
 
-![Einstieg in das Abenteuer Fog Harbor](./docs/assets/readme/ttrpg-preview.png)
+![Einstieg in das Abenteuer Fog Harbor](./docs/assets/readme/ttrpg-current.png)
 
 Spielpaket und enthaltene Medien liegen im Repository. Richte deine eigene Modell-API ein, um zu beginnen. Der Screenshot zeigt den tatsächlichen Abenteuereinstieg.
 
@@ -68,15 +68,15 @@ npm run dev
 
 ## Wähle deinen Einstieg
 
-![StoryForge-Produktübersicht](./docs/assets/readme/product-hub.png)
+![StoryForge-Produktübersicht](./docs/assets/readme/home-current.png)
 
 | Ziel | Einstieg | Ergebnis und Reifegrad |
 |---|---|---|
-| Einen Roman schreiben | Neu → Roman | Figuren, Gliederung, Kapitel, Kontinuität und Überarbeitung; aktueller technischer Ablauf abgenommen |
-| Kürzere Erzählung abschließen | Neu → Kurzroman | Entwurf, Kapitelkarten, Text, Prüfung, eingefrorene Ausgabe; Markdown/TXT/JSON |
-| Roman als Drehbuch adaptieren | Neu → Roman zu Drehbuch | Eingefrorene Quellen, Entscheidungen, strukturierte Szenen, Prüfung; Fountain/FDX/Druck |
-| Roman als Comic adaptieren | Neu → Roman zu Comic | Seiten, Panels, visuelle Referenzen, Lettering, Ausgaben; PNG/WebP/CBZ/PDF |
-| Eine Welt entwickeln | Neu → Welt-Engine | Semantische Inhalte, ausdrückliche Ableitung, eingefrorene Versionen und Lesezugriff |
+| Einen Roman schreiben | Roman | Figuren, Gliederung, Kapitel, Kontinuität und Überarbeitung; aktueller technischer Ablauf abgenommen |
+| Kürzere Erzählung abschließen | Kurzroman | Entwurf, Kapitelkarten, Text, Prüfung, eingefrorene Ausgabe; Markdown/TXT/JSON |
+| Roman als Drehbuch adaptieren | Roman zu Drehbuch | Eingefrorene Quellen, Entscheidungen, strukturierte Szenen, Prüfung; Fountain/FDX/Druck |
+| Roman als Comic adaptieren | Roman zu Comic | Seiten, Panels, visuelle Referenzen, Lettering, Ausgaben; PNG/WebP/CBZ/PDF |
+| Eine Welt entwickeln | Welt-Engine | Semantische Inhalte, ausdrückliche Ableitung, eingefrorene Versionen und Lesezugriff |
 | Visuellen Ablauf zusammenstellen | Knotenmodus | Vorschau; gemeinsame Romanlogik und Werkdaten |
 | Spielen oder Erlebnisse erstellen | TTRPG / Figurenchat / KI-Stadt / Textspiele | Vorschauen mit eigenen Produktions- und Laufzeitzyklen |
 
@@ -86,13 +86,13 @@ Ein Roman benötigt keine Welt-Engine. Autoren können bestätigte Romane und Ku
 
 ## Deine erste Schreibsitzung
 
-1. Wähle **Neu** (`新建`) → **Roman** (`长篇小说`) und gib Titel und Beschreibung ein.
+1. Öffnen Sie **Roman** (`长篇`) → **Bibliothek** (`作品库`) → **Neuer Roman** (`新建长篇`) und geben Sie den Titel ein.
 2. Halte Absicht, Referenzen und Schreibregeln fest und ergänze die benötigten Einstellungen.
 3. Plane Konflikt und Figuren, danach Bände und Kapitel. Schreibe selbst oder bearbeite und bestätige KI-Vorschläge.
 4. Entwickle Szenen und Kapiteltext. Prüfe anschließend Änderungen an Fakten, Zuständen, Beziehungen und Hinweisen.
 5. Exportiere unter **Datenverwaltung** (`数据管理`) den Text und eine vollständige JSON-Sicherung.
 
-![Romanübersicht mit einem manuell verfassten Beispiel](./docs/assets/readme/longform-outline.png)
+![Romanübersicht mit einem manuell verfassten Beispiel](./docs/assets/readme/longform-outline-current.png)
 
 ## Was die einzelnen Produkte für dein Werk leisten
 

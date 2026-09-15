@@ -61,11 +61,11 @@
 ### 2.4 用户、维护与法律资料
 
 - 根目录 `README.md`、`README.en.md`、`README.fr.md`、`README.de.md`、`README.it.md`、`README.es.md`、`README.pt.md`、`README.ja.md`、`README.ko.md`：L4 九语言用户首页，包含产品导览、开始方式、演示、技术优势、Harness 架构、隐私和交流入口；按当前主干核对，不替代产品契约。更新公共能力、操作路径或限制时同步核对各语言版本，保持语言切换互通；README 翻译不代表界面或关联文档已完成同等语言覆盖。
-- `docs/assets/readme/product-hub.png`：2026-09-09 主干首页，隔离浏览器数据截图。
-- `docs/assets/readme/create-work.png`：同次核对的新建作品入口截图。
-- `docs/assets/readme/longform-outline.png`：同次核对的长篇大纲截图，使用手工演示内容。
-- `docs/assets/readme/ttrpg-preview.png`：同次核对的原创跑团入口截图。
-- `docs/assets/readme/data-management.png`：同次核对的数据管理截图。
+- `docs/assets/readme/home-current.png`：2026-09-15 当前青绿 UI 首页，隔离浏览器数据截图。
+- `docs/assets/readme/longform-create-current.png`：同次核对的长篇作品库内创建入口截图。
+- `docs/assets/readme/longform-outline-current.png`：同次核对的长篇大纲工作台，隔离演示作品。
+- `docs/assets/readme/ttrpg-current.png`：同次核对的新版原创跑团入口截图。
+- `docs/assets/readme/data-current.png`：同次核对的数据管理截图。
 
 - `docs/MEMORY-WORKSPACE-GUIDE.md`：本地记忆工作区操作与隐私边界。
 - `docs/assets/support/afdian-aloneone.jpeg`：根目录 README 使用的爱发电赞助二维码展示资产。

@@ -1,3 +1,5 @@
+import { useLocation } from 'react-router';
+import type { OnlineRoomJoinHandoffV1 } from '../../lib/online/http-transport';
 import { useEffect, useState } from "react";
 import type { Project, WorkspaceScope, ProductRelease } from "../../lib/types";
 import { db } from "../../lib/db/schema";
@@ -17,6 +19,8 @@ export default function AuthorPlayer({
   page: string;
   onSession: (id: number) => void;
 }) {
+  const location = useLocation();
+  const [onlineHandoff, setOnlineHandoff] = useState<OnlineRoomJoinHandoffV1 | null>(location.state?.onlineHandoff ?? null);
   const [releases, setReleases] = useState<ProductRelease[]>([]),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -91,6 +95,8 @@ export default function AuthorPlayer({
           worldGroupId={null}
           workspaceScope={scope}
           initialSessionId={sessionId}
+          initialOnlineHandoff={onlineHandoff}
+          onOnlineHandoffConsumed={() => setOnlineHandoff(null)}
           authorPanel={
             page === "play"
               ? undefined

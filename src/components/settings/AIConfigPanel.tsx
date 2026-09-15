@@ -6,7 +6,6 @@ import type { AIProvider } from '../../lib/types'
 import { PROVIDER_MODELS } from '../../lib/types'
 import { isAIConfigReady } from '../../lib/ai/config-readiness'
 import { getLogs, subscribeLogs, clearLogs } from '../../lib/ai/logger'
-import { applyStoryForgeTheme, resolveStoryForgeTheme, type StoryForgeTheme } from '../../lib/theme'
 import { useDialog } from '../shared/Dialog'
 import { parseContextWindowInput } from '../../lib/ai/context-window-input'
 import { fetchOpenAIModels } from '../../lib/ai/model-list'
@@ -59,9 +58,6 @@ export default function AIConfigPanel() {
   const [refreshingModels, setRefreshingModels] = useState(false)
   const [modelListError, setModelListError] = useState('')
   const submittedContextWindowRef = useRef(config.contextWindow)
-  const [currentTheme, setCurrentTheme] = useState<StoryForgeTheme>(() =>
-    resolveStoryForgeTheme(localStorage.getItem('storyforge-theme')),
-  )
 
   const handleSavePreset = () => {
     if (!presetName.trim()) return
@@ -128,10 +124,6 @@ export default function AIConfigPanel() {
     }
   }
 
-  const handleThemeChange = (theme: StoryForgeTheme) => {
-    setCurrentTheme(theme)
-    applyStoryForgeTheme(theme)
-  }
 
   const handleRenamePreset = async (id: string, currentName: string) => {
     const name = await dialog.prompt({
@@ -498,7 +490,7 @@ export default function AIConfigPanel() {
       {showLogs && <AIConnectionLogPanel logs={logs} onClear={clearLogs} />}
 
       {/* 主题切换 */}
-      <ThemeSelector value={currentTheme} onChange={handleThemeChange} />
+      <ThemeSelector />
     </div>
   )
 }

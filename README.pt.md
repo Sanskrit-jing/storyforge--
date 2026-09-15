@@ -22,7 +22,7 @@ StoryForge é uma ferramenta de código aberto para criar e vivenciar narrativas
 
 Investigue um antigo naufrágio com dois companheiros de IA, proteja os segredos do seu personagem e decida como os navios voltarão nesta noite. Um mestre de jogo IA (KP) conduz a aventura com regras originais **2d6**, **7 cenas, 6 pistas e 3 finais**.
 
-![Tela de entrada da aventura Fog Harbor](./docs/assets/readme/ttrpg-preview.png)
+![Tela de entrada da aventura Fog Harbor](./docs/assets/readme/ttrpg-current.png)
 
 O jogo e os arquivos de mídia incluídos estão no repositório. Configure sua própria API de modelo para começar. A captura mostra a entrada real da aventura.
 
@@ -68,15 +68,15 @@ Na página inicial, abra as configurações de modelo no canto superior direito 
 
 ## Escolha por onde começar
 
-![Página de produtos do StoryForge](./docs/assets/readme/product-hub.png)
+![Página de produtos do StoryForge](./docs/assets/readme/home-current.png)
 
 | Objetivo | Entrada | Resultado e estado |
 |---|---|---|
-| Escrever um romance | Novo → Romance | Personagens, planos, capítulos, continuidade e revisão; processo técnico atual validado |
-| Concluir uma narrativa curta | Novo → Narrativa curta | Projeto, fichas de capítulos, escrita, revisão, edição imutável; Markdown/TXT/JSON |
-| Adaptar para roteiro | Novo → Romance para roteiro | Fontes fixadas, decisões, cenas estruturadas, revisões; Fountain/FDX/impressão |
-| Adaptar para quadrinhos | Novo → Romance para quadrinhos | Páginas, painéis, referências visuais, letreiramento, edições; PNG/WebP/CBZ/PDF |
-| Criar um mundo | Novo → Motor de mundos | Conteúdo semântico, derivação explícita, versões imutáveis e leitura |
+| Escrever um romance | Romance | Personagens, planos, capítulos, continuidade e revisão; processo técnico atual validado |
+| Concluir uma narrativa curta | Narrativa curta | Projeto, fichas de capítulos, escrita, revisão, edição imutável; Markdown/TXT/JSON |
+| Adaptar para roteiro | Romance para roteiro | Fontes fixadas, decisões, cenas estruturadas, revisões; Fountain/FDX/impressão |
+| Adaptar para quadrinhos | Romance para quadrinhos | Páginas, painéis, referências visuais, letreiramento, edições; PNG/WebP/CBZ/PDF |
+| Criar um mundo | Motor de mundos | Conteúdo semântico, derivação explícita, versões imutáveis e leitura |
 | Montar um processo visual | Modo de nós | Prévia; compartilha lógica e dados do romance |
 | Jogar ou criar experiências | TTRPG / Conversa com personagens / Cidade IA / Jogos de texto | Prévias com ciclos próprios de produção e execução |
 
@@ -86,13 +86,13 @@ Escrever romances não exige o motor de mundos. O autor pode derivar explicitame
 
 ## Sua primeira sessão de escrita
 
-1. Escolha **Novo** (`新建`) → **Romance** (`长篇小说`) e informe título e descrição.
+1. Abra **Romance** (`长篇`) → **Biblioteca** (`作品库`) → **Novo romance** (`新建长篇`) e informe o título.
 2. Registre intenção, referências e regras de escrita; preencha a ambientação necessária.
 3. Planeje conflito e personagens, depois volumes e capítulos. Escreva manualmente ou edite e aprove as propostas da IA.
 4. Desenvolva cenas e texto. Confira mudanças em fatos, estados, relações e pistas antes de continuar.
 5. Em **Gerenciamento de dados** (`数据管理`), exporte o texto e um backup JSON completo.
 
-![Plano de romance com um exemplo escrito manualmente](./docs/assets/readme/longform-outline.png)
+![Plano de romance com um exemplo escrito manualmente](./docs/assets/readme/longform-outline-current.png)
 
 ## O que cada produto faz pela sua obra
 

@@ -4,7 +4,7 @@ import {
   resolveNovelPromptMode,
 } from '../../src/lib/ai/prompt-variable-bindings'
 import { buildOfficialAuthoringTemplate } from '../../src/lib/node-authoring/templates'
-import { secondaryNovelWorkflowModules } from '../../src/lib/novel/workflow'
+import { LONGFORM_STEPS } from '../../src/components/longform/navigation'
 import type { PromptTemplate, Work } from '../../src/lib/types'
 
 function work(overrides: Partial<Work> = {}): Work {
@@ -28,14 +28,9 @@ function work(overrides: Partial<Work> = {}): Work {
 }
 
 describe('SHORT-1 · 声明式工作流、Prompt 与节点模板', () => {
-  it('长篇保持完整导航，短篇仅默认折叠可恢复的进阶模块', () => {
-    expect(secondaryNovelWorkflowModules('long').size).toBe(0)
-    const short = secondaryNovelWorkflowModules('short')
-    expect(short.has('world-overview')).toBe(true)
-    expect(short.has('state-table')).toBe(true)
-    expect(short.has('info')).toBe(false)
-    expect(short.has('outline')).toBe(false)
-    expect(short.has('chapters-list')).toBe(false)
+  it('长篇仍提供完整的设定、正文和辅助模块', () => {
+    const modules = LONGFORM_STEPS.flatMap(step => step.modules.map(([id]) => id))
+    for (const id of ['world-overview', 'state-table', 'info', 'outline', 'chapters-list']) expect(modules).toContain(id)
   })
 
   it('显式 Work Profile 决定小说流程，缺少当前分类的 Work 被拒绝', () => {

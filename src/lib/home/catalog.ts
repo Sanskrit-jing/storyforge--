@@ -21,7 +21,7 @@ export function workPath(row: HomeWork, module = 'info'): string {
  if(effectiveWorkKind(w)==='screenplay')return `/script/${module==='versions'?'versions':'editor'}?work=${w.id}`
  if(w.kind==='novel'&&effectiveNovelProfile(w)==='short')return `/short/${module==='versions'?'versions':module==='info'?'intent':'editor'}?project=${p.id}`
  if(w.kind==='novel')return `/workspace/${p.id}?module=${module==='versions'?'version-history':module}`
- return `/?tab=novel&project=${p.id}&work=${w.id}`
+ return `/home/detail?work=${w.id}`
 }
 export async function openHomeWork(row: HomeWork): Promise<void> {
  await flushPendingEditsV1()

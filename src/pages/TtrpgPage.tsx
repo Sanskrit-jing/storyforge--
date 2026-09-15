@@ -524,6 +524,7 @@ export default function TtrpgPage() {
                         </p>
                       </section>
                     )}
+                    <button className="lf-action" onClick={() => navigate(`/community/market${scope ? `?project=${scope.projectId}&work=${scope.workId}` : ""}`)}>打开社区市场与在线招募</button>
                     <Community embedded />
                   </>
                 ) : step >= 0 ? (
@@ -961,6 +962,7 @@ export default function TtrpgPage() {
                         我的发布与版本
                       </button>
                     </section>
+                    <button className="lf-action" onClick={() => navigate(`/community/market${scope ? `?project=${scope.projectId}&work=${scope.workId}` : ""}`)}>打开社区市场与在线招募</button>
                     <Community embedded />
                   </>
                 ) : (

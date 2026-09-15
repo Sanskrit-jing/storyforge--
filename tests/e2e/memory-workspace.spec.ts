@@ -11,18 +11,18 @@ async function openCleanHome(page: Page) {
       return root.getDirectoryHandle('custom-location', { create: true })
     }
   })
-  await page.goto('./?tab=home&legacy=1', { waitUntil: 'domcontentloaded' })
-  await expect(page.getByRole('heading', { name: '你的创作与游玩空间', exact: true })).toBeVisible({ timeout: 15_000 })
+  await page.goto('./', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { name: /天地为炉，\s*万象成故事。/ })).toBeVisible({ timeout: 15_000 })
 }
 
 async function createProject(page: Page, name: string) {
-  await page.getByRole('banner').getByRole('button', { name: '新建', exact: true }).click()
-  await page.getByRole('button', { name: /长篇小说/ }).click()
-  await page.getByLabel('名称').fill(name)
+  await page.goto('./long?module=outline')
+  await page.getByRole('button', {name:'新建长篇',exact:true}).click()
+  await page.getByLabel('新长篇名称').fill(name)
   await page.getByRole('button', { name: '选择项目文件夹', exact: true }).click()
   await expect(page.getByText(/已选择：/)).toBeVisible()
-  await page.getByRole('button', { name: '创建长篇小说', exact: true }).click()
-  await expect(page).toHaveURL(/\/storyforge\/workspace\/\d+\?module=outline$/)
+  await page.getByRole('button', { name: '创建并进入工作台', exact: true }).click()
+  await expect(page.locator('[data-workspace-ready=longform]')).toBeVisible()
 }
 
 async function openWorkspaceLeaf(page: Page, name: string) {

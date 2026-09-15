@@ -2,68 +2,46 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ============================================================
-   StoryForge · Design Tokens v3
-   六主题：暖白编辑室(warm) / 墨玉青(jade) / 冷灰银蓝(slate)
-          熔炉(forge) / 古卷(scroll) / 纸与墨(paper)
-   ============================================================ */
-
-/* ---------- 全局不变量 ---------- */
+/* StoryForge · 青绿山水 / 奶油纸面。所有页面与 portal 共用此唯一主题。 */
 :root {
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-  --font-serif: "Source Serif 4", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-serif: 'Songti SC', 'STSong', 'Noto Serif CJK SC', 'SimSun', Georgia, serif;
   --font-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
-}
-
-/* ============================================================
-   暖白编辑室 · Warm Studio — 长时间写作默认主题
-   ============================================================ */
-:root,
-[data-theme="warm"] {
-  --bg-base: #F4EFE7;
-  --bg-surface: #E9E0D4;
-  --bg-elevated: #FFFDF8;
-  --bg-hover: rgba(54, 45, 36, 0.05);
-
-  --text-primary: #2B2620;
-  --text-secondary: #6A5B4B;
-  --text-muted: #9A8A78;
-
-  --accent: #965A3A;
-  --accent-hover: #85492F;
-  --accent-muted: #D3A47C;
-
-  --success: #15803D;
-  --warning: #B45309;
-  --error: #B91C1C;
-  --info: #1D4ED8;
-
-  --border: rgba(54, 45, 36, 0.14);
-  --border-hover: rgba(54, 45, 36, 0.26);
-
-  --accent-soft: rgba(150, 90, 58, 0.12);
-  --border-subtle: rgba(54, 45, 36, 0.07);
-  --shadow-sm: 0 1px 3px rgba(54, 45, 36, 0.08);
-  --shadow-md: 0 6px 18px rgba(54, 45, 36, 0.10);
-  --shadow-lg: 0 16px 44px rgba(54, 45, 36, 0.14);
-
-  --editor-page-bg: #FFFDF8;
-  --editor-ruled-line: rgba(54, 45, 36, 0.08);
-  --editor-selection-bg: rgba(166, 106, 74, 0.22);
-  --editor-selection-text: #1E1711;
-
-  --editor-ink-primary: #2B2620;
-  --editor-ink-strong: #100D0A;
+  --bg-base: #e4eee7;
+  --bg-surface: #faf8f1;
+  --bg-elevated: #fffef9;
+  --bg-hover: #e5ecde;
+  --text-primary: #244842;
+  --text-secondary: #5d786a;
+  --text-muted: #718572;
+  --accent: #286a5d;
+  --accent-hover: #20584d;
+  --accent-muted: #a7c5b1;
+  --accent-soft: #dce6cf;
+  --success: #237348;
+  --warning: #946012;
+  --error: #ae3434;
+  --info: #326d89;
+  --border: #d1decd;
+  --border-hover: #a7c5b1;
+  --border-subtle: #dce5d5;
+  --shadow-sm: 0 2px 4px #24484208;
+  --shadow-md: 0 8px 24px #24484212;
+  --shadow-lg: 0 20px 60px #153e3729;
+  --editor-page-bg: #fffef9;
+  --editor-ruled-line: #dce5d5;
+  --editor-selection-bg: #cbdcc5;
+  --editor-selection-text: #244842;
+  --editor-ink-primary: #244842;
+  --editor-ink-strong: #153e37;
   --editor-ink-cream: #6E421F;
-  --editor-ink-muted: #725A32;
+  --editor-ink-muted: #5d786a;
   --editor-ink-gold: #8A5B00;
   --editor-ink-orange: #B54708;
   --editor-ink-red: #B91C1C;
   --editor-ink-blue: #1D4ED8;
   --editor-ink-green: #15803D;
   --editor-ink-purple: #7E22CE;
-
   --editor-mark-yellow: #FFE45C;
   --editor-mark-red: #FFD6D6;
   --editor-mark-blue: #D7E8FF;
@@ -71,286 +49,6 @@
   --editor-mark-purple: #EAD7FF;
   --editor-mark-brown: #F1E3CD;
   --editor-mark-ink: #E9DAC3;
-}
-
-/* ============================================================
-   墨玉青 · Jade Ink — 深色外壳 + 白纸正文
-   ============================================================ */
-[data-theme="jade"] {
-  --bg-base: #101A17;
-  --bg-surface: #16231F;
-  --bg-elevated: #20342E;
-  --bg-hover: rgba(101, 191, 168, 0.08);
-
-  --text-primary: #ECF4EE;
-  --text-secondary: #B1C8BD;
-  --text-muted: #6F8C80;
-
-  --accent: #65BFA8;
-  --accent-hover: #7DD3BF;
-  --accent-muted: #3B8C78;
-
-  --success: #6EE7B7;
-  --warning: #F6C77A;
-  --error: #FCA5A5;
-  --info: #93C5FD;
-
-  --border: rgba(163, 205, 189, 0.18);
-  --border-hover: rgba(163, 205, 189, 0.34);
-
-  --accent-soft: rgba(101, 191, 168, 0.16);
-  --border-subtle: rgba(163, 205, 189, 0.10);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.34);
-  --shadow-md: 0 8px 28px rgba(0, 0, 0, 0.30);
-  --shadow-lg: 0 20px 64px rgba(0, 0, 0, 0.40);
-
-  --editor-page-bg: #F7F1E5;
-  --editor-ruled-line: rgba(30, 43, 37, 0.08);
-  --editor-selection-bg: rgba(77, 148, 130, 0.22);
-  --editor-selection-text: #15221E;
-
-  --editor-ink-primary: #1F2A25;
-  --editor-ink-strong: #0C1411;
-  --editor-ink-cream: #6E421F;
-  --editor-ink-muted: #6C5A35;
-  --editor-ink-gold: #8A5B00;
-  --editor-ink-orange: #B54708;
-  --editor-ink-red: #B91C1C;
-  --editor-ink-blue: #1D4ED8;
-  --editor-ink-green: #047857;
-  --editor-ink-purple: #7E22CE;
-
-  --editor-mark-yellow: #FFE45C;
-  --editor-mark-red: #FFD6D6;
-  --editor-mark-blue: #D7E8FF;
-  --editor-mark-green: #D8F5DF;
-  --editor-mark-purple: #EAD7FF;
-  --editor-mark-brown: #ECE0C7;
-  --editor-mark-ink: #D8C8A8;
-}
-
-/* ============================================================
-   冷灰银蓝 · Slate — 设定库 / 事实库 / 管理页生产力主题
-   ============================================================ */
-[data-theme="slate"] {
-  --bg-base: #EEF2F6;
-  --bg-surface: #E3EAF1;
-  --bg-elevated: #F8FAFC;
-  --bg-hover: rgba(23, 32, 51, 0.05);
-
-  --text-primary: #172033;
-  --text-secondary: #4B5B70;
-  --text-muted: #7A8796;
-
-  --accent: #3F6F96;
-  --accent-hover: #335D80;
-  --accent-muted: #8AA8C0;
-
-  --success: #047857;
-  --warning: #A16207;
-  --error: #B91C1C;
-  --info: #1D4ED8;
-
-  --border: rgba(23, 32, 51, 0.13);
-  --border-hover: rgba(23, 32, 51, 0.25);
-
-  --accent-soft: rgba(63, 111, 150, 0.12);
-  --border-subtle: rgba(23, 32, 51, 0.07);
-  --shadow-sm: 0 1px 3px rgba(23, 32, 51, 0.08);
-  --shadow-md: 0 6px 18px rgba(23, 32, 51, 0.10);
-  --shadow-lg: 0 16px 44px rgba(23, 32, 51, 0.13);
-
-  --editor-page-bg: #FFFFFF;
-  --editor-ruled-line: rgba(23, 32, 51, 0.07);
-  --editor-selection-bg: rgba(63, 111, 150, 0.22);
-  --editor-selection-text: #111827;
-
-  --editor-ink-primary: #172033;
-  --editor-ink-strong: #070B12;
-  --editor-ink-cream: #704214;
-  --editor-ink-muted: #5B5A36;
-  --editor-ink-gold: #8A5B00;
-  --editor-ink-orange: #B54708;
-  --editor-ink-red: #B91C1C;
-  --editor-ink-blue: #1D4ED8;
-  --editor-ink-green: #047857;
-  --editor-ink-purple: #7E22CE;
-
-  --editor-mark-yellow: #FFE45C;
-  --editor-mark-red: #FFD6D6;
-  --editor-mark-blue: #D7E8FF;
-  --editor-mark-green: #D8F5DF;
-  --editor-mark-purple: #EAD7FF;
-  --editor-mark-brown: #E8DED1;
-  --editor-mark-ink: #DDE5EE;
-}
-
-/* ============================================================
-   熔炉 · Forge — 暗夜琥珀，火光余烬
-   ============================================================ */
-[data-theme="forge"] {
-  --bg-base: #1A0F0A;
-  --bg-surface: #251810;
-  --bg-elevated: #30201A;
-  --bg-hover: rgba(217, 119, 87, 0.08);
-
-  --text-primary: #F5E6D3;
-  --text-secondary: #B89A7A;
-  --text-muted: #6F5A45;
-
-  --accent: #D97757;
-  --accent-hover: #E8906D;
-  --accent-muted: #B85C3F;
-
-  --success: #4ADE80;
-  --warning: #FBBF24;
-  --error: #EF4444;
-  --info: #60A5FA;
-
-  --border: rgba(200, 161, 85, 0.22);
-  --border-hover: rgba(200, 161, 85, 0.40);
-
-  --accent-soft: rgba(217, 119, 87, 0.18);
-  --border-subtle: rgba(200, 161, 85, 0.12);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 6px 24px rgba(139, 62, 31, 0.35);
-  --shadow-lg: 0 16px 64px rgba(139, 62, 31, 0.5);
-
-  --editor-page-bg: #2A1A12;
-  --editor-ruled-line: rgba(200, 161, 85, 0.13);
-  --editor-selection-bg: rgba(217, 119, 87, 0.34);
-  --editor-selection-text: #FFF7ED;
-
-  --editor-ink-primary: #F5E6D3;
-  --editor-ink-strong: #FFFFFF;
-  --editor-ink-cream: #F5E6D3;
-  --editor-ink-muted: #D6B98C;
-  --editor-ink-gold: #FACC15;
-  --editor-ink-orange: #FB923C;
-  --editor-ink-red: #F87171;
-  --editor-ink-blue: #93C5FD;
-  --editor-ink-green: #86EFAC;
-  --editor-ink-purple: #C4B5FD;
-
-  --editor-mark-yellow: #6B4E10;
-  --editor-mark-red: #5A1F1F;
-  --editor-mark-blue: #1E3A5F;
-  --editor-mark-green: #14532D;
-  --editor-mark-purple: #3B2A63;
-  --editor-mark-brown: #4A3326;
-  --editor-mark-ink: #3A2418;
-}
-
-/* ============================================================
-   古卷 · Scroll — 旧纸染黄，铁胆墨香
-   ============================================================ */
-[data-theme="scroll"] {
-  --bg-base: #E5D5A8;
-  --bg-surface: #EDE0BC;
-  --bg-elevated: #F5EDD4;
-  --bg-hover: rgba(60, 38, 10, 0.05);
-
-  --text-primary: #1E1208;
-  --text-secondary: #5C4420;
-  --text-muted: #9A7A48;
-
-  --accent: #7B3A1A;
-  --accent-hover: #6A3015;
-  --accent-muted: #B8845A;
-
-  --success: #4A7A3A;
-  --warning: #B87800;
-  --error: #B83030;
-  --info: #3A5A8A;
-
-  --border: rgba(60, 38, 10, 0.16);
-  --border-hover: rgba(60, 38, 10, 0.28);
-
-  --accent-soft: rgba(123, 58, 26, 0.12);
-  --border-subtle: rgba(60, 38, 10, 0.08);
-  --shadow-sm: 0 1px 3px rgba(60, 38, 10, 0.10);
-  --shadow-md: 0 4px 16px rgba(60, 38, 10, 0.12);
-  --shadow-lg: 0 8px 32px rgba(60, 38, 10, 0.15);
-
-  --editor-page-bg: #F8EFD2;
-  --editor-ruled-line: rgba(60, 38, 10, 0.10);
-  --editor-selection-bg: rgba(123, 58, 26, 0.28);
-  --editor-selection-text: #1E1208;
-
-  --editor-ink-primary: #1E1208;
-  --editor-ink-strong: #090604;
-  --editor-ink-cream: #6A3D12;
-  --editor-ink-muted: #775A24;
-  --editor-ink-gold: #8A5B00;
-  --editor-ink-orange: #A94716;
-  --editor-ink-red: #A11E1E;
-  --editor-ink-blue: #184B8A;
-  --editor-ink-green: #1C6B35;
-  --editor-ink-purple: #6B3FA0;
-
-  --editor-mark-yellow: #FFE36A;
-  --editor-mark-red: #FFD2CC;
-  --editor-mark-blue: #CFE4FF;
-  --editor-mark-green: #CFEFD9;
-  --editor-mark-purple: #E6D8FF;
-  --editor-mark-brown: #E8DAB0;
-  --editor-mark-ink: #D8BE7A;
-}
-
-/* ============================================================
-   纸与墨 · Paper & Ink — 素纸如雪，墨迹清朗
-   ============================================================ */
-[data-theme="paper"] {
-  --bg-base: #FAF7F0;
-  --bg-surface: #F5F1E8;
-  --bg-elevated: #FFFFFF;
-  --bg-hover: rgba(31, 27, 22, 0.04);
-
-  --text-primary: #1F1B16;
-  --text-secondary: #56503F;
-  --text-muted: #8A7E6A;
-
-  --accent: #A04E35;
-  --accent-hover: #8E442E;
-  --accent-muted: #D6A86C;
-
-  --success: #16A34A;
-  --warning: #D97706;
-  --error: #DC2626;
-  --info: #2563EB;
-
-  --border: rgba(31, 27, 22, 0.12);
-  --border-hover: rgba(31, 27, 22, 0.22);
-
-  --accent-soft: rgba(184, 92, 63, 0.10);
-  --border-subtle: rgba(31, 27, 22, 0.06);
-  --shadow-sm: 0 1px 2px rgba(31, 27, 22, 0.04);
-  --shadow-md: 0 4px 12px rgba(31, 27, 22, 0.08);
-  --shadow-lg: 0 12px 40px rgba(31, 27, 22, 0.10);
-
-  --editor-page-bg: #FFFDF7;
-  --editor-ruled-line: rgba(31, 27, 22, 0.08);
-  --editor-selection-bg: rgba(37, 99, 235, 0.20);
-  --editor-selection-text: #111827;
-
-  --editor-ink-primary: #1F1B16;
-  --editor-ink-strong: #050505;
-  --editor-ink-cream: #7A4A1F;
-  --editor-ink-muted: #725A32;
-  --editor-ink-gold: #8A5B00;
-  --editor-ink-orange: #B54708;
-  --editor-ink-red: #B91C1C;
-  --editor-ink-blue: #1D4ED8;
-  --editor-ink-green: #15803D;
-  --editor-ink-purple: #7E22CE;
-
-  --editor-mark-yellow: #FFE45C;
-  --editor-mark-red: #FFD6D6;
-  --editor-mark-blue: #D7E8FF;
-  --editor-mark-green: #D8F5DF;
-  --editor-mark-purple: #EAD7FF;
-  --editor-mark-brown: #F1E7D4;
-  --editor-mark-ink: #E9DEC8;
 }
 
 /* ========================================
@@ -572,162 +270,162 @@ body {
 }
 
 /* 浅色主题下修正历史遗留的 Tailwind 亮色工具类：这些类原本面向暗色底，放到纸面上会发虚。 */
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-green-400,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-emerald-400,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-green-500,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-emerald-500,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-green-400"],
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-emerald-400"],
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-green-500"],
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-emerald-500"] {
+:root .text-green-400,
+:root .text-emerald-400,
+:root .text-green-500,
+:root .text-emerald-500,
+:root [class*="text-green-400"],
+:root [class*="text-emerald-400"],
+:root [class*="text-green-500"],
+:root [class*="text-emerald-500"] {
   color: #065F46 !important;
 }
 
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-sky-300,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-sky-400,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-blue-300,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-blue-400,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-blue-500,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-sky-300"],
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-sky-400"],
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-blue-300"],
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-blue-400"],
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-blue-500"] {
+:root .text-sky-300,
+:root .text-sky-400,
+:root .text-blue-300,
+:root .text-blue-400,
+:root .text-blue-500,
+:root [class*="text-sky-300"],
+:root [class*="text-sky-400"],
+:root [class*="text-blue-300"],
+:root [class*="text-blue-400"],
+:root [class*="text-blue-500"] {
   color: #1E40AF !important;
 }
 
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-yellow-400,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-yellow-500,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-amber-300,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-amber-400,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-amber-500,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-yellow-400"],
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-yellow-500"],
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-amber-300"],
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-amber-400"],
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-amber-500"] {
+:root .text-yellow-400,
+:root .text-yellow-500,
+:root .text-amber-300,
+:root .text-amber-400,
+:root .text-amber-500,
+:root [class*="text-yellow-400"],
+:root [class*="text-yellow-500"],
+:root [class*="text-amber-300"],
+:root [class*="text-amber-400"],
+:root [class*="text-amber-500"] {
   color: #92400E !important;
 }
 
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-red-400,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-red-500,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-rose-400,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-rose-500,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-red-400"],
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-red-500"],
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-rose-400"],
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-rose-500"] {
+:root .text-red-400,
+:root .text-red-500,
+:root .text-rose-400,
+:root .text-rose-500,
+:root [class*="text-red-400"],
+:root [class*="text-red-500"],
+:root [class*="text-rose-400"],
+:root [class*="text-rose-500"] {
   color: #B91C1C !important;
 }
 
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-purple-200,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-purple-300,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-purple-400,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-purple-500,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-purple-200"],
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-purple-300"],
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-purple-400"],
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-purple-500"] {
+:root .text-purple-200,
+:root .text-purple-300,
+:root .text-purple-400,
+:root .text-purple-500,
+:root [class*="text-purple-200"],
+:root [class*="text-purple-300"],
+:root [class*="text-purple-400"],
+:root [class*="text-purple-500"] {
   color: #7E22CE !important;
 }
 
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-pink-400,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-pink-500,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-pink-400"],
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-pink-500"] {
+:root .text-pink-400,
+:root .text-pink-500,
+:root [class*="text-pink-400"],
+:root [class*="text-pink-500"] {
   color: #BE185D !important;
 }
 
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-orange-400,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-orange-500,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-orange-400"],
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-orange-500"] {
+:root .text-orange-400,
+:root .text-orange-500,
+:root [class*="text-orange-400"],
+:root [class*="text-orange-500"] {
   color: #C2410C !important;
 }
 
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-lime-400,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-lime-500,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-lime-400"],
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-lime-500"] {
+:root .text-lime-400,
+:root .text-lime-500,
+:root [class*="text-lime-400"],
+:root [class*="text-lime-500"] {
   color: #4D7C0F !important;
 }
 
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-teal-400,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-teal-500,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-cyan-400,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .text-cyan-500,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-teal-400"],
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-teal-500"],
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-cyan-400"],
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) [class*="text-cyan-500"] {
+:root .text-teal-400,
+:root .text-teal-500,
+:root .text-cyan-400,
+:root .text-cyan-500,
+:root [class*="text-teal-400"],
+:root [class*="text-teal-500"],
+:root [class*="text-cyan-400"],
+:root [class*="text-cyan-500"] {
   color: #0F766E !important;
 }
 
 /* 浅色主题下提高彩色徽标/按钮底色对比度；只覆盖旧 Tailwind 硬编码色，不影响主题 token 与熔炉深色主题。 */
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-green-500\/5,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-green-500\/10,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-green-500\/15,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-green-500\/20,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-emerald-500\/5,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-emerald-500\/10,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-emerald-500\/15,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-emerald-500\/20 {
+:root .bg-green-500\/5,
+:root .bg-green-500\/10,
+:root .bg-green-500\/15,
+:root .bg-green-500\/20,
+:root .bg-emerald-500\/5,
+:root .bg-emerald-500\/10,
+:root .bg-emerald-500\/15,
+:root .bg-emerald-500\/20 {
   background-color: rgba(5, 150, 105, 0.16) !important;
 }
 
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-sky-500\/5,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-sky-500\/10,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-sky-500\/15,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-sky-500\/20,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-blue-500\/5,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-blue-500\/10,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-blue-500\/15,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-blue-500\/20 {
+:root .bg-sky-500\/5,
+:root .bg-sky-500\/10,
+:root .bg-sky-500\/15,
+:root .bg-sky-500\/20,
+:root .bg-blue-500\/5,
+:root .bg-blue-500\/10,
+:root .bg-blue-500\/15,
+:root .bg-blue-500\/20 {
   background-color: rgba(37, 99, 235, 0.14) !important;
 }
 
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-yellow-500\/5,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-yellow-500\/10,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-yellow-500\/15,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-yellow-500\/20,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-amber-500\/5,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-amber-500\/10,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-amber-500\/15,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-amber-500\/20 {
+:root .bg-yellow-500\/5,
+:root .bg-yellow-500\/10,
+:root .bg-yellow-500\/15,
+:root .bg-yellow-500\/20,
+:root .bg-amber-500\/5,
+:root .bg-amber-500\/10,
+:root .bg-amber-500\/15,
+:root .bg-amber-500\/20 {
   background-color: rgba(217, 119, 6, 0.16) !important;
 }
 
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-red-500\/5,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-red-500\/10,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-red-500\/15,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-red-500\/20,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-rose-500\/5,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-rose-500\/10,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-rose-500\/15,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-rose-500\/20 {
+:root .bg-red-500\/5,
+:root .bg-red-500\/10,
+:root .bg-red-500\/15,
+:root .bg-red-500\/20,
+:root .bg-rose-500\/5,
+:root .bg-rose-500\/10,
+:root .bg-rose-500\/15,
+:root .bg-rose-500\/20 {
   background-color: rgba(220, 38, 38, 0.14) !important;
 }
 
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-purple-400\/5,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-purple-400\/10,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-purple-500\/5,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-purple-500\/10,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-purple-500\/15,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-purple-500\/20,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-pink-500\/5,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-pink-500\/10,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-pink-500\/15,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-pink-500\/20 {
+:root .bg-purple-400\/5,
+:root .bg-purple-400\/10,
+:root .bg-purple-500\/5,
+:root .bg-purple-500\/10,
+:root .bg-purple-500\/15,
+:root .bg-purple-500\/20,
+:root .bg-pink-500\/5,
+:root .bg-pink-500\/10,
+:root .bg-pink-500\/15,
+:root .bg-pink-500\/20 {
   background-color: rgba(126, 34, 206, 0.13) !important;
 }
 
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-cyan-500\/5,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-cyan-500\/10,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-cyan-500\/15,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-cyan-500\/20,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-teal-500\/5,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-teal-500\/10,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-teal-500\/15,
-:is([data-theme="paper"], [data-theme="scroll"], [data-theme="warm"], [data-theme="slate"]) .bg-teal-500\/20 {
+:root .bg-cyan-500\/5,
+:root .bg-cyan-500\/10,
+:root .bg-cyan-500\/15,
+:root .bg-cyan-500\/20,
+:root .bg-teal-500\/5,
+:root .bg-teal-500\/10,
+:root .bg-teal-500\/15,
+:root .bg-teal-500\/20 {
   background-color: rgba(15, 118, 110, 0.13) !important;
 }

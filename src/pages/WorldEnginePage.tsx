@@ -1,3 +1,4 @@
+import WorldDraftSummary from '../components/world-engine/WorldDraftSummary'
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { liveQuery } from 'dexie'
@@ -17,7 +18,7 @@ import WorldWorkManager from '../components/world-engine/WorldWorkManager'
 import { useAutoBackup } from '../hooks/useAutoBackup'
 import { useGistAutoBackup } from '../hooks/useGistAutoBackup'
 import '../components/longform/longform.css'
-import './product-hub.css'
+import '../components/world-engine/panels.css'
 import '../components/world-engine/world-engine.css'
 
 const Workspace=lazy(()=>import('./WorkspacePage'))
@@ -62,7 +63,7 @@ export default function WorldEnginePage(){
  }catch(c){setError(String(c))}}
  const enableMultiWorld=async()=>{if(!row||busy)return;setBusy(true);try{await flushPendingEditsV1();if(await useWorldGroupStore.getState().enableMultiWorld(row.project.id!)){await useProjectStore.getState().updateWorkspace(row.project.id!,{enableMultiWorld:true});await refresh()}}catch(c){setError(String(c))}finally{setBusy(false)}}
  const remove=async(target:Row)=>{try{await flushPendingEditsV1();await useProjectStore.getState().deleteProject(target.project.id!);if(projectId===target.project.id&&!(await db.projects.get(projectId!)))await go('/world/worlds')}catch(c){setError(String(c))}}
- const handoff=(value:ProductProductionHandoffV1)=>{void go(['avg','ttrpg'].includes(value.productType)?`/${value.productType}/source?worldHandoff=${encodeURIComponent(JSON.stringify(value))}`:`/?tab=${value.productType==='ttrpg'?'ttrpg':'text-games'}&worldHandoff=${encodeURIComponent(JSON.stringify(value))}`)}
+ const handoff=(value:ProductProductionHandoffV1)=>{const base=value.productType==='ttrpg'?'ttrpg/source':value.productType==='avg'?'avg/source':value.productType==='text-open-world'?'openworld/runtime':'adventure/runtime';void go(`/${base}?worldHandoff=${encodeURIComponent(JSON.stringify(value))}`)}
  const modules=definition.modules??[]
  const primaryId=worldPrimaryPage(definition.id)
  const isWorldbuilding=primaryId==='worldbuilding'
@@ -95,6 +96,7 @@ export default function WorldEnginePage(){
     </div>:<Suspense fallback={<p role="status">打开世界功能…</p>}>
      {isWorldbuilding&&<div className="we-content-heading"><h3>{definition.label}</h3><p>{definition.description}</p></div>}
      {['sharing','community'].includes(definition.id)?<>{definition.id==='community'&&<section className="lf-paper"><h3>世界分享与发行准备</h3><p>先封存世界版本，再配置署名、许可和用途，通过文件交给其他作者。在线社区发布和社区数据尚未接入。</p><button className="lf-action" onClick={()=>void go(path('versions'))}>管理封存版本</button></section>}<Sharing key={projectId??'empty'} project={row?.project} worldReleaseRevision={revision} onImported={async id=>{await refresh();await go(path('basics',id))}}/></>:definition.id==='settings'&&!row?<Settings/>:!row?<section className="lf-paper"><h3>{module?modules.find(([id])=>id===module)?.[1]:definition.label}</h3>{!isWorldbuilding&&<p>{definition.description}</p>}<p>{projectId?'指定世界不存在或不属于可编辑的世界目录。':'尚未选择世界，仍可浏览所有页面。'}</p><button className="lf-action lf-action-primary" onClick={()=>setChoosing(true)}>选择或创建世界</button></section>:<>
+      {definition.id==='basics'&&<WorldDraftSummary project={row.project}/>}
       {definition.id==='versions'?<Versions key={`${projectId}:${row.work.id}`} projectId={projectId!} activeWorkId={row.work.id} onChanged={refresh} onOpenProductProduction={handoff}/>:definition.id==='outlet'?<Outlet key={`${projectId}:${revision}`} projectId={projectId!} worldId={row.world.id!} onEdit={()=>void go(path('basics'))} onVersions={()=>void go(path('versions'))}/>:module?<>
        {definition.id==='story'&&module==='info'&&<section className="lf-paper"><p>此处管理世界内的叙事内容。世界名称与简介在“我的世界”修改。</p><WorldWorkManager projectId={projectId!} activeWorkId={row.work.id} onChanged={refresh}/></section>}
        {definition.id==='multiverse'&&!row.project.enableMultiWorld?<section className="lf-paper"><h3>启用多世界管理</h3><p>将现有设定归入主世界，再添加其他世界、位面与通道。</p><button className="lf-action lf-action-primary" disabled={busy} onClick={()=>void enableMultiWorld()}>启用多世界</button></section>:<div className={`we-editor ${definition.id==='map'?'we-map-editor':''}`}><Workspace key={`${projectId}:${row.work.id}`} embeddedProjectId={projectId!} embeddedModule={module}/></div>}

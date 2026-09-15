@@ -1264,7 +1264,7 @@ if (!worldviewFieldCopilotSource.includes('WORLDVIEW_GENERATABLE_FIELD_SPECS')
 }
 const workspacePageSource = read('src/pages/WorkspacePage.tsx')
 if (!workspacePageSource.includes('await flushPendingEditsV1()')
-  || !workspacePageSource.includes('onSelect={selectModule}')
+  || !workspacePageSource.includes('onModule: selectModule')
   || !workspacePageSource.includes('已阻止切换页面')) {
   violations.push('[㉚切页保存屏障] 工作区侧栏必须在卸载当前编辑器前 flush，保存失败不得继续切页')
 }
@@ -1482,7 +1482,7 @@ const productReleaseTypesSource = read('src/lib/types/product-release.ts')
 const productRuntimeTypesSource = read('src/lib/types/product-runtime.ts')
 const worldReferenceSource = read('src/lib/world-engine/world-reference.ts')
 const releaseCodecSource = read('src/lib/world-engine/release-codec.ts')
-const productHubArchitectureSource = read('src/pages/ProductHubPage.tsx')
+const productEntryArchitectureSource = read('src/pages/TextGameDevelopmentPage.tsx')
 const distributionBundleSource = read('src/lib/product-platform/distribution-bundle.ts')
 for (const token of [
   'validateWorldReferenceV1', 'validateProductSourcePlanV1',
@@ -1518,8 +1518,8 @@ if (!productProductionWorldSource.includes('selection: ProductWorldSourceSelecti
   || !productProductionWorldSource.includes('selection 与冻结 WorldReference 不一致')) {
   violations.push('[㉝B产品选择强制生效] 世界编译目录必须要求显式产品 selection、校验 WorldReference hash，且不得回退读取完整 release')
 }
-if (!productHubArchitectureSource.includes("lazy(() => import('../components/product/ProductProductionStudio'))")
-  || !productHubArchitectureSource.includes('<ProductProductionStudio')) {
+if (!productEntryArchitectureSource.includes("lazy(() => import('../components/product/ProductProductionStudio'))")
+  || !productEntryArchitectureSource.includes('<ProductProductionStudio')) {
   violations.push('[㉝B统一产品生产] 产品中心必须把上层产品制作统一路由到 ProductProductionStudio')
 }
 for (const token of [
@@ -1542,8 +1542,8 @@ if (!productProductionTypesSource.includes('productType: ProductionProductKindV1
 ) {
   violations.push('[㉝B产品隔离] Production/Release 根记录及工作台入口必须硬绑定并过滤产品身份')
 }
-if (!productHubArchitectureSource.includes('TEXT_GAME_PRODUCT_KINDS_V1')
-  || /upper\.(?:storygame|narrative-simulation)/.test(productHubArchitectureSource)) {
+if (!productEntryArchitectureSource.includes("'text-adventure'") || !productEntryArchitectureSource.includes("'text-open-world'")
+  || /upper\.(?:storygame|narrative-simulation)/.test(productEntryArchitectureSource)) {
   violations.push('[㉝B文字游戏收口] 产品中心只能从封闭注册表暴露文字冒险、AVG、文字开放世界')
 }
 if (!productRuntimePackageSource.includes('new Set<ProductionProductKindV1>(PRODUCTION_PRODUCT_KINDS_V1)')
@@ -2106,7 +2106,7 @@ if (!nodeTemplatesSource.includes('assertOfficialAuthoringGraphUsesFormalActions
 // ── ㉟ ARCH-07 世界能力只表达语义；未验收产品必须经过成熟度入口 ──
 const worldDomainSource = read('src/lib/world-engine/domain.ts')
 const productCatalogSource = read('src/lib/product/product-catalog.ts')
-const productHubSource = read('src/pages/ProductHubPage.tsx')
+const productEntrySource = read('src/pages/TextGameDevelopmentPage.tsx')
 for (const capability of [
   'foundation', 'story', 'characters', 'relations', 'entities', 'storylines',
   'outline', 'detailed-outline', 'manuscript', 'multi-world',
@@ -2133,10 +2133,10 @@ if (!productCatalogSource.includes("item.family === 'world-engine' && (item.owns
   violations.push('[㉟世界产品所有权] 产品目录必须拒绝世界引擎拥有运行态或产品媒资')
 }
 for (const token of [
-  'evaluateProductEntryV1', 'visibleNavTabs()', 'MaturityBadge',
+  'evaluateProductEntryV1', 'decision.enterable', 'decision.entry.maturityNote',
   'currentProductCatalogChannelV1', 'currentExperimentalProductOptInV1',
 ]) {
-  if (!productHubSource.includes(token)) violations.push(`[㉟入口成熟度闸门] ProductHub 缺少 ${token}`)
+  if (!productEntrySource.includes(token)) violations.push(`[㉟入口成熟度闸门] 产品入口缺少 ${token}`)
 }
 
 // ── ㊱ Phase D 世界引擎：诚实能力画像、关系出口、规模缓存与显式作品派生 ──

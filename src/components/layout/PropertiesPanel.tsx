@@ -5,7 +5,7 @@ import { useCharacterStore } from '../../stores/character'
 import { useCharacterRelationStore } from '../../stores/character-relation'
 import { useGeographyStore } from '../../stores/project-singletons'
 import { useForeshadowStore } from '../../stores/foreshadow'
-import type { SidebarModule } from './Sidebar'
+import type { SidebarModule } from './sidebar-tree'
 
 interface Props {
   activeModule: SidebarModule

@@ -9,7 +9,10 @@ StoryForge 当前是 React + TypeScript + Vite 的本地优先单页应用，核
 
 路由壳入口：
 
-- `/`：真实首页 `HomePage`，聚合本地作品、世界、创作任务与发布记录；`?tab=home` 同样显示首页，显式 `legacy=1` 保留旧工具兼容入口；
+- `/`：真实首页 `HomePage`，聚合本地作品、世界、创作任务与发布记录；历史 `?tab=` 链接由兼容解析器转向当前产品入口，`legacy=1` 不再启用旧界面；
+- `/community/:pageId?`：新版外壳中的社区市场、发行与在线招募；保留服务成熟度闸门。
+- `/adventure/runtime`：文字冒险现有引擎的开发入口，明确标注非正式功能，生产环境仍受产品目录闸门限制。
+- `/openworld/runtime`：文字开放世界现有引擎的开发入口，明确标注非正式功能，生产环境仍受产品目录闸门限制。
 - `/home/:pageId?`：作品总览、对象详情、封面、搜索、任务、设置和备份；对象与业务仍由所属产品管理。
 - `/play`：社区跑团目录和本地存档；
 - `/play/mist-harbor`：雾港内置作品介绍、明确开始、恢复存档；使用现行世界封存、生产与产品发布链，无模型调用；
@@ -28,7 +31,7 @@ StoryForge 当前是 React + TypeScript + Vite 的本地优先单页应用，核
 - `/script/:pageId?`：小说转剧本作品库、来源与改编规划、场次生产、审查及版本导出；`work` 查询参数选择独立剧本 Work，未选择仍可浏览。
 - `/workspace/:projectId`：作品工作区；独立长篇使用作品库、工作台、版本与导出、派生、导入、社区与设置导航，分步骤与节点复用原领域组件与数据。
 
-综合页从 `PRODUCT_CATALOG_V1` 派生世界引擎、作品、节点与上层产品入口；生产环境只显示 `released`，本地/测试才按状态显示 preview/internal，experimental 还需显式 opt-in。分步骤工作区仍是当前主要、最完整的作者路径，其 Phase 5 工程主链已经验收完成。
+各产品使用当前独立页面与统一产品导航；`PRODUCT_CATALOG_V1` 保留能力成熟度和所有权定义，开发引擎入口按环境与 opt-in 校验是否可进入。不得用页面可见性代替正式能力验收。分步骤工作区仍是当前主要、最完整的作者路径，其 Phase 5 工程主链已经验收完成。
 
 ## 2. 产品与共享底座
 
@@ -98,7 +101,7 @@ flowchart TB
 | 当前事实 | 数值 | 单一事实源 |
 |---|---:|---|
 | 应用语义版本 | `3.9.1` | `package.json` |
-| TypeScript 生产源码 | 1141 个文件 / 357091 行 | `tsconfig.json` |
+| TypeScript 生产源码 | 1141 个文件 / 355568 行 | `tsconfig.json` |
 | IndexedDB schema | v10 / 123 张 required tables | `schema.ts` / `REQUIRED_TABLES` |
 | PROJECT_TABLES | 123 张表 | `project-tables.ts` |
 | Prompt 主线 | 65 个 moduleKey / 210 条内置模板 | `PromptModuleKey` / `prompt-seeds*.ts` |
@@ -260,3 +263,16 @@ AVG 会谈使用 `avg.consult.v1` 和 `avg.authoring` 注册上下文，经 dura
 `Work.kind=character-interaction` 拥有 `chatAuthoringDrafts`；统一 schema v10 接入该表；v8/v9 兼容桥保留独立聊天分支已有草稿，且保留所有既有版本。设置及会谈由注册表进行完整生命周期管理。`chat.consult.v1` / `chat.authoring` 与 AVG 共用可恢复会谈运行器，各产品独立定义设置及上下文源。会谈不开始制作，候选由作者确认后回填草稿。正式 `characterChat` Brief 配置控制角色私密知识、初始信任、场景回合及回复预算。
 
 玩家页对消息听众和记忆证据进行可见性过滤；作者人物快照明确区分公开/私密知识。失败和取消清理 UI 生成状态，多角色导演的结束决策由实例命令执行。当前角色聊天生成发布以纯文字内容为边界；不把未生成的画像或语音标为已完成。
+
+## 当前 UI 开发基线（2026-09-15）
+
+当前青绿山水、奶油纸面 UI 是应用的唯一外壳。新功能沿用各产品的导航和编辑区域：主要操作在产品左侧，内容分类在页内左侧；创建位于各自产品页，浏览不以先有作品或世界为前置条件。
+
+- `src/index.css` 定义全站唯一配色、字体和编辑器变量，包括 portal 弹窗；`src/components/longform/longform.css` 提供已确认的共享页面样式。不得重新引入旧六主题或独立暖色应用外壳。
+- `src/components/navigation/ProductFrame.tsx` 为跨产品工具提供相同的页面外壳；现有产品保留各自更完整的导航和操作。`retired-routes.ts` 只转换旧书签，不渲染旧页面。
+- `ProductHubPage`、旧 `Sidebar` 视图、旧全局创建弹层与旧引导已下线。模块类型树继续供现行编辑器、内容分类和 AI 元信息使用；它不是另一套 UI。
+- `src/components/world-engine/panels.css` 仅维护现行世界分享、版本和资源控件；不依赖已删除的 `product-hub.css`。
+- `ui-preview/` 是本轮获认可的设计参考，且仍支撑两个开发中产品的预览页；它不是已退役的旧 UI。首页不再宣传尚待上线的整站预览。共享山水背景和真实作品、漫画、游戏媒资保留。
+- 全局设置说明当前样式；旧保存主题值只迁移为当前主题，不改正文格式和用户数据。项目文件夹设置、作品导入导出、版本和存档仍使用原领域服务。
+
+UI 清理回归覆盖：历史查询入口与对象参数、设置安全返回、世界封存与交接、真实跑团存档恢复、独立作品创建、文件夹绑定及示例体验。不得为兼容旧测试而恢复旧页面或全局创建流程。

@@ -1,3 +1,4 @@
+import { createLongform } from './helpers/product-entry'
 import { expect, test } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 
@@ -5,13 +6,9 @@ test('小说转剧本从产品入口冻结来源，经专业生产数据发布�
   await page.addInitScript(() => {
     localStorage.setItem('storyforge_guide_completed', 'e2e')
   })
-  await page.goto('./?tab=home&legacy=1')
+  await page.goto('./')
 
-  await page.getByRole('banner').getByRole('button', { name: '新建', exact: true }).click()
-  await page.getByRole('button', { name: /长篇小说/ }).click()
-  await page.getByLabel('名称').fill('E2E 剧本来源小说')
-  await page.getByRole('button', { name: '创建长篇小说', exact: true }).click()
-  await expect(page).toHaveURL(/\/storyforge\/workspace\/\d+\?module=outline$/)
+  await createLongform(page,'E2E 剧本来源小说')
   await page.evaluate(async () => {
     const importer = new Function('path', 'return import(path)') as (path: string) => Promise<any>
     const [{ db }, { stampNewRecord }] = await Promise.all([
@@ -36,9 +33,8 @@ test('小说转剧本从产品入口冻结来源，经专业生产数据发布�
     }, { owner: 'work' }))
   })
 
-  await page.goto('./?tab=home&legacy=1')
-  await page.getByRole('banner').getByRole('button', { name: '新建', exact: true }).click()
-  await page.getByRole('button', { name: /小说转剧本/ }).click()
+  await page.goto('./script/library')
+  await page.getByRole('button', { name: '新建剧本改编', exact: true }).click()
   await expect(page.getByLabel('小说来源')).toContainText('E2E 剧本来源小说')
   await page.getByLabel('小说来源').selectOption({label:'E2E 剧本来源小说'})
   await page.getByLabel('剧本名称',{exact:true}).fill('E2E 山门电影剧本')

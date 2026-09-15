@@ -1,3 +1,5 @@
+import { openSeededRuntime } from './helpers/product-entry'
+import { createWorld } from './helpers/product-entry'
 import { expect, test, type Page } from '@playwright/test'
 import { openCurrentTtrpgPlayer, seedCurrentTtrpgProduct } from './helpers/current-products'
 import { publishCurrentWorldRelease, openWorldSection } from './helpers/world-release'
@@ -12,7 +14,7 @@ async function seedFormalTtrpgCampaign(page: Page) {
 }
 
 async function seedEvolutionCompatibilityCampaign(page: Page) {
-  await page.goto('./?tab=home&legacy=1')
+  await page.goto('./')
   return page.evaluate(async () => {
     const importer = new Function('path', 'return import(path)') as (path: string) => Promise<any>
     const [
@@ -185,6 +187,12 @@ test('正式跑团从冻结发布完成 Session Zero、规则桌面、安全暂�
     elements: Array.from(document.querySelectorAll<HTMLElement>('body *'))
       .filter(element => {
         const rect = element.getBoundingClientRect()
+        // A deliberately scrollable navigation strip is clipped by its container,
+        // so offscreen links do not constitute document overflow.
+        for(let parent=element.parentElement;parent;parent=parent.parentElement) {
+          const style=getComputedStyle(parent), bounds=parent.getBoundingClientRect()
+          if(['auto','scroll','hidden','clip'].includes(style.overflowX) && bounds.left>=0 && bounds.right<=window.innerWidth) return false
+        }
         return rect.width > 0 && (rect.left < -0.5 || rect.right > window.innerWidth + 0.5)
       })
       .slice(0, 12)
@@ -221,8 +229,7 @@ test('演化 Build 展示稳定键兼容报告且旧 Release 与旧存档继续�
   })
 
   await page.reload()
-  await page.getByTestId('product-tab-text-games').click()
-  await page.getByRole('button', { name: '制作', exact: true }).click()
+  await openSeededRuntime(page,'avg','avg/production')
   const studio = page.getByTestId('product-production-studio')
   await expect(studio).toBeVisible({ timeout: 15_000 })
   const compatibility = studio.getByTestId('product-production-compatibility')
@@ -236,7 +243,9 @@ test('演化 Build 展示稳定键兼容报告且旧 Release 与旧存档继续�
   await expect(lineage).toContainText('Build #1')
   await expect(lineage).toContainText(`Release #${seeded.oldReleaseId}`)
 
-  await page.getByRole('button', { name: '玩家', exact: true }).click()
+  const playerParams = new URL(page.url()).searchParams
+  playerParams.delete('session')
+  await page.goto(`./avg/play?${playerParams}`)
   await expect(page.getByText('旧版固定存档', { exact: true })).toBeVisible({ timeout: 15_000 })
   await page.getByRole('region', { name: '已有存档' })
     .getByRole('button', { name: /旧版固定存档/ }).click()
@@ -279,11 +288,8 @@ test('世界到游戏只进入统一制作中心并自动复用全局 AI 配置'
       maxTokens: 0,
     }))
   })
-  await page.goto('./?tab=home&legacy=1')
-  await page.getByRole('banner').getByRole('button', { name: '新建', exact: true }).click()
-  await page.getByRole('button', { name: /世界引擎.*从零创建/ }).click()
-  await page.getByPlaceholder('例如：潮汐之后').fill('上层产品生产入口验收世界')
-  await page.getByRole('button', { name: '创建世界引擎', exact: true }).click()
+  await page.goto('./')
+  await createWorld(page, '上层产品生产入口验收世界', '')
 
   await openWorldSection(page,'story')
   await page.getByRole('navigation',{name:'世界内容导航'}).getByRole('button',{name:'主支线与进度',exact:true}).click()
@@ -291,13 +297,11 @@ test('世界到游戏只进入统一制作中心并自动复用全局 AI 配置'
   await page.getByRole('button', { name: '添加阶段', exact: true }).click()
   await page.getByRole('button', { name: '添加阶段', exact: true }).click()
 
-  await page.goto('./?tab=home&legacy=1')
-  await page.getByTestId('product-tab-worlds').click()
   const pipeline = await publishCurrentWorldRelease(page, '生产入口修订')
   await expect(pipeline.getByRole('button', { name: /主 Agent 生成游戏候选|快速映射|直接发布/ })).toHaveCount(0)
   await pipeline.getByRole('button', { name: '交给文字游戏', exact: true }).click()
 
-  await expect(page.getByRole('heading', { name: '文字游戏制作中心', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '开发体验', exact: true })).toBeVisible()
   await expect(page.getByText('自动游戏制作需要项目授权', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: '为当前项目显式启用', exact: true }).click()
   await expect(page.getByText('文本生成能力已就绪', { exact: true })).toBeVisible()

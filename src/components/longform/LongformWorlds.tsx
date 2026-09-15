@@ -6,7 +6,7 @@ import { useActiveWork } from '../../hooks/useActiveWork'
 import WorldDerivationActions from '../world-engine/WorldDerivationActions'
 import WorldSharingPanel from '../product/WorldSharingPanel'
 import { publishWorldRevision } from '../../lib/world-engine/releases'
-import '../../pages/product-hub.css'
+import '../world-engine/panels.css'
 
 export default function LongformWorlds({ project, community, onOpen }: { project: Project; community: boolean; onOpen: (id: number) => void }) {
   const work = useActiveWork(project)

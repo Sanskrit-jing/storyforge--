@@ -19,7 +19,7 @@ import { useWorldRulesStore } from '../stores/world-rules'
 import { useAutoBackup } from '../hooks/useAutoBackup'
 import { useGistAutoBackup } from '../hooks/useGistAutoBackup'
 import { MessageSquare, PanelRight } from 'lucide-react'
-import Sidebar, { type SidebarModule } from '../components/layout/Sidebar'
+import type { SidebarModule } from '../components/layout/sidebar-tree'
 import ContentTypeBadge from '../components/layout/ContentTypeBadge'
 import { getModuleContentType, MODULE_CONTENT_TYPES } from '../components/layout/sidebar-tree'
 import PropertiesPanel from '../components/layout/PropertiesPanel'
@@ -87,10 +87,7 @@ import { flushPendingEditsV1 } from '../lib/authoring/pending-edit-coordinator'
 import { useToast } from '../components/shared/Toast'
 import { useActiveWork } from '../hooks/useActiveWork'
 import WorkKindBadge from '../components/work/WorkKindBadge'
-import { effectiveNovelProfile, effectiveWorkKind, SHORT_NOVEL_DEFAULT_WORDS } from '../lib/workspace/work-kind'
-import { switchNovelProfile } from '../lib/workspace/works'
-import { secondaryNovelWorkflowModules } from '../lib/novel/workflow'
-import WorldDerivationActions from '../components/world-engine/WorldDerivationActions'
+import { effectiveNovelProfile, effectiveWorkKind } from '../lib/workspace/work-kind'
 
 import LongformLayout from '../components/longform/LongformLayout'
 import { LONGFORM_SECTIONS, sectionForModule, type LongformSection, type LongformMode } from '../components/longform/navigation'
@@ -119,11 +116,9 @@ export default function WorkspacePage({ embeddedProjectId, embeddedModule }: { e
   const explicitSection = query.get('section')
   const longSection: LongformSection = LONGFORM_SECTIONS.some(([id]) => id === explicitSection) ? explicitSection as LongformSection : sectionForModule(initialSidebarModule ?? 'info')
   const longMode: LongformMode = query.get('mode') === 'agent' ? 'agent' : initialSidebarModule === 'visual-workflows' ? 'nodes' : 'steps'
-  const backPath = '/'
   const [activeModule, setActiveModule] = useState<SidebarModule>(initialSidebarModule ?? 'info')
   const [loading, setLoading] = useState(true)
   const [editorNodeId, setEditorNodeId] = useState<number | null>(() => { const id = Number(query.get('chapter')); return Number.isInteger(id) && id > 0 ? id : null })
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [showProperties, setShowProperties] = useState(false)
   const [showCopilot, setShowCopilot] = useState(false)
   const [impactHandoff, setImpactHandoff] = useState<ImpactHandoffV2 | null>(null)
@@ -131,8 +126,6 @@ export default function WorkspacePage({ embeddedProjectId, embeddedModule }: { e
   const [impactCorrectionStatus, setImpactCorrectionStatus] = useState<'idle' | 'pending' | 'verifying' | 'completed'>('idle')
   const [impactCorrectionError, setImpactCorrectionError] = useState<string | null>(null)
   const navigationTail = useRef<Promise<void>>(Promise.resolve())
-  const [profileSwitching, setProfileSwitching] = useState(false)
-  const [profileSwitchError, setProfileSwitchError] = useState('')
   const activeWorldGroupId = useWorldGroupStore(state => state.activeGroupId)
   const worldGroups = useWorldGroupStore(state => state.groups)
 
@@ -188,11 +181,6 @@ export default function WorkspacePage({ embeddedProjectId, embeddedModule }: { e
     if (!project?.enableMultiWorld) hidden.add('world-overview')
     return hidden
   }, [project?.enableMultiWorld])
-  const secondaryModules = useMemo(() => (
-    activeWork && effectiveWorkKind(activeWork) === 'novel' && effectiveNovelProfile(activeWork) === 'short'
-      ? secondaryNovelWorkflowModules('short')
-      : undefined
-  ), [activeWork])
 
   useEffect(() => {
     const id = Number(new URLSearchParams(location.search).get('chapter'))
@@ -320,28 +308,6 @@ export default function WorkspacePage({ embeddedProjectId, embeddedModule }: { e
     }, '当前编辑未能保存，已阻止打开章节')
   }
 
-  const handleProfileSwitch = async () => {
-    if (!project.id || !activeWork?.id || effectiveWorkKind(activeWork) !== 'novel' || profileSwitching) return
-    const next = effectiveNovelProfile(activeWork) === 'short' ? 'long' : 'short'
-    setProfileSwitching(true)
-    setProfileSwitchError('')
-    try {
-      await switchNovelProfile({
-        projectId: project.id,
-        workId: activeWork.id,
-        profile: next,
-        targetWordCount: next === 'short'
-          ? (activeWork.targetWordCount >= 5_000 && activeWork.targetWordCount <= 25_000 ? activeWork.targetWordCount : SHORT_NOVEL_DEFAULT_WORDS)
-          : Math.max(activeWork.targetWordCount, 100_000),
-      })
-      await loadProject(project.id)
-      await useProjectStore.getState().loadProjects()
-    } catch (cause) {
-      setProfileSwitchError(cause instanceof Error ? cause.message : 'Profile 切换失败')
-    } finally {
-      setProfileSwitching(false)
-    }
-  }
 
   const immersiveModules = new Set<SidebarModule>([
     'chapters-list',
@@ -621,22 +587,16 @@ export default function WorkspacePage({ embeddedProjectId, embeddedModule }: { e
   if (project.workspacePurpose === 'independent-work' && activeWork && effectiveWorkKind(activeWork) === 'novel' && effectiveNovelProfile(activeWork) === 'short') return <Navigate replace to={`/short/${activeModule === 'chapters-list' ? 'editor' : activeModule === 'version-history' || activeModule === 'export' ? 'versions' : 'intent'}?project=${project.id}`}/>
 
   if (!embeddedProjectId && project.workspacePurpose === 'world-engine') return <Navigate replace to={worldModulePath(project.id!, activeModule, query)}/>
+  if (!embeddedProjectId && !isLongform) {
+    const product = activeWork ? ({ comic: 'comic', 'motion-drama': 'motion', avg: 'avg', ttrpg: 'ttrpg', 'character-interaction': 'chat', 'ai-town': 'town', 'text-adventure': 'adventure', 'text-open-world': 'openworld' } as Record<string,string>)[effectiveWorkKind(activeWork)] : undefined
+    return <Navigate replace to={product ? `/${product}/library?project=${project.id}&work=${activeWork?.id}` : '/long'}/>
+  }
   const Layout = isLongform ? LongformLayout : Fragment
   const layoutProps = isLongform ? { title: activeWork.title, section: longSection, mode: longMode, module: activeModule, hiddenModules, onSection: changeLongSection, onMode: changeLongMode, onModule: selectModule, onNavigate: (path: string) => afterPendingEdits(() => navigate(path), '编辑保存失败'), onHome: () => afterPendingEdits(() => navigate('/'), '编辑保存失败') } : {}
   return (
     <Layout {...layoutProps as React.ComponentProps<typeof LongformLayout>}>
-    <div data-workspace-ready={embeddedProjectId ? 'world' : isLongform ? 'longform' : 'legacy'} className={isLongform || embeddedProjectId ? 'h-full flex min-w-0' : 'h-screen bg-bg-base flex overflow-hidden'}>
+    <div data-workspace-ready={embeddedProjectId ? 'world' : 'longform'} className={isLongform || embeddedProjectId ? 'h-full flex min-w-0' : 'h-screen bg-bg-base flex overflow-hidden'}>
       {/* 左侧导航 */}
-      {!isLongform && !embeddedProjectId && <Sidebar
-        active={activeModule}
-        onSelect={selectModule}
-        onBack={() => afterPendingEdits(() => navigate(backPath), '当前编辑未能保存，已阻止离开工作区')}
-        projectName={activeWork?.title ?? project.name}
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(v => !v)}
-        hiddenModules={hiddenModules}
-        secondaryModules={secondaryModules}
-      />}
 
       {/* 主面板 */}
       <main
@@ -650,24 +610,8 @@ export default function WorkspacePage({ embeddedProjectId, embeddedModule }: { e
           <div className="flex min-w-0 items-center gap-2">
             <ContentTypeBadge contentType={getModuleContentType(activeModule)} showDescription />
             {activeWork && !embeddedProjectId && <WorkKindBadge work={activeWork} />}
-            {activeWork && effectiveWorkKind(activeWork) === 'novel' && effectiveNovelProfile(activeWork) === 'short' && (
-              <button
-                type="button"
-                onClick={() => void handleProfileSwitch()}
-                disabled={profileSwitching}
-                className="rounded border border-border px-2 py-1 text-[11px] text-text-secondary hover:bg-bg-hover disabled:opacity-50"
-              >
-                {profileSwitching ? '切换中…' : '扩写为长篇'}
-              </button>
-            )}
-            {profileSwitchError && <span className="max-w-72 truncate text-[11px] text-red-600" title={profileSwitchError}>{profileSwitchError}</span>}
           </div>
           <div className="flex items-center gap-1">
-            {!isLongform && !embeddedProjectId && <WorldDerivationActions
-              project={project}
-              compact
-              onDerived={targetProjectId => navigate(`/workspace/${targetProjectId}?module=info`)}
-            />}
             <button
               onClick={() => {
                 setShowCopilot(value => {

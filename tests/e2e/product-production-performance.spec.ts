@@ -1,3 +1,4 @@
+import { createWorld } from './helpers/product-entry'
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import { publishCurrentWorldRelease, openWorldSection } from './helpers/world-release'
 
@@ -92,18 +93,13 @@ async function createPerformanceBuild(page: Page) {
     })
   })
 
-  await page.goto('./?tab=home&legacy=1')
-  await page.getByRole('banner').getByRole('button', { name: '新建', exact: true }).click()
-  await page.getByRole('button', { name: /世界引擎.*从零创建/ }).click()
-  await page.getByPlaceholder('例如：潮汐之后').fill('浏览器性能隔离世界')
-  await page.getByRole('button', { name: '创建世界引擎', exact: true }).click()
+  await page.goto('./')
+  await createWorld(page, '浏览器性能隔离世界', '')
   await openWorldSection(page,'story')
   await page.getByRole('navigation',{name:'世界内容导航'}).getByRole('button',{name:'主支线与进度',exact:true}).click()
   await page.getByTitle('新增主线').click()
   await page.getByRole('button', { name: '添加阶段', exact: true }).click()
   await page.getByRole('button', { name: '添加阶段', exact: true }).click()
-  await page.goto('./?tab=home&legacy=1')
-  await page.getByTestId('product-tab-worlds').click()
   const pipeline = await publishCurrentWorldRelease(page, '性能验收来源')
   await pipeline.getByRole('button', { name: '交给文字游戏', exact: true }).click()
 
@@ -317,16 +313,12 @@ test('真实浏览器采样写入 Build 回执；smoke 不冒充商业通过', a
     expect(recorded.browserReceipt.failures).toContain('long-run-incomplete')
   }
 
-  // Return through the actual Product Hub navigation. The author must be able
+  // Return through the current production navigation. The author must be able
   // to inspect the exact immutable receipt that was just recorded, rather than
   // relying on test attachments or a hidden database row.
   const exitImmersivePlayer = page.getByRole('button', { name: '退出游戏', exact: true })
   if (await exitImmersivePlayer.isVisible().catch(() => false)) await exitImmersivePlayer.click()
-  if (!await page.getByRole('button', { name: '制作', exact: true }).isVisible().catch(() => false)) {
-    await page.getByRole('navigation', { name: '产品页签' })
-      .getByRole('button', { name: '文字游戏', exact: true }).click()
-  }
-  await page.getByRole('button', { name: '制作', exact: true }).click()
+  await page.getByRole('navigation', { name: '开发体验模式' }).getByRole('button', { name: '制作', exact: true }).click()
   const receiptPanel = page.getByTestId('product-production-performance-receipt')
   await expect(receiptPanel).toBeVisible()
   await expect(receiptPanel).toContainText(
