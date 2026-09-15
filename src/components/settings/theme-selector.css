@@ -1,7 +1,7 @@
 .theme-selector{border:1px solid var(--border);border-radius:20px;padding:24px;background:var(--bg-surface)}
 .theme-selector h3{font:22px var(--font-serif);color:var(--text-primary)}
 .theme-selector>p{font-size:13px;line-height:1.8;color:var(--text-secondary);margin-top:10px}
-.theme-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:20px}
+.theme-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:18px;margin-top:20px}
 .theme-option{min-width:0;text-align:left;border:1px solid var(--border);border-radius:15px;padding:10px;background:var(--bg-elevated)}
 .theme-option[aria-pressed=true]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 .theme-option:focus-visible{outline:2px solid var(--accent);outline-offset:4px}

@@ -269,6 +269,7 @@ AVG 会谈使用 `avg.consult.v1` 和 `avg.authoring` 注册上下文，经 dura
 当前重构 UI 是应用的唯一外壳，默认使用青绿山水、奶油纸面；水墨远山是同一布局的可选皮肤。新功能沿用各产品的导航和编辑区域：主要操作在产品左侧，内容分类在页内左侧；创建位于各自产品页，浏览不以先有作品或世界为前置条件。
 
 - `src/styles/themes.css` 是全站配色、字体、山水背景和编辑器变量的单一来源，由主应用与独立预览共用的 `src/lib/theme-bootstrap.ts` 引入，包括 portal 弹窗；`src/components/longform/longform.css` 提供已确认的共享页面样式。共享外框和产品制作面板通过语义变量换肤，局部 fallback 保留原青绿细节。新增皮肤应扩展统一变量和主题注册表，不得恢复旧主题系统或独立应用外壳。
+- 首页“今天”直接显示主视觉，不显示面包屑条；顶部、侧栏和主视觉共用连续的整页背景，内容纸面从主视觉下方开始；主视觉基准最小高度为桌面 260px、手机 220px，长内容可自然撑高。通用设置填满可用内容宽度，主题缩略图按容器宽度自动分列。
 - `src/components/navigation/ProductFrame.tsx` 为跨产品工具提供相同的页面外壳；现有产品保留各自更完整的导航和操作。`retired-routes.ts` 只转换旧书签，不渲染旧页面。
 - `ProductHubPage`、旧 `Sidebar` 视图、旧全局创建弹层与旧引导已下线。模块类型树继续供现行编辑器、内容分类和 AI 元信息使用；它不是另一套 UI。
 - `src/components/world-engine/panels.css` 仅维护现行世界分享、版本和资源控件；不依赖已删除的 `product-hub.css`。

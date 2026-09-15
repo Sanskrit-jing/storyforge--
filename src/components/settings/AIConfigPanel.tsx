@@ -155,7 +155,7 @@ export default function AIConfigPanel() {
   }, [config.baseUrl, config.provider])
 
   return (
-    <div className="max-w-2xl">
+    <div className="w-full min-w-0">
       <h2 className="text-xl font-bold text-text-primary mb-6">设置</h2>
       <div className="mb-8"><ThemeSelector /></div>
 
