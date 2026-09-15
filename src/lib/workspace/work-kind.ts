@@ -42,7 +42,7 @@ export function normalizeNewWorkClassification(input: {
 export function assertStoredWorkClassification(
   work: Pick<Work, 'kind' | 'novelProfile'> & Partial<Pick<Work, 'targetWordCount'>>,
 ): void {
-  if (!(['novel', 'screenplay', 'comic', 'motion-drama', 'avg'] as const).includes(work.kind)) {
+  if (!(['novel', 'screenplay', 'comic', 'motion-drama', 'avg', 'character-interaction'] as const).includes(work.kind)) {
     throw new Error(`未知 Work kind：${String(work.kind)}`)
   }
   if (work.novelProfile != null && !(['short', 'long'] as const).includes(work.novelProfile)) {

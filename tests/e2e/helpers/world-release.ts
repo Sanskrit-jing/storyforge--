@@ -1,3 +1,4 @@
+import {WORLD_CONTENT_PAGES,WORLD_PAGES} from '../../../src/components/world-engine/navigation'
 import { expect, type Locator, type Page } from '@playwright/test'
 
 export function currentWorldReleasePanel(page: Page): Locator {
@@ -29,11 +30,15 @@ export async function publishCurrentWorldRelease(
 /** Follow the product's visible navigation, preserving the selected world. */
 export async function openWorldSection(page:Page, section:string):Promise<void> {
   await expect(page.getByTestId('world-engine-page')).toBeVisible({timeout:15000})
-  const labels:Record<string,string>={versions:'版本与封存',sharing:'分享与导入',story:'故事与叙事'}
+  const label=WORLD_PAGES.find(item=>item.id===section)?.label
+  if(!label)throw new Error(`未知世界页面 ${section}`)
   const url=new URL(page.url())
   if(!url.searchParams.has('project')) {
     await page.locator('.lf-library-grid article').first().getByRole('button',{name:'编辑世界',exact:true}).click()
   }
   if(!await page.getByRole('navigation',{name:'世界页面导航'}).isVisible())await page.getByRole('button',{name:'世界目录',exact:true}).click()
-  await page.getByRole('navigation',{name:'世界页面导航'}).getByRole('button',{name:labels[section],exact:true}).click()
+  if(WORLD_CONTENT_PAGES.some(item=>item.id===section)){
+    await page.getByRole('navigation',{name:'世界页面导航'}).getByRole('button',{name:'世界设定',exact:true}).click()
+    await page.getByRole('navigation',{name:'世界内容导航'}).getByRole('button',{name:label,exact:true}).click()
+  }else await page.getByRole('navigation',{name:'世界页面导航'}).getByRole('button',{name:label,exact:true}).click()
 }

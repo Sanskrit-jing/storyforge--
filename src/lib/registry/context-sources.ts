@@ -1658,6 +1658,16 @@ export const CONTEXT_SOURCES: ContextSource[] = [
     },
   },
   {
+    key: 'chat.authoring', label: '角色聊天作者方案与会谈', scope: 'project', layer: 'L0', ownerFrom: 'work',
+    budgetTokens: 16000, protectedFromTrim: true,
+    read: async input => {
+      const scope = await resolveScope(input)
+      const rows = await readOwnedRows<import('../character-interaction/authoring-contract').ChatAuthoringDraftV1>(scope, 'chatAuthoringDrafts', { owner: 'work' })
+      const draft = rows[0]
+      return draft ? JSON.stringify({ revision: draft.revision, settings: JSON.parse(draft.settingsJson), conversation: (JSON.parse(draft.conversationJson) as import('../character-interaction/draft-service').ChatConversationTurnV1[]).filter(turn=>!turn.archived), worldSelected: draft.worldReleaseId != null }) : ''
+    },
+  },
+  {
     key: 'product-production.brief',
     label: '已授权上层产品生产 Brief',
     scope: 'project',

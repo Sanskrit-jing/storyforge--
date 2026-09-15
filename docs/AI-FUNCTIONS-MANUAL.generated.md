@@ -80,7 +80,7 @@
 
 ## 二、上下文源清单（CONTEXT_SOURCES · AI 读什么）
 
-共 101 个上下文源。assembleContext({ sourceKeys }) 按 key 装配。
+共 102 个上下文源。assembleContext({ sourceKeys }) 按 key 装配。
 
 | key | 标签 | 作用域 | 层级 | 预算(token) |
 |---|---|---|---|---|
@@ -94,6 +94,7 @@
 | `ttrpgNpcRuntime` | 正式 TTRPG NPC 独立知情视角 | runtime | L0 | 10000 |
 | `ttrpgPlayerRuntime` | 正式 TTRPG 单角色玩家运行视角 | runtime | L0 | 10000 |
 | `avg.authoring` | AVG 作者方案与会谈 | project | L0 | 16000 |
+| `chat.authoring` | 角色聊天作者方案与会谈 | project | L0 | 16000 |
 | `product-production.brief` | 已授权上层产品生产 Brief | project | L0 | 8000 |
 | `product-production.artifact-inputs` | 上层产品生产任务依赖 | project | L1 | 10000 |
 | `product-production.quality-feedback` | 上层产品生产质量反馈 | project | L1 | 6000 |
@@ -397,8 +398,7 @@ AI 输出经 `adopt({ target, data })` 写回,只有这里登记的字段可写(
 - `src/lib/agent/story-core-copilot.ts:557 · chat`
 - `src/lib/agent/storyline-progress-copilot.ts:366 · chat`
 - `src/lib/agent/worldview-field-copilot.ts:890 · chat`
-- `src/lib/avg/consultation.ts:164 · chat`
-- `src/lib/character-interaction/harness.ts:403 · chat`
+- `src/lib/character-interaction/harness.ts:404 · chat`
 - `src/lib/comic/durable-production.ts:269 · chat`
 - `src/lib/evals/agent-harness/story-arc-main-path-browser.ts:98 · chat`
 - `src/lib/evals/creative-reliability/browser.ts:89 · chat`
@@ -407,6 +407,7 @@ AI 输出经 `adopt({ target, data })` 写回,只有这里登记的字段可写(
 - `src/lib/node-authoring/executor.ts:417 · chat`
 - `src/lib/open-world/evolution-harness.ts:246 · chat`
 - `src/lib/open-world/harness.ts:139 · chat`
+- `src/lib/product-production/authoring-consultation.ts:169 · chat`
 - `src/lib/product-production/capabilities.ts:158 · chat`
 - `src/lib/screenplay/durable-production.ts:449 · chat`
 - `src/lib/ttrpg/gm-actor-harness.ts:481 · chat`
@@ -457,4 +458,4 @@ AI 输出经 `adopt({ target, data })` 写回,只有这里登记的字段可写(
 
 ---
 
-生成时间基准:commit `62b53d35`
+生成时间基准:commit `5b9e78e1`

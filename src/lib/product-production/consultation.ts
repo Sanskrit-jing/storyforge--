@@ -1,3 +1,4 @@
+import { parseChatAuthoringSettingsV1, type ChatAuthoringSettingsV1 } from '../character-interaction/authoring-contract'
 import { parseAvgAuthoringSettingsV1, type AvgAuthoringSettingsV1 } from '../avg/authoring-contract'
 import type {
   ProductionProductKindV1,
@@ -308,6 +309,7 @@ export async function draftProductProductionBriefV3(input: {
   confirmTtrpgDefaultMappings?: boolean
   ttrpg?: TtrpgProductionBriefDraftInputV2
   aiTown?: AiTownBriefSettingsV1
+  characterChat?: ChatAuthoringSettingsV1
   avg?: AvgAuthoringSettingsV1
   sourceSelection?: ProductProductionSourceSelectionV1
 }): Promise<ProductProductionBriefV3> {
@@ -324,12 +326,23 @@ export async function draftProductProductionBriefV3(input: {
   }
   const selectedScale = input.scale ?? selected.scale
   const qualityProfile = input.qualityProfile ?? 'prototype'
+  const characterChat = input.characterChat ? parseChatAuthoringSettingsV1(input.characterChat) : undefined
+  if(characterChat && input.productType !== 'character-interaction') throw new Error('角色聊天方案不能用于其他产品')
   const avg = input.avg ? parseAvgAuthoringSettingsV1(input.avg) : undefined
   if (avg && input.productType !== 'avg') throw new Error('AVG 方案不能用于其他产品')
-  const scale = { scope: selectedScale, ...SCALE_DEFAULTS[selectedScale], ...(avg ? { targetPlayMinutes: avg.targetPlayMinutes, targetEndingCount: avg.targetEndingCount } : {}) }
+  const scale = { scope: selectedScale, ...SCALE_DEFAULTS[selectedScale], ...(avg ? { targetPlayMinutes: avg.targetPlayMinutes, targetEndingCount: avg.targetEndingCount } : {}), ...(characterChat ? {targetPlayMinutes: characterChat.targetPlayMinutes} : {}) }
   const selectedCatalog = normalizeAuthorSelection({
     source, selected, authorSelection: input.sourceSelection,
   })
+  if (characterChat) {
+    const keys = characterChat.characters.map(c => c.sourceKey)
+    if (!keys.length || (characterChat.mode === 'single' && keys.length !== 1)) {
+      throw new Error('请在角色与场景中选择参与者；单角色模式需要恰好一名角色。')
+    }
+    const available = new Set(source.selectionOptions.characters.map(c => c.resourceKey))
+    if (keys.some(key => !available.has(key))) throw new Error('角色设置包含当前世界版本中不存在的人物，请重新选择。')
+    selectedCatalog.characterResourceKeys = keys
+  }
   if (input.productType === 'ai-town') {
     const residentTarget = input.aiTown?.residentTarget ?? 6
     const majorLocationTarget = input.aiTown?.majorLocationTarget ?? 4
@@ -442,6 +455,7 @@ export async function draftProductProductionBriefV3(input: {
   return parseProductProductionBriefV3({
     schema: 'storyforge.product-production-brief', version: 3,
     ...(avg ? { avg } : {}),
+    ...(characterChat ? { characterChat } : {}),
     source: {
       worldReleaseId: input.worldReleaseId, worldContentHash: source.release.contentHash, selection,
       startingPoint: {

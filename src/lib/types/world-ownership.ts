@@ -18,7 +18,7 @@ export interface PostAdoptionBudgetV1 {
   allowUnknownCost: boolean
 }
 
-export type WorkKind = 'novel' | 'screenplay' | 'comic' | 'motion-drama' | 'avg'
+export type WorkKind = 'novel' | 'screenplay' | 'comic' | 'motion-drama' | 'avg' | 'character-interaction'
 export type NovelWorkflowProfile = 'short' | 'long'
 
 /**

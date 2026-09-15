@@ -3377,6 +3377,14 @@ export const AGENT_SKILLS = [
     maxOutputTokens: 8000, writeTargets: [], lastVerifiedAt: '2026-09-15', regressionTests: ['R-AVG4-consultation'],
   },
   {
+    version: 1, id: 'chat.consult.v1', agentId: 'outline', defaultForAgent: false,
+    label: '角色聊天 制作方案会谈', owner: 'outline-agent', promptVersion: 'chat-consult-v1',
+    executionMode: 'product-production', contextTaskKind: 'agent-outline', readToolNames: [],
+    contextSourceKeys: ['chat.authoring'], optionalContextSourceKeys: [],
+    inputPolicy: productProductionInputPolicy(['chat.authoring']), contextCompression: compressionPolicy(['chat.authoring']),
+    maxOutputTokens: 8000, writeTargets: [], lastVerifiedAt: '2026-09-15', regressionTests: ['R-CHAT-UI-authoring'],
+  },
+  {
     version: 1,
     id: 'product-production.consult.v1',
     agentId: 'outline',
