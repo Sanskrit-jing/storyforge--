@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { existsSync, readFileSync } from 'node:fs'
 import { retiredHomeDestination, safeSettingsReturn } from '../../src/components/navigation/retired-routes'
-import { resolveStoryForgeTheme } from '../../src/lib/theme'
+import { resolveStoryForgeTheme, THEME_OPTIONS } from '../../src/lib/theme'
 
 describe('current UI is the only application foundation', () => {
   it('retired bookmarks preserve explicit object, session and handoff parameters', () => {
@@ -21,7 +21,7 @@ describe('current UI is the only application foundation', () => {
   it('settings return is local and retired saved palettes resolve to the current palette', () => {
     expect(safeSettingsReturn('/ttrpg/play?project=1&session=9')).toBe('/ttrpg/play?project=1&session=9')
     for(const value of ['https://other.test','//other.test','/play/../settings','/play\\other',null])expect(safeSettingsReturn(value)).toBeNull()
-    expect(resolveStoryForgeTheme('inkwash')).toBe('inkwash')
+    for (const theme of THEME_OPTIONS) expect(resolveStoryForgeTheme(theme.id)).toBe(theme.id)
     for(const value of ['unknown','warm','jade','slate','forge','scroll','paper','storyforge',null])expect(resolveStoryForgeTheme(value)).toBe('storyforge')
   })
   it('retired UI files and loading escape hatches cannot return', () => {

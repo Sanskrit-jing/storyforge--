@@ -281,7 +281,9 @@ test('世界引擎只封存纯语义 Release，并显式交给上层产品生产
   await pipeline.getByRole('button', { name: '交给文字游戏', exact: true }).click()
   await expect(page.getByRole('heading', { name: '开发体验', exact: true })).toBeVisible()
   const enableProduction = page.getByRole('button', { name: '为当前项目显式启用', exact: true })
-  if (await enableProduction.isVisible().catch(() => false)) await enableProduction.click()
+  // Wait for workspace authorization to load before deciding whether to enable it.
+  await expect(enableProduction.or(page.getByTestId('product-production-studio'))).toBeVisible()
+  if (await enableProduction.isVisible()) await enableProduction.click()
   await expect(page.getByTestId('product-production-studio')).toBeVisible({ timeout: 15_000 })
   await expect(page.getByLabel('冻结 WorldRelease')).not.toHaveValue('')
   const runtimeRows = await page.evaluate(async () => {

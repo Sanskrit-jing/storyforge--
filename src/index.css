@@ -1,5 +1,3 @@
-@import './styles/themes.css';
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -223,7 +221,7 @@ body {
   float: left;
 }
 
-/* 浅色主题下修正历史遗留的 Tailwind 亮色工具类：这些类原本面向暗色底，放到纸面上会发虚。 */
+/* 历史彩色工具类统一使用主题前景色，兼顾浅色纸面与深色工作区。 */
 :root .text-green-400,
 :root .text-emerald-400,
 :root .text-green-500,
@@ -232,7 +230,7 @@ body {
 :root [class*="text-emerald-400"],
 :root [class*="text-green-500"],
 :root [class*="text-emerald-500"] {
-  color: #065F46 !important;
+  color: var(--badge-green-ink) !important;
 }
 
 :root .text-sky-300,
@@ -245,7 +243,7 @@ body {
 :root [class*="text-blue-300"],
 :root [class*="text-blue-400"],
 :root [class*="text-blue-500"] {
-  color: #1E40AF !important;
+  color: var(--badge-blue-ink) !important;
 }
 
 :root .text-yellow-400,
@@ -258,7 +256,7 @@ body {
 :root [class*="text-amber-300"],
 :root [class*="text-amber-400"],
 :root [class*="text-amber-500"] {
-  color: #92400E !important;
+  color: var(--badge-amber-ink) !important;
 }
 
 :root .text-red-400,
@@ -269,7 +267,7 @@ body {
 :root [class*="text-red-500"],
 :root [class*="text-rose-400"],
 :root [class*="text-rose-500"] {
-  color: #B91C1C !important;
+  color: var(--badge-red-ink) !important;
 }
 
 :root .text-purple-200,
@@ -280,28 +278,28 @@ body {
 :root [class*="text-purple-300"],
 :root [class*="text-purple-400"],
 :root [class*="text-purple-500"] {
-  color: #7E22CE !important;
+  color: var(--badge-purple-ink) !important;
 }
 
 :root .text-pink-400,
 :root .text-pink-500,
 :root [class*="text-pink-400"],
 :root [class*="text-pink-500"] {
-  color: #BE185D !important;
+  color: var(--badge-pink-ink) !important;
 }
 
 :root .text-orange-400,
 :root .text-orange-500,
 :root [class*="text-orange-400"],
 :root [class*="text-orange-500"] {
-  color: #C2410C !important;
+  color: var(--badge-orange-ink) !important;
 }
 
 :root .text-lime-400,
 :root .text-lime-500,
 :root [class*="text-lime-400"],
 :root [class*="text-lime-500"] {
-  color: #4D7C0F !important;
+  color: var(--badge-lime-ink) !important;
 }
 
 :root .text-teal-400,
@@ -312,10 +310,10 @@ body {
 :root [class*="text-teal-500"],
 :root [class*="text-cyan-400"],
 :root [class*="text-cyan-500"] {
-  color: #0F766E !important;
+  color: var(--badge-teal-ink) !important;
 }
 
-/* 浅色主题下提高彩色徽标/按钮底色对比度；只覆盖旧 Tailwind 硬编码色，不影响主题 token 与熔炉深色主题。 */
+/* 保留彩色徽标的语义底色，前景色随主题调节。 */
 :root .bg-green-500\/5,
 :root .bg-green-500\/10,
 :root .bg-green-500\/15,
@@ -383,3 +381,6 @@ body {
 :root .bg-teal-500\/20 {
   background-color: rgba(15, 118, 110, 0.13) !important;
 }
+
+/* Existing primary actions use the same on-accent ink in every palette. */
+.bg-accent,.bg-accent-hover,.hover\:bg-accent:hover,.hover\:bg-accent-hover:hover{color:var(--accent-foreground)}

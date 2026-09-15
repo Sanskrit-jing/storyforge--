@@ -6,7 +6,7 @@ import AITaskRoutingSection from '../../src/components/settings/AITaskRoutingSec
 import AIConnectionLogPanel from '../../src/components/settings/AIConnectionLogPanel'
 import AIConnectionTestSection from '../../src/components/settings/AIConnectionTestSection'
 import ThemeSelector from '../../src/components/settings/ThemeSelector'
-import { applyStoryForgeTheme } from '../../src/lib/theme'
+import { applyStoryForgeTheme, THEME_OPTIONS } from '../../src/lib/theme'
 import { DEFAULT_AGENT_CONTEXT_PROFILES } from '../../src/lib/agent/context-policy'
 import type { AIConfig, AIConfigPreset } from '../../src/lib/types'
 
@@ -143,7 +143,7 @@ describe('AUDIT-6 / HEALTH-4 · AI 设置分区', () => {
     applyStoryForgeTheme('storyforge')
     const host = await mount(ThemeSelector as ComponentType<never>, {})
     expect(host.textContent).toContain('青绿山水')
-    expect(host.querySelectorAll('button')).toHaveLength(2)
+    expect(host.querySelectorAll('.theme-option')).toHaveLength(THEME_OPTIONS.length)
     const inkwash = host.querySelector<HTMLButtonElement>('[aria-label=水墨远山]')!
     await act(async () => inkwash.click())
     expect(inkwash.getAttribute('aria-pressed')).toBe('true')
