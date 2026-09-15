@@ -1,5 +1,8 @@
-import { useCallback, useEffect, useRef, useState, useMemo, lazy, Suspense } from 'react'
-import { useLocation, useNavigate, useParams } from 'react-router'
+import ShortNovelHistory from '../components/short-novel/ShortNovelHistory'
+import LongformCompletion from '../components/longform/LongformCompletion'
+import { worldModulePath } from '../components/world-engine/navigation'
+import { useCallback, useEffect, useRef, useState, useMemo, lazy, Suspense, Fragment } from 'react'
+import { Navigate, useLocation, useNavigate, useParams } from 'react-router'
 import { useProjectStore } from '../stores/project'
 import { useWorldviewStore } from '../stores/worldview'
 import { useCharacterStore } from '../stores/character'
@@ -16,7 +19,7 @@ import { useWorldRulesStore } from '../stores/world-rules'
 import { useAutoBackup } from '../hooks/useAutoBackup'
 import { useGistAutoBackup } from '../hooks/useGistAutoBackup'
 import { MessageSquare, PanelRight } from 'lucide-react'
-import Sidebar, { type SidebarModule } from '../components/layout/Sidebar'
+import type { SidebarModule } from '../components/layout/sidebar-tree'
 import ContentTypeBadge from '../components/layout/ContentTypeBadge'
 import { getModuleContentType, MODULE_CONTENT_TYPES } from '../components/layout/sidebar-tree'
 import PropertiesPanel from '../components/layout/PropertiesPanel'
@@ -84,26 +87,38 @@ import { flushPendingEditsV1 } from '../lib/authoring/pending-edit-coordinator'
 import { useToast } from '../components/shared/Toast'
 import { useActiveWork } from '../hooks/useActiveWork'
 import WorkKindBadge from '../components/work/WorkKindBadge'
-import { effectiveNovelProfile, effectiveWorkKind, SHORT_NOVEL_DEFAULT_WORDS } from '../lib/workspace/work-kind'
-import { switchNovelProfile } from '../lib/workspace/works'
-import { secondaryNovelWorkflowModules } from '../lib/novel/workflow'
-import WorldDerivationActions from '../components/world-engine/WorldDerivationActions'
+import { effectiveNovelProfile, effectiveWorkKind } from '../lib/workspace/work-kind'
 
-export default function WorkspacePage() {
-  const { projectId } = useParams()
+import LongformLayout from '../components/longform/LongformLayout'
+import { LONGFORM_SECTIONS, sectionForModule, type LongformSection, type LongformMode } from '../components/longform/navigation'
+const LongformWorlds = lazy(() => import('../components/longform/LongformWorlds'))
+
+export default function WorkspacePage({ embeddedProjectId, embeddedModule }: { embeddedProjectId?: number; embeddedModule?: SidebarModule } = {}) {
+  const routeParams = useParams()
+  const projectId = embeddedProjectId != null ? String(embeddedProjectId) : routeParams.projectId
   const location = useLocation()
-  const navigate = useNavigate()
+  const routerNavigate = useNavigate()
+  const navigate = useCallback((path:string, options?:{replace?:boolean}) => {
+    const match = path.match(/^\/workspace\/(\d+)\?(.*)$/)
+    if (embeddedProjectId && match && Number(match[1]) === embeddedProjectId) {
+      const params = new URLSearchParams(match[2])
+      return routerNavigate(worldModulePath(match[1], params.get('module') ?? 'info', params), options)
+    }
+    return routerNavigate(path, options)
+  }, [routerNavigate, embeddedProjectId])
   const toast = useToast()
   const { loadProject, projects, currentProjectId } = useProjectStore()
-  const initialModule = new URLSearchParams(location.search).get('module')
+  const initialModule = embeddedModule ?? new URLSearchParams(location.search).get('module')
   const initialSidebarModule = initialModule && Object.prototype.hasOwnProperty.call(MODULE_CONTENT_TYPES, initialModule)
     ? initialModule as SidebarModule
     : null
-  const backPath = '/'
+  const query = new URLSearchParams(location.search)
+  const explicitSection = query.get('section')
+  const longSection: LongformSection = LONGFORM_SECTIONS.some(([id]) => id === explicitSection) ? explicitSection as LongformSection : sectionForModule(initialSidebarModule ?? 'info')
+  const longMode: LongformMode = query.get('mode') === 'agent' ? 'agent' : initialSidebarModule === 'visual-workflows' ? 'nodes' : 'steps'
   const [activeModule, setActiveModule] = useState<SidebarModule>(initialSidebarModule ?? 'info')
   const [loading, setLoading] = useState(true)
-  const [editorNodeId, setEditorNodeId] = useState<number | null>(null)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [editorNodeId, setEditorNodeId] = useState<number | null>(() => { const id = Number(query.get('chapter')); return Number.isInteger(id) && id > 0 ? id : null })
   const [showProperties, setShowProperties] = useState(false)
   const [showCopilot, setShowCopilot] = useState(false)
   const [impactHandoff, setImpactHandoff] = useState<ImpactHandoffV2 | null>(null)
@@ -111,8 +126,6 @@ export default function WorkspacePage() {
   const [impactCorrectionStatus, setImpactCorrectionStatus] = useState<'idle' | 'pending' | 'verifying' | 'completed'>('idle')
   const [impactCorrectionError, setImpactCorrectionError] = useState<string | null>(null)
   const navigationTail = useRef<Promise<void>>(Promise.resolve())
-  const [profileSwitching, setProfileSwitching] = useState(false)
-  const [profileSwitchError, setProfileSwitchError] = useState('')
   const activeWorldGroupId = useWorldGroupStore(state => state.activeGroupId)
   const worldGroups = useWorldGroupStore(state => state.groups)
 
@@ -136,8 +149,9 @@ export default function WorkspacePage() {
       setImpactHandoffTarget(null)
       setActiveModule(module)
       if (module !== 'editor') setEditorNodeId(null)
+      navigate(`/workspace/${projectId}?module=${module}`)
     }, '当前编辑未能保存，已阻止切换页面')
-  }, [afterPendingEdits])
+  }, [afterPendingEdits, navigate, projectId])
 
   // 从 Zustand Store 中动态获取当前项目，实现全局响应式更新
   const project = useMemo(() => {
@@ -145,6 +159,20 @@ export default function WorkspacePage() {
     return projects.find(p => p.id === currentProjectId) || null
   }, [projects, currentProjectId])
   const activeWork = useActiveWork(project)
+  const isLongform = !embeddedProjectId && project?.workspacePurpose === 'independent-work' && activeWork != null && effectiveWorkKind(activeWork) === 'novel' && effectiveNovelProfile(activeWork) === 'long'
+  const changeLongSection = (section: LongformSection) => afterPendingEdits(() => {
+    if (section === 'library') { navigate('/long'); return }
+    const module = section === 'versions' ? 'version-history' : section === 'import' ? 'import-doc' : section === 'settings' ? 'settings' : 'info'
+    setActiveModule(module)
+    setShowCopilot(false)
+    navigate(`/workspace/${projectId}?section=${section}&module=${module}`)
+  }, '当前编辑未能保存，已阻止切换页面')
+  const changeLongMode = (mode: LongformMode) => afterPendingEdits(() => {
+    const module = mode === 'nodes' ? 'visual-workflows' : 'info'
+    setActiveModule(module)
+    setShowCopilot(false)
+    navigate(`/workspace/${projectId}?module=${module}&mode=${mode}`)
+  }, '当前编辑未能保存，已阻止切换模式')
 
   // 侧栏隐藏模块（多世界关闭时隐藏世界总览）。必须在所有提前 return 之前调用，
   // 否则 hook 数量在不同渲染间不一致，会报 "Rendered more hooks than..."
@@ -153,11 +181,11 @@ export default function WorkspacePage() {
     if (!project?.enableMultiWorld) hidden.add('world-overview')
     return hidden
   }, [project?.enableMultiWorld])
-  const secondaryModules = useMemo(() => (
-    activeWork && effectiveWorkKind(activeWork) === 'novel' && effectiveNovelProfile(activeWork) === 'short'
-      ? secondaryNovelWorkflowModules('short')
-      : undefined
-  ), [activeWork])
+
+  useEffect(() => {
+    const id = Number(new URLSearchParams(location.search).get('chapter'))
+    setEditorNodeId(Number.isInteger(id) && id > 0 ? id : null)
+  }, [location.search])
 
   // 自动定时备份（每 5 分钟本地快照）
   useAutoBackup(project?.id ?? null)
@@ -264,7 +292,7 @@ export default function WorkspacePage() {
     load()
   }, [projectId, loadProject, navigate])
 
-  if (loading || !project) {
+  if (loading || !project || (project.activeWorkId != null && !activeWork)) {
     return (
       <div className="min-h-screen bg-bg-base flex items-center justify-center">
         <span className="text-text-muted">加载中...</span>
@@ -273,32 +301,13 @@ export default function WorkspacePage() {
   }
 
   const handleOpenChapter = (nodeId: number) => {
-    setEditorNodeId(nodeId)
-    setActiveModule('chapters-list')
+    afterPendingEdits(() => {
+      setEditorNodeId(nodeId)
+      setActiveModule('chapters-list')
+      navigate(`/workspace/${projectId}?module=chapters-list&chapter=${nodeId}`)
+    }, '当前编辑未能保存，已阻止打开章节')
   }
 
-  const handleProfileSwitch = async () => {
-    if (!project.id || !activeWork?.id || effectiveWorkKind(activeWork) !== 'novel' || profileSwitching) return
-    const next = effectiveNovelProfile(activeWork) === 'short' ? 'long' : 'short'
-    setProfileSwitching(true)
-    setProfileSwitchError('')
-    try {
-      await switchNovelProfile({
-        projectId: project.id,
-        workId: activeWork.id,
-        profile: next,
-        targetWordCount: next === 'short'
-          ? (activeWork.targetWordCount >= 5_000 && activeWork.targetWordCount <= 25_000 ? activeWork.targetWordCount : SHORT_NOVEL_DEFAULT_WORDS)
-          : Math.max(activeWork.targetWordCount, 100_000),
-      })
-      await loadProject(project.id)
-      await useProjectStore.getState().loadProjects()
-    } catch (cause) {
-      setProfileSwitchError(cause instanceof Error ? cause.message : 'Profile 切换失败')
-    } finally {
-      setProfileSwitching(false)
-    }
-  }
 
   const immersiveModules = new Set<SidebarModule>([
     'chapters-list',
@@ -406,7 +415,7 @@ export default function WorkspacePage() {
       case 'worldview-natural':
         return <WorldviewNaturalPanel project={project} />
       case 'worldview-humanity':
-        return <WorldviewHumanityPanel project={project} onOpenHistory={() => setActiveModule('history')} />
+        return <WorldviewHumanityPanel project={project} onOpenHistory={() => selectModule('history')} />
       case 'geography':
         return <GeographyPanel project={project} />
       case 'world-map':
@@ -488,7 +497,7 @@ export default function WorkspacePage() {
       case 'chapters-list':
         return <ChaptersListPanel project={project} initialNodeId={handoffChapterNodeId ?? editorNodeId} />
       case 'editor':
-        return <ChaptersListPanel project={project} initialNodeId={handoffChapterNodeId ?? editorNodeId} />
+        return <div className="h-full flex flex-col"><section className="p-4 border-b border-border"><h3 className="text-xl">改稿影响</h3><p className="mt-2 text-sm text-text-secondary">选择需要修改的章节，使用编辑器中的“改稿影响”检查事实、记忆和后续章节，再逐项确认修正。</p></section><div className="min-h-0 flex-1"><ChaptersListPanel project={project} initialNodeId={handoffChapterNodeId ?? editorNodeId} /></div></div>
       case 'foreshadow':
         return <ForeshadowPanel project={project} />
       case 'style-learning':
@@ -509,7 +518,7 @@ export default function WorkspacePage() {
       case 'state-table':
         return <StatePanel
           project={project}
-          onOpenInventory={() => setActiveModule('inventory')}
+          onOpenInventory={() => selectModule('inventory')}
           initialStateCardId={impactHandoff?.targetModule === 'state-table' && impactHandoffTarget?.table === 'stateCards'
             ? impactHandoffTarget.moduleRecordId
             : null}
@@ -554,11 +563,11 @@ export default function WorkspacePage() {
       case 'version-history':
         return <VersionHistoryPanel project={project} />
       case 'import-doc':
-        return <ImportDocPanel project={project} onNavigate={(m) => { setActiveModule(m); setEditorNodeId(null) }} />
+        return <ImportDocPanel project={project} onNavigate={selectModule} />
       case 'settings':
         return <SettingsPage
           project={project}
-          onOpenDataManagement={() => { setActiveModule('data-management'); setEditorNodeId(null) }}
+          onOpenDataManagement={() => selectModule('data-management')}
         />
       case 'usage-stats':
         return <UsageStatsPage project={project} />
@@ -567,26 +576,27 @@ export default function WorkspacePage() {
         return <DataManagementPanel
           project={project}
           onImported={(newId) => navigate(`/workspace/${newId}`)}
-          onOpenStorageSettings={() => { setActiveModule('settings'); setEditorNodeId(null) }}
+          onOpenStorageSettings={() => selectModule('settings')}
         />
       default:
         return null
     }
   }
 
+  if (activeWork && effectiveWorkKind(activeWork)==='screenplay') return <Navigate replace to={`/script/editor?work=${activeWork.id}`}/>
+  if (project.workspacePurpose === 'independent-work' && activeWork && effectiveWorkKind(activeWork) === 'novel' && effectiveNovelProfile(activeWork) === 'short') return <Navigate replace to={`/short/${activeModule === 'chapters-list' ? 'editor' : activeModule === 'version-history' || activeModule === 'export' ? 'versions' : 'intent'}?project=${project.id}`}/>
+
+  if (!embeddedProjectId && project.workspacePurpose === 'world-engine') return <Navigate replace to={worldModulePath(project.id!, activeModule, query)}/>
+  if (!embeddedProjectId && !isLongform) {
+    const product = activeWork ? ({ comic: 'comic', 'motion-drama': 'motion', avg: 'avg', ttrpg: 'ttrpg', 'character-interaction': 'chat', 'ai-town': 'town', 'text-adventure': 'adventure', 'text-open-world': 'openworld' } as Record<string,string>)[effectiveWorkKind(activeWork)] : undefined
+    return <Navigate replace to={product ? `/${product}/library?project=${project.id}&work=${activeWork?.id}` : '/long'}/>
+  }
+  const Layout = isLongform ? LongformLayout : Fragment
+  const layoutProps = isLongform ? { title: activeWork.title, section: longSection, mode: longMode, module: activeModule, hiddenModules, onSection: changeLongSection, onMode: changeLongMode, onModule: selectModule, onNavigate: (path: string) => afterPendingEdits(() => navigate(path), '编辑保存失败'), onHome: () => afterPendingEdits(() => navigate('/'), '编辑保存失败') } : {}
   return (
-    <div className="h-screen bg-bg-base flex overflow-hidden">
+    <Layout {...layoutProps as React.ComponentProps<typeof LongformLayout>}>
+    <div data-workspace-ready={embeddedProjectId ? 'world' : 'longform'} className={isLongform || embeddedProjectId ? 'h-full flex min-w-0' : 'h-screen bg-bg-base flex overflow-hidden'}>
       {/* 左侧导航 */}
-      <Sidebar
-        active={activeModule}
-        onSelect={selectModule}
-        onBack={() => afterPendingEdits(() => navigate(backPath), '当前编辑未能保存，已阻止离开工作区')}
-        projectName={activeWork?.title ?? project.name}
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(v => !v)}
-        hiddenModules={hiddenModules}
-        secondaryModules={secondaryModules}
-      />
 
       {/* 主面板 */}
       <main
@@ -599,25 +609,9 @@ export default function WorkspacePage() {
         <div className="flex h-11 shrink-0 items-center justify-between gap-3 border-b border-border/70 bg-bg-surface/70 px-4">
           <div className="flex min-w-0 items-center gap-2">
             <ContentTypeBadge contentType={getModuleContentType(activeModule)} showDescription />
-            {activeWork && <WorkKindBadge work={activeWork} />}
-            {activeWork && effectiveWorkKind(activeWork) === 'novel' && (
-              <button
-                type="button"
-                onClick={() => void handleProfileSwitch()}
-                disabled={profileSwitching}
-                className="rounded border border-border px-2 py-1 text-[11px] text-text-secondary hover:bg-bg-hover disabled:opacity-50"
-              >
-                {profileSwitching ? '切换中…' : effectiveNovelProfile(activeWork) === 'short' ? '扩写为长篇' : '切换为短篇'}
-              </button>
-            )}
-            {profileSwitchError && <span className="max-w-72 truncate text-[11px] text-red-600" title={profileSwitchError}>{profileSwitchError}</span>}
+            {activeWork && !embeddedProjectId && <WorkKindBadge work={activeWork} />}
           </div>
           <div className="flex items-center gap-1">
-            <WorldDerivationActions
-              project={project}
-              compact
-              onDerived={targetProjectId => navigate(`/workspace/${targetProjectId}?module=info`)}
-            />
             <button
               onClick={() => {
                 setShowCopilot(value => {
@@ -693,7 +687,10 @@ export default function WorkspacePage() {
         <div className={`min-h-0 flex-1 overflow-y-auto ${isImmersiveModule ? '' : 'p-6'}`}>
           {/* Phase 3.5: 懒加载面板(地图类)加载时显示 fallback */}
           <Suspense fallback={<div className="flex items-center justify-center h-64 text-text-muted text-sm">面板加载中…</div>}>
-            {renderMainPanel()}
+            {isLongform && longSection === 'versions' && <nav className="lf-subtabs" aria-label="版本与导出">{([['version-history', '版本历史'], ['export', '导出与备份']] as const).map(([id, label]) => <button key={id} aria-current={activeModule === id ? 'page' : undefined} onClick={() => selectModule(id)}>{label}</button>)}</nav>}
+            {isLongform && longSection === 'versions' && <><LongformCompletion project={project}/><ShortNovelHistory project={project}/></>}
+            {isLongform && longSection === 'settings' && <nav className="lf-subtabs" aria-label="通用设置">{([['settings', '通用设置'], ['usage-stats', '用量统计']] as const).map(([id, label]) => <button key={id} aria-current={activeModule === id ? 'page' : undefined} onClick={() => selectModule(id)}>{label}</button>)}</nav>}
+            {isLongform && ['derive', 'community'].includes(longSection) ? <LongformWorlds project={project} community={longSection === 'community'} onOpen={id => navigate(`/workspace/${id}`)} /> : isLongform && longMode === 'agent' ? <ChatCopilotPanel embedded project={project} worldGroupId={copilotWorldGroupId} worldName={copilotWorldName} onClose={() => changeLongMode('steps')} /> : renderMainPanel()}
           </Suspense>
         </div>
       </main>
@@ -705,7 +702,7 @@ export default function WorkspacePage() {
           onClose={() => setShowProperties(false)}
         />
       )}
-      {showCopilot && (
+      {showCopilot && longMode !== 'agent' && (
         <Suspense fallback={(
           <aside className="fixed inset-y-0 right-0 z-30 flex h-full w-[min(24rem,calc(100vw-3rem))] shrink-0 items-center justify-center border-l border-border bg-bg-surface text-xs text-text-muted shadow-xl lg:static lg:z-auto lg:w-[24rem] lg:shadow-none">
             AI 对话副驾加载中…
@@ -720,5 +717,6 @@ export default function WorkspacePage() {
         </Suspense>
       )}
     </div>
+    </Layout>
   )
 }

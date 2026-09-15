@@ -83,8 +83,10 @@ export async function publishScreenplayReleaseV1(input: { scope: WorkspaceScope;
     issues: reviewIssues.map(row => [row.stableKey, row.status, row.updatedAt]),
   })
   return db.transaction('rw', scopeTransactionTables(
-    db.adaptationProjects, db.works, db.creationReleases, db.screenplayBeats, db.screenplaySceneCards, db.screenplayScenes, db.screenplayReviewIssues,
+    db.adaptationProjects, db.works, db.agentRuns, db.creationReleases, db.screenplayBeats, db.screenplaySceneCards, db.screenplayScenes, db.screenplayReviewIssues,
   ), async () => {
+    const pending = await db.agentRuns.where('workId').equals(scope.workId).filter(run => !['completed','cancelled','failed'].includes(run.status) && (run.contractJson ?? '').includes('screenplay-professional:')).count()
+    if(pending)throw new Error('仍有未处理的剧本任务，发布已停止')
     const [currentRoot, currentBeats, currentCards, currentScenes, currentIssues] = await Promise.all([
       db.adaptationProjects.get(root.id!),
       db.screenplayBeats.where('[adaptationProjectId+manifestVersion]').equals(key).sortBy('order'),

@@ -228,6 +228,7 @@ export function buildChapterPostAdoptionRunContractV1(input: {
     artifactHash: string
   }
   authorization?: PostAdoptionAuthorizationSnapshotV1
+  parentRelation?: string
 }) {
   const taskTypes = input.authorization?.taskTypes ?? ['organization', 'memory', 'retrieval', 'consistency']
   const contextSourceKeys = authorizedContextSourceKeys(taskTypes)
@@ -250,7 +251,7 @@ export function buildChapterPostAdoptionRunContractV1(input: {
       parent: {
         runId: input.parent.runId,
         receiptHash: input.parent.receiptHash,
-        relation: CHAPTER_POST_ADOPTION_PARENT_RELATION_V1,
+        relation: input.parentRelation ?? CHAPTER_POST_ADOPTION_PARENT_RELATION_V1,
         artifactHash: input.parent.artifactHash,
       },
     } } : {}),
@@ -323,6 +324,34 @@ export function buildChapterPostAdoptionRunContractV1(input: {
   }
 }
 
+/** A completed master phase may own several adopted chapters. Verify the exact adopted candidate. */
+async function verifiedPostAdoptionParentRelation(input: {
+  scope: WorkspaceScope; chapterId: number;
+  parent: { runId: number; receiptHash: string; artifactHash: string }
+}): Promise<string> {
+  const parent = await readAgentRunV1(input.scope, input.parent.runId)
+  if (parent.projection.state !== 'completed' || parent.projection.terminalReceiptHash !== input.parent.receiptHash) {
+    throw new Error('章后处理父 Run 必须是已完成且回执匹配的创作运行。')
+  }
+  if (parent.contract.scope.chapterIds?.length === 1 && parent.contract.scope.chapterIds[0] === input.chapterId
+    && parent.contract.verificationPlan.some(step => step.kind === 'terminal' && PROSE_TERMINAL_VERIFIERS_V1.has(step.verifier))) {
+    return CHAPTER_POST_ADOPTION_PARENT_RELATION_V1
+  }
+  const { restoreMasterAgentCandidatesV1 } = await import('./master-durable')
+  const { isMasterAgentCandidateBusinessStateMatchingV1 } = await import('./master-adoption')
+  const restored = await restoreMasterAgentCandidatesV1({ scope: input.scope, runId: input.parent.runId })
+  const chapter = await db.chapters.get(input.chapterId)
+  for (const candidate of restored.candidates) {
+    if (candidate.payload.agentId !== 'prose' || candidate.payload.proseOutlineNodeId !== chapter?.outlineNodeId
+      || !candidate.payload.runStepId || !candidate.event.id
+      || parent.projection.steps[candidate.payload.runStepId]?.status !== 'succeeded') continue
+    if (await isMasterAgentCandidateBusinessStateMatchingV1({ scope: input.scope, runId: input.parent.runId, candidateEventId: candidate.event.id }, candidate)) {
+      return `${CHAPTER_POST_ADOPTION_PARENT_RELATION_V1}:${input.chapterId}`
+    }
+  }
+  throw new Error('主 Agent 运行没有该章节已经采纳且与正文一致的候选。')
+}
+
 export async function createChapterPostAdoptionDurableRunV1(input: {
   scope: WorkspaceScope
   worldGroupId: number | null
@@ -341,6 +370,7 @@ export async function createChapterPostAdoptionDurableRunV1(input: {
   if (input.parent && await hashChapterText(chapter.content ?? '') !== input.parent.artifactHash) {
     throw new Error('正文后处理创建前发现正文已脱离父 Run 的采纳产物。')
   }
+  const parentRelation = input.parent ? await verifiedPostAdoptionParentRelation({ scope: input.scope, chapterId: input.chapterId, parent: input.parent }) : undefined
   if (input.authorization) {
     const currentSourceTextHash = await hashChapterText(chapter.content ?? '')
     if (
@@ -356,7 +386,10 @@ export async function createChapterPostAdoptionDurableRunV1(input: {
       if (typeof row.id !== 'number') continue
       try {
         const existing = await readAgentRunV1(input.scope, row.id)
-        if (existing.contract.automationAuthorization?.taskKey === input.authorization.taskKey) {
+        if (existing.contract.automationAuthorization?.taskKey === input.authorization.taskKey
+          && (!input.parent || (existing.contract.lineage?.parent.runId === input.parent.runId
+            && existing.contract.lineage.parent.receiptHash === input.parent.receiptHash
+            && existing.contract.lineage.parent.artifactHash === input.parent.artifactHash))) {
           return ensureChapterPostAdoptionAuthorizationPreparedV1(input.scope, existing)
         }
       } catch {
@@ -365,23 +398,10 @@ export async function createChapterPostAdoptionDurableRunV1(input: {
     }
   }
   if (input.parent) {
-    const parent = await readAgentRunV1(input.scope, input.parent.runId)
-    if (
-      parent.projection.state !== 'completed'
-      || parent.projection.terminalReceiptHash !== input.parent.receiptHash
-      || parent.contract.scope.chapterIds?.length !== 1
-      || parent.contract.scope.chapterIds[0] !== input.chapterId
-      || !parent.contract.verificationPlan.some(step => (
-        step.kind === 'terminal'
-        && PROSE_TERMINAL_VERIFIERS_V1.has(step.verifier)
-      ))
-    ) {
-      throw new Error('正文后处理父 Run 不是当前章节的已完成正文生成 Run。')
-    }
     const existing = await readAgentRunChildV1({
       scope: input.scope,
       parentRunId: input.parent.runId,
-      relation: CHAPTER_POST_ADOPTION_PARENT_RELATION_V1,
+      relation: parentRelation!,
     })
     if (existing) {
       const existingParent = existing.contract.lineage?.parent
@@ -405,6 +425,7 @@ export async function createChapterPostAdoptionDurableRunV1(input: {
         worldGroupId: input.worldGroupId,
         chapterId: input.chapterId,
         parent: input.parent,
+        parentRelation,
         authorization: input.authorization,
       }),
     })
@@ -415,7 +436,7 @@ export async function createChapterPostAdoptionDurableRunV1(input: {
       const raced = await readAgentRunChildV1({
         scope: input.scope,
         parentRunId: input.parent.runId,
-        relation: CHAPTER_POST_ADOPTION_PARENT_RELATION_V1,
+        relation: parentRelation!,
       })
       if (raced) return ensureChapterPostAdoptionAuthorizationPreparedV1(input.scope, raced)
     }
@@ -466,6 +487,7 @@ export function chapterPostAdoptionChainStateV1(
 export async function readChapterPostAdoptionChainStatusV1(input: {
   scope: WorkspaceScope
   parentRunId: number
+  chapterId?: number
 }): Promise<{
   state: ChapterPostAdoptionChainStateV1
   parent: AgentRunSnapshotV1
@@ -473,10 +495,10 @@ export async function readChapterPostAdoptionChainStatusV1(input: {
 }> {
   const parent = await readAgentRunV1(input.scope, input.parentRunId)
   const child = await readAgentRunChildV1({
-    scope: input.scope,
-    parentRunId: input.parentRunId,
-    relation: CHAPTER_POST_ADOPTION_PARENT_RELATION_V1,
-  })
+    scope: input.scope, parentRunId: input.parentRunId, relation: CHAPTER_POST_ADOPTION_PARENT_RELATION_V1,
+  }) ?? (input.chapterId == null ? null : await readAgentRunChildV1({
+    scope: input.scope, parentRunId: input.parentRunId, relation: `${CHAPTER_POST_ADOPTION_PARENT_RELATION_V1}:${input.chapterId}`,
+  }))
   if (parent.projection.state !== 'completed' || !parent.projection.terminalReceiptHash) {
     return { state: 'upstream-invalid', parent, child }
   }
@@ -502,7 +524,8 @@ export async function readLatestChapterPostAdoptionRunV1(input: {
   const rows = (await readOwnedRows<Record<string, unknown>>(input.scope, 'agentRuns', { owner: 'work' }))
     .sort((left, right) => Number(right.updatedAt ?? 0) - Number(left.updatedAt ?? 0))
   for (const row of rows) {
-    if (row.parentRelation !== CHAPTER_POST_ADOPTION_PARENT_RELATION_V1 || typeof row.id !== 'number') continue
+    if ((row.parentRelation !== CHAPTER_POST_ADOPTION_PARENT_RELATION_V1
+      && row.parentRelation !== `${CHAPTER_POST_ADOPTION_PARENT_RELATION_V1}:${input.chapterId}`) || typeof row.id !== 'number') continue
     try {
       const snapshot = await readAgentRunV1(input.scope, row.id)
       if (snapshot.contract.scope.chapterIds?.includes(input.chapterId)) return snapshot

@@ -1,14 +1,19 @@
+import { splitLongformPlanAtChapterV1, persistLongformContinuationV1, publishLongformContinuationV1 } from '../../lib/agent/longform-stage-queue'
+import { prepareMasterChapterPostAdoptionV1, recoverLongformPhaseHandoffV1 } from '../../lib/agent/master-post-adoption'
+import { revalidateDetailedOutlineCreativeDraftV1 } from '../../lib/agent/detailed-outline-copilot'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   appendAgentEvent,
   getOrCreateAgentConversation,
   readAgentEvents,
+  saveLongformPlanningSummaryV1,
   updateAgentEventCandidate,
 } from '../../lib/agent/conversations'
 import {
   createMasterAgentPlan,
   type ExecutedMasterCandidate,
   type MasterAgentTask,
+  type MasterAgentPlan,
   type PinnedMasterAgentTaskV1,
   type MasterCandidatePayload,
 } from '../../lib/agent/orchestrator'
@@ -148,6 +153,7 @@ function revalidateCandidateCreativeArtifactV1(input: {
   payload: Readonly<Record<string, unknown>>
 }): CreativeArtifactV1 {
   const payload = input.payload as unknown as MasterCandidatePayload
+  if (payload.skillId === 'outline.details' && payload.narrativeBrief) return revalidateDetailedOutlineCreativeDraftV1({ raw: input.draft, operation: 'enhanced', narrativeBrief: payload.narrativeBrief, previousArtifact: input.creativeArtifact })
   if (payload.skillId === 'outline.story-arcs' && payload.storyArcKind) {
     return revalidateStoryArcCreativeDraftV1({
       draft: input.draft,
@@ -264,6 +270,7 @@ export function useMasterCopilot(input: {
           await verifyMasterAgentRunV1({ scope: workspaceScope, runId })
         }
       }
+      if (workspaceScope && !MASTER_COPILOT_SCOPE_OWNERS.has(scopeKey)) await recoverLongformPhaseHandoffV1(workspaceScope, conversation.id!)
       let rows = await readAgentEvents(conversation.id!, workspaceScope)
       if (!rows.length) {
         await appendAgentEvent({
@@ -289,6 +296,7 @@ export function useMasterCopilot(input: {
     })().catch(error => {
       if (active) {
         console.error('[master-copilot] load failed', error)
+        setError(errorMessage(error))
         setLoading(false)
       }
     })
@@ -370,7 +378,7 @@ export function useMasterCopilot(input: {
 
   const submitRequest = useCallback(async (
     requestOverride?: string,
-    options?: { pinnedTask?: PinnedMasterAgentTaskV1 },
+    options?: { pinnedTask?: PinnedMasterAgentTaskV1; planningOnly?: boolean; confirmedPlan?: MasterAgentPlan },
   ) => {
     const request = (requestOverride ?? authorRequest).trim()
     if (!request || busy || conversationId == null) return
@@ -398,7 +406,7 @@ export function useMasterCopilot(input: {
       const teamBudget = new AgentTeamBudgetTracker(
         useAIConfigStore.getState().agentTeamBudgetProfile,
       )
-      const plan = await createMasterAgentPlan({
+      let plan = options?.confirmedPlan ? { ...options.confirmedPlan, phase: undefined } : await createMasterAgentPlan({
         projectId: project.id!,
         scope: workspaceScope,
         worldGroupId,
@@ -406,7 +414,21 @@ export function useMasterCopilot(input: {
         budget: teamBudget,
         signal: controller.signal,
         pinnedTask: options?.pinnedTask,
+        planningOnly: options?.planningOnly,
+        conversationId,
       })
+      if (!options?.confirmedPlan && (options?.planningOnly || plan.phase === 'proposal' || plan.tasks.length === 0)) {
+        await appendAgentEvent({ projectId: project.id!, conversationId, kind: 'plan', content: plan.summary, payload: { type: 'longform-plan-draft-v1', plan }, scope: workspaceScope })
+        await appendAgentEvent({ projectId: project.id!, conversationId, kind: 'message', role: 'assistant', content: plan.summary, scope: workspaceScope })
+        return
+      }
+      if (options?.confirmedPlan) {
+        delete plan.phase
+        await appendAgentEvent({ projectId: project.id!, conversationId, kind: 'plan', content: '作者确认开始本轮计划', payload: { type: 'longform-plan-started-v1' }, scope: workspaceScope })
+      }
+      const stages = splitLongformPlanAtChapterV1(plan)
+      plan = stages.current
+      if (stages.remaining && workspaceScope) await persistLongformContinuationV1(workspaceScope, conversationId, plan, stages.remaining)
       await appendAgentEvent({
         projectId: project.id!,
         conversationId,
@@ -454,7 +476,7 @@ export function useMasterCopilot(input: {
         kind: 'message',
         role: 'assistant',
           content: [
-          `后台领域 Agent 已完成，生成了 ${candidates.length} 份候选。请检查、编辑并决定是否采纳。`,
+          `本阶段已生成 ${candidates.length} 份候选。请检查、编辑并决定是否采纳。`,
           `本轮团队约使用 ${teamBudget.snapshot().usedTokens.toLocaleString()} / `
           + `${teamBudget.snapshot().maxTokens.toLocaleString()} tokens，`
           + `${teamBudget.snapshot().calls} 次调用，`
@@ -503,6 +525,18 @@ export function useMasterCopilot(input: {
     workspaceScope,
   ])
 
+  const pendingPlan = useMemo(() => {
+    for (const event of [...events].reverse()) {
+      if (event.kind === 'message' && event.role === 'user') return null
+      if (event.kind !== 'plan') continue
+      const payload = parseAgentEventPayload<{ type?: string; plan?: MasterAgentPlan }>(event, {})
+      if (payload.type === 'longform-plan-started-v1' || payload.type === 'longform-planning-summary-v1') return null
+      if (payload.type === 'longform-plan-draft-v1') return payload.plan?.tasks?.length ? payload.plan : null
+    }
+    return null
+  }, [events])
+  const discuss = useCallback(() => submitRequest(undefined, { planningOnly: true }), [submitRequest])
+  const confirmPlan = useCallback(() => pendingPlan ? submitRequest('确认开始上述计划。', { confirmedPlan: pendingPlan }) : Promise.resolve(), [pendingPlan, submitRequest])
   const submit = useCallback(() => submitRequest(), [submitRequest])
 
   const submitTargetedRequest = useCallback((
@@ -629,6 +663,8 @@ export function useMasterCopilot(input: {
     if (busy || conversationId == null || candidate.event.id == null) return
     const scopeOwner = claimMasterCopilotScope(scopeKey)
     if (!scopeOwner) return
+    const controller = new AbortController()
+    abortRef.current = controller
     setBusy(true)
     setError(null)
     let shouldReload = false
@@ -680,6 +716,7 @@ export function useMasterCopilot(input: {
               scope: workspaceScope!,
               worldGroupId,
               runId: persistedCandidate.payload.runId!,
+              signal: controller.signal,
               onTask: recordTask,
             })
             const generated = advanced.candidates.filter(item => (
@@ -718,6 +755,13 @@ export function useMasterCopilot(input: {
           // Keep the business-adoption message stable for existing callers and
           // surface terminal verification as a separate auditable event.
           terminalMessage = '本轮所有步骤均已通过终态校验。'
+          if (await publishLongformContinuationV1(workspaceScope!, persistedCandidate.payload.runId!)) terminalMessage += ' 后续任务已恢复为待确认计划，完成本章后处理后可继续。'
+          try {
+            const downstream = await prepareMasterChapterPostAdoptionV1({ scope: workspaceScope!, runId: persistedCandidate.payload.runId!, signal: controller.signal })
+            if (downstream.length) terminalMessage += `\n${downstream.join('\n')}`
+          } catch (downstreamError) {
+            terminalMessage += ` 章后流程尚未完成：${errorMessage(downstreamError)}。正文采纳已保留，可在正文页继续。`
+          }
           lifecycleEvidence = buildSettledHarnessLifecycleEvidenceV1({
             pending: pendingLifecycle,
             adoptionHash: adoption.adoptionHash,
@@ -792,14 +836,29 @@ export function useMasterCopilot(input: {
       return false
     } finally {
       releaseMasterCopilotScope(scopeKey, scopeOwner)
+      if (abortRef.current === controller) abortRef.current = null
       if (shouldReload) await reload(conversationId)
       notifyMasterCopilotSync(scopeKey)
     }
   }, [busy, candidateDraftKey, conversationId, project.id, recordTask, reload, scopeKey, workspaceScope, worldGroupId])
 
+  const savePlanningSummary = useCallback(async (summary: string): Promise<boolean> => {
+    if (busy || loading || pendingCandidates.length || conversationId == null || !workspaceScope) return false
+    const owner = claimMasterCopilotScope(scopeKey)
+    if (!owner) return false
+    try {
+      await saveLongformPlanningSummaryV1({ projectId: project.id!, conversationId, scope: workspaceScope, summary })
+      setError(null)
+      await reload(conversationId)
+      return true
+    } catch (error) { setError(errorMessage(error)); return false }
+    finally { releaseMasterCopilotScope(scopeKey, owner) }
+  }, [busy, loading, pendingCandidates.length, conversationId, workspaceScope, scopeKey, project.id, reload])
+
   const stop = useCallback(() => abortRef.current?.abort(), [])
 
   return {
+    savePlanningSummary,
     authorRequest,
     activeRequest,
     setAuthorRequest,
@@ -810,6 +869,9 @@ export function useMasterCopilot(input: {
     recoveryAvailable,
     error,
     submit,
+    discuss,
+    pendingPlan,
+    confirmPlan,
     submitRequest,
     submitTargetedRequest,
     resume,

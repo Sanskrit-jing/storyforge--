@@ -132,7 +132,7 @@ export async function switchNovelProfile(input: {
   profile: NovelWorkflowProfile
   targetWordCount?: number
 }): Promise<Work> {
-  return db.transaction('rw', scopeTransactionTables(db.chapters), async () => {
+  return db.transaction('rw', scopeTransactionTables(db.chapters, db.shortNovelProductions, db.agentRuns), async () => {
     const work = await db.works.get(input.workId)
     if (!work || work.projectId !== input.projectId) {
       throw new Error('[works] Work 不属于当前工作区')
@@ -156,6 +156,12 @@ export async function switchNovelProfile(input: {
     }
 
     const updatedAt = Date.now()
+    if (effectiveNovelProfile(work) === 'short' && input.profile === 'long') {
+      const tasks = await readOwnedRows<any>({projectId: work.projectId, worldId: work.worldId, workId: work.id!}, 'agentRuns', {owner: 'work'})
+      if (tasks.some(task => ['running', 'paused', 'awaiting_confirmation'].includes(task.status) && task.contractJson?.includes('short:'))) throw new Error('[works] 请先采纳或结束待处理短篇任务，再扩写为长篇')
+      const production = await db.shortNovelProductions.where('workId').equals(work.id!).first()
+      if (production) await db.shortNovelProductions.update(production.id!, {expandedFromShort: {convertedAt: updatedAt, targetWordCount: work.targetWordCount, productionRevision: production.revision}, updatedAt})
+    }
     const nextWork: Work = {
       ...work,
       kind: 'novel',
@@ -275,5 +281,38 @@ export async function updateWorkPostAdoptionPolicyV1(input: {
     postAdoptionTaskTypes: [...input.taskTypes],
     postAdoptionBudget: { ...input.budget },
     updatedAt: Date.now(),
+  })
+}
+
+/** Manual longform acceptance uses a caller-held transaction and a freshly verified coverage report. */
+export async function recordLongformWorkCompletionV1(scope: WorkspaceScope): Promise<void> {
+  const project = await db.projects.get(scope.projectId)
+  const work = await db.works.get(scope.workId)
+  if (!project || project.activeWorkId !== scope.workId || !work || work.projectId !== scope.projectId || work.worldId !== scope.worldId
+    || effectiveWorkKind(work) !== 'novel' || effectiveNovelProfile(work) !== 'long') throw new Error('长篇完稿记录与当前作品不匹配。')
+  await db.works.update(scope.workId, { status: 'completed', updatedAt: Date.now() })
+}
+
+/** Manual cover adoption targets an explicit Work, even if another tab changes the active pointer. */
+export async function updateWorkCover(scope: WorkspaceScope, coverImage: string, expectedUpdatedAt: number): Promise<number> {
+  if (coverImage && (!/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(coverImage) || coverImage.length > 7_000_000)) {
+    throw new Error('封面必须是 5 MB 以内的 PNG、JPEG 或 WebP 图片。')
+  }
+  return db.transaction('rw', db.projects, db.worlds, db.works, async () => {
+    const current = await resolveScope({ scope })
+    const work = await db.works.get(current.workId)
+    if (!work || work.updatedAt !== expectedUpdatedAt) throw new Error('作品已被修改，请重新打开封面后再保存。')
+    const updatedAt = Math.max(Date.now(), work.updatedAt + 1)
+    await db.works.update(current.workId, { coverImage, updatedAt })
+    return updatedAt
+  })
+}
+
+/** Explicit author rename of a particular Work; never follows another tab's active pointer. */
+export async function updateWorkTitle(scope: WorkspaceScope, title: string): Promise<void> {
+  if (!title.trim() || title.length > 200) throw new Error('请填写 1～200 字的作品名称')
+  await db.transaction('rw', db.projects, db.worlds, db.works, async () => {
+    const current = await resolveScope({ scope })
+    await db.works.update(current.workId, { title: title.trim(), updatedAt: Date.now() })
   })
 }

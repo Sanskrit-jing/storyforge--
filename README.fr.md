@@ -22,7 +22,7 @@ StoryForge est un outil open source de création et d’expérience narrative as
 
 Enquêtez sur un ancien naufrage avec deux compagnons IA, protégez les secrets de votre personnage et décidez du retour des navires de cette nuit. Un meneur de jeu IA (KP) anime l’aventure avec des règles originales à **2d6**, **7 scènes, 6 indices et 3 fins**.
 
-![Écran de lancement de l’aventure Fog Harbor](./docs/assets/readme/ttrpg-preview.png)
+![Écran de lancement de l’aventure Fog Harbor](./docs/assets/readme/ttrpg-current.png)
 
 Le jeu et ses médias sont inclus dans le dépôt. Configurez votre propre API de modèle pour commencer. La capture montre l’entrée réelle de l’aventure.
 
@@ -68,15 +68,15 @@ Sur l’accueil, ouvrez le bouton de réglages en haut à droite (`模型与本�
 
 ## Choisissez votre point de départ
 
-![Accueil des produits StoryForge](./docs/assets/readme/product-hub.png)
+![Accueil des produits StoryForge](./docs/assets/readme/home-current.png)
 
 | Objectif | Entrée | Résultat et état |
 |---|---|---|
-| Écrire un roman | Nouveau → Roman | Personnages, plans, chapitres, continuité et révision ; parcours technique actuel validé |
-| Terminer un récit court | Nouveau → Récit court | Conception, fiches de chapitres, rédaction, revue, édition figée ; Markdown/TXT/JSON |
-| Adapter en scénario | Nouveau → Roman vers scénario | Sources figées, décisions, scènes structurées, revues ; Fountain/FDX/impression |
-| Adapter en BD | Nouveau → Roman vers BD | Pages, cases, références visuelles, lettrage, éditions ; PNG/WebP/CBZ/PDF |
-| Créer un monde | Nouveau → Moteur de monde | Contenu sémantique, dérivation explicite, versions figées et lecture |
+| Écrire un roman | Roman | Personnages, plans, chapitres, continuité et révision ; parcours technique actuel validé |
+| Terminer un récit court | Récit court | Conception, fiches de chapitres, rédaction, revue, édition figée ; Markdown/TXT/JSON |
+| Adapter en scénario | Roman vers scénario | Sources figées, décisions, scènes structurées, revues ; Fountain/FDX/impression |
+| Adapter en BD | Roman vers BD | Pages, cases, références visuelles, lettrage, éditions ; PNG/WebP/CBZ/PDF |
+| Créer un monde | Moteur de monde | Contenu sémantique, dérivation explicite, versions figées et lecture |
 | Composer un parcours visuel | Mode nœuds | Préversion ; même moteur et mêmes données que le roman |
 | Jouer ou créer des expériences | TTRPG / Personnages / Ville IA / Jeux textuels | Préversions avec leurs propres cycles de production et d’exécution |
 
@@ -86,13 +86,13 @@ Sur l’accueil, ouvrez le bouton de réglages en haut à droite (`模型与本�
 
 ## Votre première session d’écriture
 
-1. Choisissez **Nouveau** (`新建`) → **Roman** (`长篇小说`), puis saisissez titre et description.
+1. Ouvrez **Roman** (`长篇`) → **Bibliothèque** (`作品库`) → **Nouveau roman** (`新建长篇`), puis saisissez le titre.
 2. Notez votre intention, vos références et vos règles d’écriture ; ajoutez les éléments de contexte utiles.
 3. Préparez conflit et personnages, puis volumes et chapitres. Écrivez vous-même ou modifiez et validez les propositions de l’IA.
 4. Développez les scènes et le texte de chaque chapitre. Vérifiez les changements de faits, d’états, de relations et d’indices avant de poursuivre.
 5. Dans **Gestion des données** (`数据管理`), exportez le texte et une sauvegarde JSON complète.
 
-![Plan de roman avec un exemple rédigé manuellement](./docs/assets/readme/longform-outline.png)
+![Plan de roman avec un exemple rédigé manuellement](./docs/assets/readme/longform-outline-current.png)
 
 ## Ce que chaque produit apporte à votre travail
 

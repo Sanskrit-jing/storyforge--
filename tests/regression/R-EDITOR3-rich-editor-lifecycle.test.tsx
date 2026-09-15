@@ -1,7 +1,7 @@
 import { StrictMode, createElement, createRef, useState } from 'react'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import RichEditor from '../../src/components/editor/RichEditor'
 import type { RichEditorHandle } from '../../src/components/editor/RichEditor'
 
@@ -42,6 +42,26 @@ afterEach(async () => {
 })
 
 describe('R-EDITOR3 · 富文本编辑器严格模式生命周期', () => {
+  it('初始化、载入正文和只读切换不产生作者编辑；作者主动清空正文仍通知保存', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    mounted.push({ host, root })
+    const editorRef = createRef<RichEditorHandle>()
+    const onChange = vi.fn()
+    const draw = (value: string, disabled = false) => createElement(StrictMode, null,
+      createElement(RichEditor, { ref: editorRef, value, disabled, onChange }))
+    await act(async () => { root.render(draw('')) })
+    expect(onChange).not.toHaveBeenCalled()
+    await act(async () => { root.render(draw('<p>已保存的正文</p>')) })
+    expect(editorRef.current!.getPlainText()).toBe('已保存的正文')
+    await act(async () => { root.render(draw('<p>已保存的正文</p>', true)) })
+    await act(async () => { root.render(draw('<p>已保存的正文</p>')) })
+    expect(onChange).not.toHaveBeenCalled()
+    await act(async () => { editorRef.current!.getEditor()!.commands.clearContent() })
+    expect(onChange).toHaveBeenCalledWith('<p></p>', '')
+  })
+
   it('从单编辑器切换到双栏对照时不访问已销毁的 TipTap schema', async () => {
     const host = document.createElement('div')
     document.body.append(host)

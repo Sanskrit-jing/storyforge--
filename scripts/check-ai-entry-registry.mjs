@@ -176,6 +176,7 @@ const scannedFiles = [
   // DETAIL-1: this service is itself a formal generation entry and must not
   // remain outside the UI/generation scanners merely because it predates them.
   'src/lib/ai/batch-detail-runner.ts',
+  'src/lib/ai-town/consultation.ts',
 ]
 for (const file of [...new Set(scannedFiles)]) {
     if (file === 'src/lib/agent/formal-ai-entry.ts') continue

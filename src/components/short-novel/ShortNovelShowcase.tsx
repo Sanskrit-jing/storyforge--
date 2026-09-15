@@ -1,3 +1,5 @@
+import { useExampleReader } from '../examples/useExampleReader'
+import { useCallback } from 'react'
 import { useMemo, useState, type CSSProperties } from 'react'
 import { ArrowRight, BookOpenText, Download, X } from 'lucide-react'
 import fourAmStory from '../../../showcase/short-novel/four-am-lost-and-found/story.md?raw'
@@ -69,22 +71,24 @@ function downloadStory(story: ShowcaseStory): void {
   window.setTimeout(() => URL.revokeObjectURL(url), 1_000)
 }
 
-function StoryDocument({ source }: { source: string }) {
+function StoryDocument({ source, title }: { source: string; title: string }) {
   const blocks = useMemo(() => source.trim().split(/\n{2,}/), [source])
   return <div className="short-showcase-document">
     {blocks.map((block, index) => {
       const heading = block.match(/^(#{1,3})\s+(.+)$/s)
       if (heading) {
         const Tag = heading[1].length === 1 ? 'h2' : 'h3'
-        return <Tag key={`${index}-${heading[2]}`}>{heading[2]}</Tag>
+        return <Tag key={`${index}-${heading[2]}`}>{heading[1].length === 1 ? title : heading[2]}</Tag>
       }
       return <p key={index}>{block.split('\n').map((line, lineIndex) => <span key={lineIndex}>{line}{lineIndex < block.split('\n').length - 1 && <br />}</span>)}</p>
     })}
   </div>
 }
 
-export default function ShortNovelShowcase() {
+export default function ShortNovelShowcase({ onCopy, copying = false, copyError }: { onCopy?: (story: ShowcaseStory) => void; copying?: boolean; copyError?: string }) {
   const [selected, setSelected] = useState<ShowcaseStory | null>(null)
+  const close = useCallback(() => setSelected(null), [])
+  useExampleReader(Boolean(selected), close)
 
   return <section className="short-showcase" data-testid="short-novel-showcase" aria-labelledby="short-showcase-title">
     <header className="short-showcase-heading">
@@ -104,8 +108,8 @@ export default function ShortNovelShowcase() {
     </div>
     {selected && <div className="short-showcase-modal" role="dialog" aria-modal="true" aria-labelledby="short-showcase-reader-title" onMouseDown={event => { if (event.currentTarget === event.target) setSelected(null) }}>
       <article>
-        <header><div><span>{selected.genre}</span><h2 id="short-showcase-reader-title">《{selected.title}》</h2><small>{selected.chapters} 章 · {selected.length}</small></div><div><button type="button" onClick={() => downloadStory(selected)}><Download />下载 Markdown</button><button type="button" className="icon" aria-label="关闭阅读器" onClick={() => setSelected(null)}><X /></button></div></header>
-        <StoryDocument source={selected.source} />
+        <header><div><span>{selected.genre}</span><h2 id="short-showcase-reader-title">《{selected.title}》</h2><small>{selected.chapters} 章 · {selected.length}</small></div><div>{onCopy && <button className="short-copy-button" type="button" disabled={copying} onClick={() => onCopy(selected)}>{copying ? '创建中…' : '创建短篇体验副本'}</button>}<button type="button" onClick={() => downloadStory(selected)}><Download />下载 Markdown</button><button type="button" className="icon" aria-label="关闭阅读器" onClick={() => setSelected(null)}><X /></button></div></header>
+        <div className="short-showcase-reading-body">{onCopy && <p className="short-copy-hint">体验副本会把全文保存为首章导入草稿，可在工作台继续拆分、编辑。</p>}{copyError && <p role="alert">{copyError}</p>}<StoryDocument source={selected.source} title={selected.title} /></div>
       </article>
     </div>}
   </section>

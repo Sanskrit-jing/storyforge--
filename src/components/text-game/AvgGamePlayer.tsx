@@ -1,3 +1,5 @@
+import StageAudio from '../avg/StageAudio'
+import { avgCueTimeline } from '../../lib/avg/cue-timeline'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, BookOpen, ChevronRight, Eye, EyeOff, FastForward, Gauge, GitBranch, History, ImageOff, Maximize2, Play, Plus, RotateCcw, Save, Settings2, SkipForward, Trash2, Volume2, VolumeX, X } from 'lucide-react'
 import type { FrozenNarrativeChoice, Project, WorkspaceScope } from '../../lib/types'
@@ -12,7 +14,6 @@ import './player-roadshow.css'
 interface Preferences { muted: boolean; reducedMotion: boolean; images: boolean; auto: boolean; fast: boolean; textSpeed: number; volume: number }
 type PlayerPanel = 'history' | 'saves' | null
 const DEFAULTS: Preferences = { muted: false, reducedMotion: false, images: true, auto: false, fast: false, textSpeed: 35, volume: .8 }
-const CUE_PHASES = ['before', 'during', 'after']
 
 export async function loadAvgPlayerInitialSelectionV1(input: {
   scope: WorkspaceScope
@@ -54,11 +55,11 @@ function currentBrowserEnvironment() {
   }
 }
 
-export default function AvgGamePlayer(props: { project: Project; scope: WorkspaceScope; worldGroupId: number | null; initialSessionId?: number | null }) {
+export default function AvgGamePlayer(props: { project: Project; scope: WorkspaceScope; worldGroupId: number | null; initialSessionId?: number | null; initialPanel?: PlayerPanel }) {
   const store = useAvgGamePlayerStore()
   const dialog = useDialog()
   const [prefs, setPrefs] = useState<Preferences>(() => ({ ...DEFAULTS, reducedMotion: typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches }))
-  const [panel, setPanel] = useState<PlayerPanel>(null)
+  const [panel, setPanel] = useState<PlayerPanel>(props.initialPanel??null)
   const [uiHidden, setUiHidden] = useState(false)
   const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({})
   const [mediaFailures, setMediaFailures] = useState<Array<{ assetKey: string; reason: string }>>([])
@@ -125,13 +126,32 @@ export default function AvgGamePlayer(props: { project: Project; scope: Workspac
   const currentBeat = beats[reachedIndex + 1] ?? null
   const choices = [...new Set(narrative?.visibleChoiceKeys ?? [])].map(key => narrative?.choices?.find(item => item.choiceKey === key)).filter((item): item is FrozenNarrativeChoice => !!item)
   const stage = presentation?.stage
+  const currentCues = presentation?.cues.filter(cue => cue.beatKey === currentBeat?.beatKey) ?? []
+  const beatIdentity = `${store.selectedSessionId}:${narrative?.lastEnteredNodeSequence}:${currentBeat?.beatKey ?? ''}`
+  const [afterIdentity,setAfterIdentity] = useState<string|null>(null)
+  const finishingBeat = afterIdentity === beatIdentity
+  const timelineKey = `${beatIdentity}:${finishingBeat}`
+  const [clock,setClock] = useState({key:'',elapsed:0})
+  const elapsed = clock.key === timelineKey ? clock.elapsed : 0
+  const timeline = avgCueTimeline(currentCues, finishingBeat)
+  const cueWaitComplete = elapsed >= timeline.duration
+  useEffect(()=>{
+    const timers = [...new Set([...timeline.entries.map(entry=>entry.at),timeline.duration])]
+      .filter(at=>at>0).map(at=>window.setTimeout(()=>setClock({key:timelineKey,elapsed:at}),at))
+    return ()=>timers.forEach(window.clearTimeout)
+  },[timelineKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  const finishGuard = useRef('')
+  useEffect(()=>{
+    if (!finishingBeat || !cueWaitComplete || !currentBeat || store.busy || finishGuard.current===beatIdentity) return
+    finishGuard.current=beatIdentity
+    void store.reachBeat(currentBeat.beatKey).catch(()=>{finishGuard.current='';setAfterIdentity(null)})
+  },[finishingBeat,cueWaitComplete,beatIdentity,currentBeat,store.busy]) // eslint-disable-line react-hooks/exhaustive-deps
   const visualStage = useMemo(() => {
     if (!stage || !presentation || !currentBeat) return stage
-    return presentation.cues.filter(cue => cue.beatKey === currentBeat.beatKey)
-      .sort((a, b) => CUE_PHASES.indexOf(a.phase) - CUE_PHASES.indexOf(b.phase) || a.order - b.order || a.cueKey.localeCompare(b.cueKey))
-      .reduce((next, cue) => applyAvgCue(next, cue, presentation.assets, presentation.snapshots), stage)
-  }, [stage, presentation, currentBeat])
-  const currentCues = presentation?.cues.filter(cue => cue.beatKey === currentBeat?.beatKey) ?? []
+    const initial = finishingBeat ? avgCueTimeline(currentCues,false).entries.map(entry=>entry.cue) : []
+    const visible = [...initial,...timeline.entries.filter(entry=>entry.at<=elapsed).map(entry=>entry.cue)]
+    return visible.reduce((next,cue)=>applyAvgCue(next,cue,presentation.assets,presentation.snapshots),stage)
+  }, [stage,presentation,currentBeat,finishingBeat,elapsed]) // eslint-disable-line react-hooks/exhaustive-deps
   const cueDuration = Math.max(240, ...currentCues.map(cue => cue.durationMs))
   const attributedText = currentBeat ? splitAttributedText(currentBeat.text) : null
   const dialogueText = attributedText?.text ?? currentBeat?.text ?? ''
@@ -166,21 +186,21 @@ export default function AvgGamePlayer(props: { project: Project; scope: Workspac
   }, [node?.key, prefs.reducedMotion])
 
   const advance = (force = false) => {
-    if (!currentBeat || store.busy) return
+    if (!currentBeat || store.busy || finishingBeat || !cueWaitComplete) return
     if (!force && !textComplete) { setVisibleCharacters(dialogueText.length); return }
-    void run(() => store.reachBeat(currentBeat.beatKey))
+    setAfterIdentity(beatIdentity)
   }
   useEffect(() => {
-    if (!prefs.auto || !currentBeat || store.busy || !textComplete) return
+    if (!prefs.auto || !currentBeat || store.busy || !textComplete || finishingBeat || !cueWaitComplete) return
     const timer = window.setTimeout(() => advance(true), 650)
     return () => window.clearTimeout(timer)
-  }, [prefs.auto, currentBeat?.beatKey, store.busy, textComplete]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [prefs.auto, currentBeat?.beatKey, store.busy, textComplete, finishingBeat, cueWaitComplete]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!prefs.fast || !currentBeat || store.busy) return
+    if (!prefs.fast || !currentBeat || store.busy || finishingBeat || !cueWaitComplete) return
     if (!presentation?.readBeatKeys.includes(currentBeat.beatKey)) { setPrefs(value => ({ ...value, fast: false })); return }
     const timer = window.setTimeout(() => advance(true), 80)
     return () => window.clearTimeout(timer)
-  }, [prefs.fast, currentBeat?.beatKey, presentation?.readBeatKeys, store.busy]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [prefs.fast, beatIdentity, presentation?.readBeatKeys, store.busy, finishingBeat, cueWaitComplete]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
       if (!store.selectedSessionId || store.busy || event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return
@@ -270,16 +290,16 @@ export default function AvgGamePlayer(props: { project: Project; scope: Workspac
         </nav>
       </header>
       {store.error && <div role="alert" className="avg-alert">{store.error}</div>}
-      <div className="avg-stage" data-tone={visualStage?.tone ?? 'normal'} data-transition={visualStage?.lastTransition ?? 'none'} onClick={event => {
+      <div className="avg-stage" style={{aspectRatio:store.selectedManifest?.definition.initialVariables.avgAspectRatio === "4:3" ? "4 / 3" : "16 / 9"}} data-tone={visualStage?.tone ?? 'normal'} data-transition={visualStage?.lastTransition ?? 'none'} onClick={event => {
         if (event.target instanceof HTMLElement && event.target.closest('button, input, summary, details')) return
         if (currentBeat && !panel) advance()
       }} aria-label={background ? `背景 ${background}` : '纯文字降级舞台'}>
         <div className={`avg-stage-scene avg-effect-${visualStage?.lastTransition ?? 'none'}`} style={{ transform: `translate(${(visualStage?.camera.x ?? 0) * -2}%, ${(visualStage?.camera.y ?? 0) * -2}%) scale(${visualStage?.camera.scale ?? 1})`, transitionDuration: `${cueDuration}ms` }}>
           {background && <div key={background} className="avg-background" data-asset-key={background}>{mediaUrls[background] ? <img src={mediaUrls[background]} alt={presentation?.assets.find(asset => asset.assetKey === background)?.altText || background} /> : <span>{background}</span>}</div>}
           {prefs.images && visualStage?.cgAssetKey && <div key={visualStage.cgAssetKey} className="avg-cg" data-asset-key={visualStage.cgAssetKey}>{mediaUrls[visualStage.cgAssetKey] ? <img src={mediaUrls[visualStage.cgAssetKey]} alt={presentation?.assets.find(asset => asset.assetKey === visualStage.cgAssetKey)?.altText || visualStage.cgAssetKey} /> : visualStage.cgAssetKey}</div>}
-          {prefs.images && visualStage?.actors.map((actor, index) => {
+          {prefs.images && visualStage?.actors.map((actor) => {
             const speaking = !!activeSpeakerKey && actor.actorKey === activeSpeakerKey
-            const displaySlot = visualStage.actors.length === 2 ? index === 0 ? 'left' : 'right' : actor.slot
+            const displaySlot = actor.slot
             return <div key={`${actor.actorKey}:${actor.assetKey}`} className={`avg-actor avg-slot-${displaySlot} ${activeSpeakerKey ? speaking ? 'is-speaking' : 'is-listening' : ''}`} style={{ opacity: actor.opacity, transform: `translate(calc(-50% + ${actor.x * 20}px),${actor.y * 20}px) scale(${actor.scale})`, transitionDuration: `${cueDuration}ms` }} aria-label={`角色 ${actor.actorKey}`}>{mediaUrls[actor.assetKey] ? <img src={mediaUrls[actor.assetKey]} alt={presentation?.assets.find(asset => asset.assetKey === actor.assetKey)?.altText || actor.actorKey} /> : actor.assetKey}</div>
           })}
           {prefs.images && visualStage?.overlayAssetKey && <div className="avg-overlay" data-asset-key={visualStage.overlayAssetKey}>{mediaUrls[visualStage.overlayAssetKey] ? <img src={mediaUrls[visualStage.overlayAssetKey]} alt={presentation?.assets.find(asset => asset.assetKey === visualStage.overlayAssetKey)?.altText || visualStage.overlayAssetKey} /> : visualStage.overlayAssetKey}</div>}
@@ -287,13 +307,13 @@ export default function AvgGamePlayer(props: { project: Project; scope: Workspac
         {visualStage?.mask && <div className="avg-mask" data-mask={visualStage.mask} />}
         {visualStage?.lastTransition === 'flash' && <div key={`flash:${currentBeat?.beatKey}`} className="avg-flash" />}
         {sceneTitleVisible && node?.title && <div key={`scene:${node.key}`} className="avg-scene-title" aria-label={`场景 ${node.title}`}><span>SCENE</span><strong>{node.title}</strong></div>}
-        {!prefs.muted && visualStage?.activeAudio.map(audio => mediaUrls[audio.assetKey] ? <audio key={`${audio.channel}:${audio.assetKey}`} src={mediaUrls[audio.assetKey]} autoPlay loop={audio.loop} data-channel={audio.channel} onLoadedMetadata={event => { event.currentTarget.volume = Math.min(1, audio.volume * prefs.volume) }} /> : null)}
+        {!prefs.muted && visualStage?.activeAudio.map(audio => mediaUrls[audio.assetKey] ? <StageAudio key={`${audio.channel}:${audio.assetKey}`} src={mediaUrls[audio.assetKey]} loop={audio.loop} channel={audio.channel} volume={audio.volume * prefs.volume} /> : null)}
         {(prefs.muted || prefs.reducedMotion) && <div className="avg-stage-status"><span>{prefs.muted ? '静音' : ''}</span><span>{prefs.reducedMotion ? '减少动态' : ''}</span></div>}
         <section key={`dialogue:${currentBeat?.beatKey ?? narrative?.currentNodeKey}`} className={`avg-dialogue ${speakerLabel ? 'is-dialogue' : 'is-narration'} ${!currentBeat ? 'is-choice' : ''}`} aria-live="polite">
           {currentBeat ? <>
             {speakerLabel && <strong className="avg-speaker">{speakerLabel}</strong>}
             <p>{visibleText}<span className={`avg-text-cursor ${textComplete ? 'is-complete' : ''}`} aria-hidden="true" /></p>
-            <button className="avg-continue" aria-label="继续" disabled={store.busy} onClick={() => advance(true)}><SkipForward /><span className="avg-visually-hidden">继续</span></button>
+            <button className="avg-continue" aria-label="继续" disabled={store.busy || finishingBeat || !cueWaitComplete} onClick={() => advance(true)}><SkipForward /><span className="avg-visually-hidden">继续</span></button>
           </> : narrative?.completed ? <div className="avg-ending"><small>ENDING</small><h2>{node?.title}</h2><p>故事已完结。</p></div> : <div className="avg-choices"><small>选择你的行动</small>{choices.map(choice => <button key={choice.choiceKey} disabled={store.busy || !narrative?.availableChoiceKeys?.includes(choice.choiceKey)} onClick={() => void run(() => store.choose(choice.choiceKey))}>{choice.text}</button>)}</div>}
         </section>
         {notice && <div className="avg-notice" role="status">{notice}</div>}

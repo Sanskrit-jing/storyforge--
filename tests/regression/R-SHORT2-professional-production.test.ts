@@ -1,3 +1,5 @@
+import { switchNovelProfile } from '../../src/lib/workspace/works'
+import { readShortAuthorDraft, saveShortAuthorDraft } from '../../src/lib/short-novel/author-drafts'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { db } from '../../src/lib/db/schema'
 import { getAgentSkillV1 } from '../../src/lib/agent/skill-registry'
@@ -5,6 +7,7 @@ import {
   adoptShortNovelCandidateV1,
   generateShortNovelCandidateV1,
   parseShortNovelModelJsonV1,
+  listShortNovelTasksV1, closeShortNovelTaskV1, resumeShortNovelAdoptionV1,
 } from '../../src/lib/agent/run/short-novel-durable'
 import {
   buildShortNovelManuscriptSnapshotV1,
@@ -15,6 +18,7 @@ import {
   readShortNovelReleaseManifestV1,
   renderShortNovelReleaseMarkdownV1,
   reopenShortNovelProductionV1,
+  confirmShortNovelBriefV1, confirmShortNovelStoryDesignV1, assertShortNovelPlanV1,
 } from '../../src/lib/short-novel/service'
 import {
   parseShortNovelBriefV1,
@@ -149,6 +153,7 @@ describe('R-SHORT2 · 专业短篇独立生产闭环', () => {
 
     const complete = await ensureShortNovelProductionV1(created.scope)
     await reopenShortNovelProductionV1({ scope: created.scope, expectedRevision: complete.revision })
+    expect((await db.works.get(created.scope.workId))?.status).toBe('drafting')
     const reopened = await ensureShortNovelProductionV1(created.scope)
     await candidateAndAdopt(created.scope, 'chapter-draft', chapterDraft('chapter-1', '逆风的灯（修订）', '新版'), { chapterKey: 'chapter-1' })
     expect((await ensureShortNovelProductionV1(created.scope)).revision).toBe(reopened.revision + 1)
@@ -171,6 +176,16 @@ describe('R-SHORT2 · 专业短篇独立生产闭环', () => {
     expect(importedReleases[1].parentReleaseId).toBe(importedReleases[0].id)
     expect((await db.shortNovelProductions.where('projectId').equals(importedProjectId).first())?.currentReleaseId).toBe(importedReleases[1].id)
     expect(await readShortNovelReleaseManifestV1({ projectId: importedProjectId, worldId: importedWorld!.id!, workId: importedWork!.id! }, importedRelease!.id!)).toMatchObject({ manuscriptHash: manifest.manuscriptHash })
+    await switchNovelProfile({projectId:created.scope.projectId,workId:created.scope.workId,profile:'long',targetWordCount:100000})
+    const expanded = await exportProjectJSON(created.scope.projectId)
+    const restoredExpandedId = await importProjectJSON(structuredClone(expanded))
+    expect((await db.works.where('projectId').equals(restoredExpandedId).first())?.novelProfile).toBe('long')
+    expect(await db.creationReleases.where('projectId').equals(restoredExpandedId).count()).toBe(2)
+    expect((await db.creationReleases.get(release.id))?.manifestJson).toBe(originalJson)
+    const invalidExpanded = structuredClone(expanded)
+    delete (invalidExpanded.shortNovelProductions![0] as any).expandedFromShort
+    await expect(importProjectJSON(invalidExpanded)).rejects.toThrow('ShortNovelProduction')
+
   })
 
   it('把数字类型与英文枚举写入 provider 可执行协议，不依赖模型自行猜测合同', () => {
@@ -290,4 +305,51 @@ describe('R-SHORT2 · 专业短篇独立生产闭环', () => {
     await expect(importProjectJSON(backup)).rejects.toThrow('manifest 身份或 hash 校验失败')
     expect(await db.projects.count()).toBe(before)
   })
+  it('错误模型目标会终结运行，作者可关闭待处理候选且不能绕过候选确认', async () => {
+    const {scope}=await seedCurrentWorkspace('失败恢复',{targetWordCount:5000,novelProfile:'short'})
+    await expect(generateShortNovelCandidateV1({scope,artifactKind:'brief',runAI:async()=>JSON.stringify({...brief,chapterCount:4})})).rejects.toThrow('骨架一致')
+    expect((await db.agentRuns.where('workId').equals(scope.workId).first())?.status).toBe('failed')
+    expect(await listShortNovelTasksV1(scope)).toHaveLength(0)
+    const generated=await generateShortNovelCandidateV1({scope,artifactKind:'brief',runAI:async()=>JSON.stringify(brief)})
+    await expect(resumeShortNovelAdoptionV1(scope,generated.snapshot.run.id)).rejects.toThrow('采纳意图')
+    await expect(switchNovelProfile({projectId:scope.projectId,workId:scope.workId,profile:'long',targetWordCount:100000})).rejects.toThrow('待处理短篇任务')
+    await closeShortNovelTaskV1(scope,generated.snapshot.run.id)
+    expect(await listShortNovelTasksV1(scope)).toHaveLength(0)
+    expect((await ensureShortNovelProductionV1(scope)).brief).toBeNull()
+  })
+
+  it('未确认和过期章卡阻止生成，修改设计保留正文，人工 Brief 也校验章数', async () => {
+    const {scope}=await seedCurrentWorkspace('章卡依赖',{targetWordCount:5000,novelProfile:'short'})
+    await expect(confirmShortNovelBriefV1({scope,expectedRevision:1,brief:{...brief,chapterCount:4}})).rejects.toThrow('章节')
+    await candidateAndAdopt(scope,'brief',brief)
+    await candidateAndAdopt(scope,'story-design',design)
+    let called=false
+    await expect(generateShortNovelCandidateV1({scope,artifactKind:'chapter-draft',chapterKey:'chapter-1',runAI:async()=>{called=true;return '{}'}})).rejects.toThrow('章节卡')
+    expect(called).toBe(false)
+    await candidateAndAdopt(scope,'scene-plan',plan)
+    await candidateAndAdopt(scope,'chapter-draft',chapterDraft('chapter-1','改了标题','原正文'),{chapterKey:'chapter-1'})
+    await assertShortNovelPlanV1(scope)
+    expect((await db.works.get(scope.workId))?.currentWordCount).toBeGreaterThan(0)
+    const before=await buildShortNovelManuscriptSnapshotV1(scope)
+    const root=await ensureShortNovelProductionV1(scope)
+    await confirmShortNovelStoryDesignV1({scope,expectedRevision:root.revision,storyDesign:{...design,desire:'修订后的欲望'}})
+    await expect(assertShortNovelPlanV1(scope)).rejects.toThrow('章节卡')
+    expect((await buildShortNovelManuscriptSnapshotV1(scope)).chapters[0].contentHtml).toBe(before.chapters[0].contentHtml)
+    expect((await inspectShortNovelCompletionV1(scope)).blockers).toContain('章节卡尚未确认或已失效')
+  })
+
+  it('作者未确认表单与候选修改随 Work 备份往返，不写入正式 Brief', async () => {
+    const {scope}=await seedCurrentWorkspace('草稿恢复',{targetWordCount:5000,novelProfile:'short'})
+    const other=await seedCurrentWorkspace('另一个作品',{targetWordCount:5000,novelProfile:'short'})
+    await saveShortAuthorDraft(scope,'brief:r1','未确认想法')
+    await saveShortAuthorDraft(scope,'candidate:stable-hash:1','作者编辑的候选')
+    expect(await readShortAuthorDraft(other.scope,'brief:r1')).toBeNull()
+    const importedId=await importProjectJSON(await exportProjectJSON(scope.projectId))
+    const work=(await db.works.where('projectId').equals(importedId).first())!
+    const restored={projectId:importedId,worldId:work.worldId,workId:work.id!}
+    expect(await readShortAuthorDraft(restored,'brief:r1')).toBe('未确认想法')
+    expect(await readShortAuthorDraft(restored,'candidate:stable-hash:1')).toBe('作者编辑的候选')
+    expect((await ensureShortNovelProductionV1(restored)).brief).toBeNull()
+  })
+
 })

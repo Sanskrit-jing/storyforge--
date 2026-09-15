@@ -1,3 +1,4 @@
+import {claimComicImageRequestV1} from './image-request-guard'
 import { nanoid } from 'nanoid'
 import { inspectAdaptationFreshness } from '../adaptation/source-manifest'
 import { hashCanonicalValue } from '../agent/run/hash'
@@ -261,6 +262,7 @@ export async function generateComicPanelCandidatesV1(input: {
   const width = Math.max(256, Math.min(1536, Math.round(root.targetSpec.pageSize.width * panel.frame.width)))
   const height = Math.max(256, Math.min(1536, Math.round(root.targetSpec.pageSize.height * panel.frame.height)))
   const providerSize = resolveOpenAICompatibleImageSizeV1(width, height)
+  await claimComicImageRequestV1(scope, requestHash)
   const response = await requestOpenAICompatibleImagesV1({ binding, prompt, count: input.count, ...providerSize, signal: input.signal })
   const prepared = await Promise.all(response.images.map(prepareMediaBlobV1))
   if (prepared.some(image => image.width < root.targetSpec.imageCapabilityRequirement.minimumWidth || image.height < root.targetSpec.imageCapabilityRequirement.minimumHeight)) throw new Error('[media] provider 图片低于目标规格最小尺寸，候选不落库')
@@ -332,6 +334,7 @@ export async function generateComicSubjectCandidatesV1(input: {
     if (available.length !== input.count || available.some(asset => asset.subjectKey !== subject.stableKey || asset.workId !== scope.workId)) throw new Error('[media] 同 requestHash 设定图候选集不完整或越界')
     return { assets: available, requestHash, reused: true, capabilityWarnings }
   }
+  await claimComicImageRequestV1(scope, requestHash)
   const response = await requestOpenAICompatibleImagesV1({ binding, prompt, count: input.count, ...subjectCandidateSize(subject.kind), signal: input.signal })
   const prepared = await Promise.all(response.images.map(prepareMediaBlobV1))
   if (prepared.some(image => image.width < root.targetSpec.imageCapabilityRequirement.minimumWidth || image.height < root.targetSpec.imageCapabilityRequirement.minimumHeight)) throw new Error('[media] provider 设定图低于目标规格最小尺寸，候选不落库')

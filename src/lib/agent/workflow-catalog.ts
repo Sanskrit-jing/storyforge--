@@ -143,10 +143,10 @@ export function classifyRequestedDomainIdsV1(request: string): Set<DomainAgentId
   const hasWorldGame = /(?:生成|创建|制作|演化|改编|开发|做成).{0,24}(?:文字游戏|分支互动叙事|分支叙事|文字冒险|AVG|视觉小说)|(?:文字游戏|分支互动叙事|分支叙事|文字冒险|AVG|视觉小说).{0,24}(?:生成|创建|制作|演化|改编|开发|做成)/i.test(request)
   const hasInspiration = /灵感|反推|碎片|脑洞/.test(request)
   const hasProse = /正文|续写|接着写|继续写|写(?:作|出|完)?第\s*[零〇一二两三四五六七八九十\d]+\s*章/.test(request)
-  const outlineMention = /大纲|卷纲|章纲|章节规划|剧情结构|情节结构|故事线|主线|支线|复线/.test(request)
+  const outlineMention = /细纲|场景拆分|大纲|卷纲|章纲|章节规划|剧情结构|情节结构|故事线|主线|支线|复线/.test(request)
   const outlineAction = (
-    /(?:生成|创建|新增|规划|设计|展开|补充|完善|修改|重做).{0,12}(?:大纲|卷纲|章纲|章节规划|剧情结构|情节结构|故事线|主线|支线|复线)/.test(request)
-    || /(?:大纲|卷纲|章纲|章节规划|剧情结构|情节结构|故事线|主线|支线|复线).{0,12}(?:生成|创建|新增|规划|设计|展开|补充|完善|修改|重做)/.test(request)
+    /(?:生成|创建|新增|规划|设计|展开|补充|完善|修改|重做).{0,12}(?:细纲|场景拆分|大纲|卷纲|章纲|章节规划|剧情结构|情节结构|故事线|主线|支线|复线)/.test(request)
+    || /(?:细纲|场景拆分|大纲|卷纲|章纲|章节规划|剧情结构|情节结构|故事线|主线|支线|复线).{0,12}(?:生成|创建|新增|规划|设计|展开|补充|完善|修改|重做)/.test(request)
   )
   const storyCoreMention = /故事核心|目标字段\s*=\s*(?:logline|concept|theme|centralConflict|plotPattern|mainPlot|subPlots)\b/i.test(request)
   const pinnedStoryCoreTask = /^生成故事核心字段。目标字段\s*=\s*(?:logline|concept|theme|centralConflict|plotPattern|mainPlot|subPlots)\b/i.test(request)
@@ -172,6 +172,7 @@ export function classifyRequestedDomainIdsV1(request: string): Set<DomainAgentId
     /(?:创建|生成|设计|新增|塑造|补充|完善|修改|重做).{0,12}(?:角色|人物|主角|配角|反派|npc)/i.test(request)
     || /(?:角色|人物|主角|配角|反派|npc).{0,12}(?:创建|生成|设计|新增|塑造|补充|完善|修改|重做)/i.test(request)
   )
+  if (/(?:创作|完成|写完|制作).{0,10}(?:整部|全书|一部|这部).{0,8}(?:长篇|小说|作品)|(?:从零|从头).{0,12}(?:写到完结|创作长篇)/.test(request)) return new Set<DomainAgentId>(['world-origin', 'character', 'outline', 'prose'])
   const downstreamWriting = hasOutline || hasProse
   const hasWorld = hasWorldGame ? false : downstreamWriting ? worldAction : worldMention
   const hasCharacter = downstreamWriting ? characterAction : characterMention
@@ -186,6 +187,7 @@ export function classifyRequestedDomainIdsV1(request: string): Set<DomainAgentId
 
 export function selectAgentSkillIdV1(agentId: DomainAgentId, request: string): AgentSkillId {
   if (agentId === 'outline') {
+    if (/细纲|场景拆分|拆.{0,8}场景/.test(request)) return 'outline.details'
     if (/(?:映射|分析|更新).{0,10}(?:本章|章节).{0,10}(?:故事线|进度|交汇)|(?:动态进度|故事线进度)/.test(request)) {
       return 'outline.storyline-progress'
     }
@@ -213,7 +215,7 @@ export function selectAgentSkillIdV1(agentId: DomainAgentId, request: string): A
       ? 'world-origin.story-core'
       : 'world-origin.worldview-field'
   }
-  if (agentId === 'character') return 'character.create'
+  if (agentId === 'character') return /补全|完善|补充|修改|调整|更新/.test(request) && !/新建|新增|创建|新角色|(?:设计|生成|塑造).{0,10}(?:主角|角色|人物)/.test(request) ? 'character.supplement' : 'character.create'
   return 'inspiration.reverse'
 }
 

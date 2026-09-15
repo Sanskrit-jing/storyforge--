@@ -1,3 +1,4 @@
+import ComicFields from './ComicFields'
 import { nanoid } from 'nanoid'
 import { Check, ImagePlus, Merge, Plus, RefreshCw, Save, Scissors, Sparkles, Trash2, X } from 'lucide-react'
 import type {
@@ -25,6 +26,7 @@ import type {
 } from './studio-model'
 
 interface Props {
+  readOnly?: boolean
   scope: WorkspaceScope
   groups: ComicPageGroup[]
   currentGroup: ComicPageGroup | null
@@ -69,6 +71,7 @@ const SHOT_MOVEMENTS = [['static', '静态定格'], ['pan', '横移感'], ['tilt
 const LETTERING_KINDS = [['speech', '对白气泡'], ['thought', '思绪气泡'], ['caption', '旁白框'], ['sfx', '拟声字']] as const
 
 export default function ComicPanelInspector({
+  readOnly=false,
   scope,
   groups,
   currentGroup,
@@ -98,7 +101,7 @@ export default function ComicPanelInspector({
   })
 
   return (
-    <aside className="comic-inspector">
+    <aside className="comic-inspector"><fieldset disabled={readOnly}>
       <header>
         <div><strong>格 {editingPanel.order + 1}</strong><small>{editingPanel.stableKey}</small></div>
         <select value={editingPanel.status} onChange={(event) => patchPanel({ status: event.target.value as ComicPanel['status'] })}>
@@ -107,7 +110,7 @@ export default function ComicPanelInspector({
           <option value="locked">锁定</option>
         </select>
       </header>
-      <section>
+      <section data-comic-content="layout">
         <h3>画框与镜头</h3>
         <p className="comic-section-hint">镜头要服务这一格唯一的可画瞬间，避免把连续动作塞进同一画面。</p>
         <div className="comic-number-grid">
@@ -121,9 +124,11 @@ export default function ComicPanelInspector({
           <label className="comic-field"><span>动势</span><select value={editingPanel.shot.movement} onChange={(event) => patchShot({ movement: event.target.value as ComicPanel['shot']['movement'] })}>{SHOT_MOVEMENTS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
         </div>
         <label className="comic-field"><span>构图与视觉焦点</span><textarea value={editingPanel.shot.composition} onChange={(event) => patchShot({ composition: event.target.value })} placeholder="例如：人物置于右下三分点，门框形成前景，视线指向下一格" /></label>
+        <label className="comic-field"><span>这一格的定格瞬间</span><textarea value={editingPanel.moment ?? ''} onChange={e=>patchPanel({moment:e.target.value})}/></label>
+        <label className="comic-field"><span>叙事功能</span><select value={editingPanel.narrativeFunction ?? 'develop'} onChange={e=>patchPanel({narrativeFunction:e.target.value})}>{[['establish','建立场景'],['develop','推进'],['reveal','揭示'],['reaction','反应'],['turn','转折'],['climax','高潮'],['resolution','收束'],['transition','过渡']].map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label>
         <label className="comic-field"><span>这一格的可见动作</span><textarea value={editingPanel.action} onChange={(event) => patchPanel({ action: event.target.value })} placeholder="只写摄像机能看到的一瞬间" /></label>
       </section>
-      <section>
+      <section data-comic-content="media">
         <h3>成图裁切</h3>
         <div className="comic-select-grid">
           <label>适配<select value={editingPanel.imageTransform.fit} onChange={(event) => patchTransform({ fit: event.target.value as ComicPanel['imageTransform']['fit'] })}><option value="cover">铺满裁切</option><option value="contain">完整显示</option></select></label>
@@ -137,7 +142,7 @@ export default function ComicPanelInspector({
           ))}
         </div>
       </section>
-      <section>
+      <section data-comic-content="layout">
         <h3>来源与连续性</h3>
         <div className="comic-check-list">
           {units.map((unit) => (
@@ -176,13 +181,15 @@ export default function ComicPanelInspector({
           })}
         </div>
       </section>
-      <section>
+      <section data-comic-content="media">
         <h3>视觉 Prompt</h3>
+        <h4>主体状态</h4><ComicFields value={editingPanel.subjectStates ?? []} options={{subjectKey:subjects.map(s=>({value:s.stableKey,label:s.label}))}} onChange={v=>patchPanel({subjectStates:v as ComicPanel['subjectStates']})}/><button disabled={!subjects.length} onClick={()=>patchPanel({subjectStates:[...(editingPanel.subjectStates??[]),{subjectKey:subjects[0].stableKey,costume:'',condition:'',props:[],position:''}]})}>添加主体状态</button>
+        <h4>画面保留区</h4><ComicFields value={editingPanel.protectedAreas??[]} onChange={v=>patchPanel({protectedAreas:v as ComicPanel['protectedAreas']})}/><button onClick={()=>patchPanel({protectedAreas:[...(editingPanel.protectedAreas??[]),{x:0.05,y:0.05,width:0.3,height:0.2}]})}>添加保留区</button>
         <p className="comic-section-hint">系统会把镜头、相邻格、角色状态、视觉圣经和排字安全区编译进最终生图请求。</p>
         <label className="comic-field"><span>本格补充指令</span><textarea value={editingPanel.visualPrompt} onChange={(event) => patchPanel({ visualPrompt: event.target.value })} /></label>
         <label className="comic-field"><span>负向约束</span><textarea value={editingPanel.negativePrompt} onChange={(event) => patchPanel({ negativePrompt: event.target.value })} /></label>
       </section>
-      <section>
+      <section data-comic-content="lettering">
         <h3>本地排字</h3>
         {editingPanel.lettering.map((item, index) => (
           <article className="comic-lettering" key={item.id}>
@@ -191,7 +198,14 @@ export default function ComicPanelInspector({
               <select value={item.direction} onChange={(event) => patchLettering(index, { direction: event.target.value as ComicLetteringItemV1['direction'] })}><option value="horizontal">横排</option><option value="vertical">竖排</option></select>
               <button onClick={() => patchPanel({ lettering: editingPanel.lettering.filter((_, itemIndex) => itemIndex !== index) })}><Trash2 /></button>
             </div>
-            <textarea value={item.text} onChange={(event) => patchLettering(index, { text: event.target.value })} />
+            <textarea aria-label={`排字内容 ${index+1}`} value={item.text} onChange={(event) => patchLettering(index, { text: event.target.value })} />
+            <div className="comic-select-grid">
+              <label>字体<select value={item.fontFamily} onChange={e=>patchLettering(index,{fontFamily:e.target.value as ComicLetteringItemV1['fontFamily']})}><option value="storyforge-sans">无衬线</option><option value="storyforge-serif">衬线</option></select></label>
+              {(['fontSize','strokeWidth','zIndex'] as const).map((k,i)=><label key={k}>{['字号','描边宽度','图层顺序'][i]}<input type="number" value={item[k]} onChange={e=>patchLettering(index,{[k]:Number(e.target.value)})}/></label>)}
+              {(['textColor','fillColor','strokeColor'] as const).map((k,i)=><label key={k}>{['文字颜色','填充颜色','描边颜色'][i]}<input value={item[k]} onChange={e=>patchLettering(index,{[k]:e.target.value})}/></label>)}
+              <label>气泡尾部<input type="checkbox" checked={!!item.tail} onChange={e=>patchLettering(index,{tail:e.target.checked?{x:0.5,y:0.8}:null})}/></label>
+              {item.tail&&(['x','y'] as const).map(k=><label key={k}>尾部 {k}<input type="number" min={0} max={1} step={0.01} value={item.tail![k]} onChange={e=>patchLettering(index,{tail:{...item.tail!,[k]:Number(e.target.value)}})}/></label>)}
+            </div>
             <div className="comic-number-grid">
               {(['x', 'y', 'width', 'height'] as const).map((key) => (
                 <label key={key}>{key}<input type="number" min={0} max={1} step={0.01} value={item.frame[key]} onChange={(event) => patchLettering(index, { frame: { ...item.frame, [key]: Number(event.target.value) } })} /></label>
@@ -201,7 +215,7 @@ export default function ComicPanelInspector({
         ))}
         <button onClick={() => patchPanel({ lettering: [...editingPanel.lettering, newLettering()] })}><Plus />增加排字</button>
       </section>
-      <section>
+      <section data-comic-content="layout">
         <h3>格结构操作</h3>
         <div className="comic-inline-actions">
           <button onClick={() => void act(() => splitComicPanelV1({ scope, panelId: editingPanel.id!, expectedRevision: editingPanel.revision, direction: 'vertical' }))}><Scissors />左右拆格</button>
@@ -234,7 +248,7 @@ export default function ComicPanelInspector({
         </div>
       </section>
       <button className="comic-save-panel" onClick={savePanel} disabled={busy || editingPanel.status === 'locked'}><Save />保存格、排字与裁切</button>
-      <section>
+      <section data-comic-content="media">
         <h3>图片候选</h3>
         <div className="comic-rights">
           <textarea value={rights.declaration} onChange={(event) => rights.setDeclaration(event.target.value)} placeholder="来源与权利声明" />
@@ -260,6 +274,6 @@ export default function ComicPanelInspector({
           ))}
         </div>
       </section>
-    </aside>
+    </fieldset></aside>
   )
 }

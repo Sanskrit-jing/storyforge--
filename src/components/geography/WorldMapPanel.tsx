@@ -238,12 +238,10 @@ export default function WorldMapPanel({ project }: Props) {
 
   const handleMapConfigChange = useCallback(async (patch: Partial<MapGenConfig>) => {
     const nextConfig = { ...(voronoiConfig ?? {}), ...patch }
-    setVoronoiConfig(nextConfig)
-    if (activeWorldId) {
-      await updateNode(activeWorldId, {
-        mapConfigJSON: JSON.stringify(nextConfig),
-      })
-    }
+    if (!activeWorldId) throw new Error('请先选择地图所属世界')
+    await updateNode(activeWorldId, { mapConfigJSON: JSON.stringify(nextConfig) })
+    // The scoped node store drives the active-node effect; do not apply a late
+    // completion to another world selected while this write was in flight.
   }, [activeWorldId, updateNode, voronoiConfig])
 
   // ── 渲染 ─────────────────────────────────────────────────
@@ -344,6 +342,10 @@ export default function WorldMapPanel({ project }: Props) {
               <X className="h-3 w-3" />放弃候选
             </button>
           </div>
+          <details className="mt-3"><summary>预览候选地图与配置</summary>
+            <div className="h-[420px] mt-3"><Suspense fallback={<p>加载候选地图…</p>}><WorldMapVoronoi config={candidate.mapConfig} readOnly /></Suspense></div>
+            <pre className="text-xs whitespace-pre-wrap overflow-auto max-h-64">{JSON.stringify(candidate.mapConfig,null,2)}</pre>
+          </details>
         </div>
       )}
 

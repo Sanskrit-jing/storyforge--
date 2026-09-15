@@ -436,6 +436,9 @@ export interface ProductProductionBriefV3 {
   completionContract: ProductProductionCompletionContractV1;
   unresolvedDecisionKeys: string[];
   /** Closed TTRPG construction contract; required exactly when productType=ttrpg. */
+  characterChat?: import('../character-interaction/authoring-contract').ChatAuthoringSettingsV1;
+  avg?: import('../avg/authoring-contract').AvgAuthoringSettingsV1;
+  avgRevision?: { version: 1; basePackageHash: string; runtimePackage: import('./product-release').ProductRuntimePackageV1 };
   ttrpg?: TtrpgProductionBriefV2;
   /** Closed AI Town construction contract; required exactly when productType=ai-town. */
   aiTown?: AiTownProductionBriefV1;

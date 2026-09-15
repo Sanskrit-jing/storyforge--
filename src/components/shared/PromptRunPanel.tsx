@@ -249,6 +249,7 @@ function ParamControl({
       </label>
       {param.type === 'select' && (
         <select
+          aria-label={param.label}
           value={String(shown)}
           onChange={e => onChange(e.target.value)}
           disabled={!enabled}
@@ -261,6 +262,7 @@ function ParamControl({
         <>
           <input
             type="range"
+            aria-label={`${param.label}滑块`}
             min={param.min}
             max={sliderMax}
             step={param.step ?? 1}
@@ -272,6 +274,7 @@ function ParamControl({
           {/* 可编辑数字框：能手填任意值（含超过滑块上限），滑块只作快速拖拽 */}
           <input
             type="number"
+          aria-label={param.label}
             min={param.min}
             step={param.step ?? 1}
             value={Number(shown)}
@@ -284,6 +287,7 @@ function ParamControl({
       {param.type === 'number' && (
         <input
           type="number"
+          aria-label={param.label}
           min={param.min}
           max={param.max}
           step={param.step ?? 1}
@@ -296,6 +300,7 @@ function ParamControl({
       {param.type === 'text' && (
         <input
           type="text"
+          aria-label={param.label}
           value={String(shown)}
           onChange={e => onChange(e.target.value)}
           disabled={!enabled}

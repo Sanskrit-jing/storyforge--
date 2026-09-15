@@ -20,7 +20,7 @@ test('目录不可用时仍能读取本地存档，另一标签新增存档后�
   await expect(page.getByRole('heading', { name: '雾港：最后一盏灯' })).toBeVisible()
   await expect(page.getByRole('alert')).toHaveCount(0)
   await saves.getByRole('link', { name: /离线目录中的冒险/ }).click()
-  await expect(page).toHaveURL(new RegExp(`/play/session/${first.sessionId}$`))
+  await expect(page).toHaveURL(new RegExp(`/ttrpg/play\\?project=${first.projectId}&work=\\d+&session=${first.sessionId}`))
   await expect(page.getByTestId('ttrpg-play-table')).toBeVisible()
 })
 
@@ -29,7 +29,7 @@ test('社区真实游戏包：多人刷新和交接遮屏，检查点另建冒�
   await installKpRehearsal(page)
   await page.goto('./')
   await expect(page.getByRole('heading', { name: '雾港：最后一盏灯' })).toHaveCount(0)
-  await page.getByTestId('product-tab-ttrpg').click()
+  await page.goto('./ttrpg/library')
   await expect(page.getByRole('heading', { name: '跑团', exact: true })).toBeVisible()
   const games = page.getByRole('region', { name: '跑团作品', exact: true })
   await expect(games.getByRole('heading', { name: '雾港：最后一盏灯' })).toBeVisible()

@@ -1,3 +1,8 @@
+import { CHARACTER_DIMENSIONS } from '../character/character-dimensions'
+import { useDetailedOutlineStore } from '../../stores/detailed-outline'
+import { prepareDetailedOutlineAuthoringV1, adoptDetailedOutlineAuthoringV1, type DetailedOutlineAuthoringSnapshotV1 } from './detailed-outline-authoring'
+import { createDetailedOutlineCreativeArtifactV1 } from './detailed-outline-copilot'
+import { buildLongformPlanningDialogueV1, readAgentEvents as readPlanningConversationEvents } from './conversations'
 import JSON5 from 'json5'
 import { useAIConfigStore } from '../../stores/ai-config'
 import { AGENT_ROLE_CATEGORIES } from '../ai/task-routing'
@@ -227,6 +232,8 @@ export interface MasterAgentTask {
   promptExecution?: PromptExecutionOptionsV1
 }
 export interface MasterAgentPlan {
+  /** A proposal never authorizes production until explicitly confirmed. */
+  phase?: 'proposal'
   summary: string
   tasks: MasterAgentTask[]
   /** Frozen workflow selected before the durable run is authorized. */
@@ -450,7 +457,7 @@ function fallbackPlan(
       ...(hasCharacter ? ['character-1'] : []),
     ],
   })
-  if (hasProse && !hasOutline) tasks.push({
+  if (hasProse) tasks.push({
     id: 'prose-1',
     agentId: 'prose',
     skillId: selectAgentSkillIdV1('prose', request),
@@ -485,9 +492,8 @@ function sanitizePlan(
   const rawTasks = Array.isArray(raw.tasks) ? raw.tasks : []
   const tasks: MasterAgentTask[] = []
   const ids = new Set<string>()
-  const agentIds = new Set<DomainAgentId>()
   const explicitlyRequested = classifyRequestedDomainIdsV1(request)
-  for (const item of rawTasks.slice(0, 6)) {
+  for (const item of rawTasks.slice(0, 5)) {
     if (!item || typeof item !== 'object' || Array.isArray(item)) continue
     const source = item as Record<string, unknown>
     if (!DOMAIN_AGENT_IDS.includes(source.agentId as DomainAgentId)) continue
@@ -495,25 +501,11 @@ function sanitizePlan(
     // 模型不得把描述中出现的设定元素误当成新增数据授权。只要用户文本明确命中了至少一个
     // 已闭环领域，就只能调度这些领域；例如“用浮空城和守灯人规划卷纲”只能写大纲。
     if (explicitlyRequested.size > 0 && !explicitlyRequested.has(agentId)) continue
-    // 当前每个领域节点都以一次候选快照为确认单位。同领域并列任务会共享旧快照，
-    // 第一个采纳后让后续候选必然过期；批量目标必须由单个领域任务一次产出。
-    if (agentIds.has(agentId)) {
-      const existing = tasks.find(task => task.agentId === agentId)!
-      existing.instruction = request.slice(0, 1000)
-      if (Array.isArray(source.dependsOn)) {
-        existing.dependsOn = [...new Set([
-          ...existing.dependsOn,
-          ...source.dependsOn.filter((value): value is string => typeof value === 'string'),
-        ])].slice(0, 5)
-      }
-      continue
-    }
     const id = typeof source.id === 'string' && source.id.trim()
       ? source.id.trim().slice(0, 80)
       : `task-${tasks.length + 1}`
     if (ids.has(id)) continue
     ids.add(id)
-    agentIds.add(agentId)
     const instruction = typeof source.instruction === 'string' && source.instruction.trim()
       ? source.instruction.trim().slice(0, 1000)
       : request
@@ -525,7 +517,7 @@ function sanitizePlan(
     tasks.push({
       id,
       agentId,
-      skillId: selectAgentSkillIdV1(agentId, request),
+      skillId: selectAgentSkillIdV1(agentId, instruction),
       instruction,
       dependsOn: Array.isArray(source.dependsOn)
         ? source.dependsOn.filter((value): value is string => typeof value === 'string').slice(0, 5)
@@ -554,10 +546,13 @@ function sanitizePlan(
     task.agentId === 'prose'
     && (outlineTaskIds.size > 0 || task.dependsOn.some(id => outlineTaskIds.has(id)))
   ))
-  if (stagedProse) {
-    for (let index = tasks.length - 1; index >= 0; index--) {
-      if (tasks[index].agentId === 'prose') tasks.splice(index, 1)
-    }
+  let repeatedDomain = false
+  const previousDomainTask = new Map<DomainAgentId, string>()
+  for (const task of tasks) {
+    const previous = previousDomainTask.get(task.agentId)
+    if (previous) { task.dependsOn = [...new Set([...task.dependsOn, previous])]; repeatedDomain = true }
+    previousDomainTask.set(task.agentId, task.id)
+    if (stagedProse && task.agentId === 'prose') task.dependsOn = [...new Set([...task.dependsOn, ...outlineTaskIds])]
   }
   return {
     summary: stagedProse
@@ -566,8 +561,25 @@ function sanitizePlan(
       ? raw.summary.trim().slice(0, 500)
       : '主 Agent 已拆分本轮创作任务。',
     tasks,
-    workflow,
+    workflow: stagedProse || repeatedDomain ? { version: 1, workflowId: 'staged-author-confirmed', reasonCodes: ['multiple-explicit-domains'] } : workflow,
   }
+}
+
+async function bindLongformPlanTargetsV1(plan: MasterAgentPlan, input: { projectId: number; scope?: WorkspaceScope; worldGroupId: number | null }): Promise<MasterAgentPlan> {
+  const scope = await resolveScope({ projectId: input.projectId, scope: input.scope })
+  for (const task of plan.tasks) {
+    if (task.agentId !== 'character' || task.skillId !== 'character.supplement') continue
+    const characters = await readOwnedRows<import('../types').Character>(scope, 'characters', { owner: 'world' })
+    const matches = characters.filter(character => character.name.trim() && task.instruction.includes(character.name)
+      && (character.isCrossWorld || (character.homeWorldGroupId ?? null) === input.worldGroupId))
+    if (matches.length !== 1 || !matches[0].id) throw new Error('补全已有角色需要明确一个角色姓名；请在对话中指定，避免误建或改错角色。')
+    const character = matches[0]
+    const explicit = CHARACTER_DIMENSIONS.filter(dimension => dimension.label.split(/[/·(]/).some(label => label.length >= 2 && task.instruction.includes(label)))
+    const dimensions = (explicit.length ? explicit : CHARACTER_DIMENSIONS.filter(dimension => !String(character[dimension.key] ?? '').trim())).map(dimension => dimension.key)
+    if (!dimensions.length) throw new Error(`${character.name} 已有完整字段，请明确要调整的维度。`)
+    task.characterSupplementRequest = { characterId: character.id!, dimensions, useEvidence: true }
+  }
+  return plan
 }
 
 export async function createMasterAgentPlan(input: {
@@ -575,6 +587,8 @@ export async function createMasterAgentPlan(input: {
   scope?: WorkspaceScope
   worldGroupId: number | null
   request: string
+  conversationId?: number
+  planningOnly?: boolean
   budget?: AgentTeamBudgetTracker
   signal?: AbortSignal
   pinnedTask?: PinnedMasterAgentTaskV1
@@ -698,8 +712,9 @@ export async function createMasterAgentPlan(input: {
       workflow,
     })
   }
-  if (getMasterWorkflowV1(workflow).planner === 'skip') {
-    return freezeMasterAgentPlanPromptsV1(fallbackPlan(request, workflow))
+  const planningOnly = input.planningOnly || /(?:先|只)(?:聊|讨论|梳理|确认)|(?:暂时|先)?(?:不要|别|不)(?:生成|创作|执行|开始)/.test(request)
+  if (!planningOnly && getMasterWorkflowV1(workflow).planner === 'skip') {
+    return freezeMasterAgentPlanPromptsV1(await bindLongformPlanTargetsV1(fallbackPlan(request, workflow), input))
   }
   const config = resolveRequestConfig(
     useAIConfigStore.getState().config,
@@ -712,14 +727,18 @@ export async function createMasterAgentPlan(input: {
     provider: config.provider,
     model: config.model,
   })
+  const planningScope = await resolveScope({ projectId: input.projectId, scope: input.scope })
+  const history = input.conversationId == null ? [] : await readPlanningConversationEvents(input.conversationId, planningScope)
+  const conversationText = buildLongformPlanningDialogueV1(history)
+  if (conversationText.length > 48000) throw new Error('当前会谈已超过本轮规划预算，请通过“整理需求摘要”保存已确认的方向后继续；原对话仍保留。')
   const messages = [{
     role: 'system' as const,
-    content: `你是 StoryForge 面向用户的唯一主 Agent。你不直接生成作品，也不要求用户选择领域；
+    content: `${planningOnly ? '当前为需求会谈与计划预览阶段，绝不执行生成。认真回答用户的问题，结合历史逐步明确题材、规模、故事方向与约束。需求未定或用户只要讨论时 tasks 返回空数组，summary 给出具体回复及需要澄清的问题。需求明确时可列出下一阶段任务供作者确认。' : ''}你是 StoryForge 面向用户的唯一主 Agent。你不直接生成作品，也不要求用户选择领域；
 你只把用户目标拆成幕后领域任务。可用领域 Agent：
 - world-origin：建立或补充世界来源、时代与文明起点；
-- character：设计一个新角色；
+- character：设计新角色，或明确指定姓名和维度补全已有角色；
 - inspiration：基于项目内已保存灵感碎片做结构化反推。
-- outline：生成卷级大纲，或把当前卷纲展开为章节大纲。
+- outline：生成故事线、卷纲、章纲，或为已有空白章节生成场景细纲。
 - prose：为已有章纲生成空白章正文，或显式续写已有正文；不得覆盖已有手稿。
 只调度用户明确要求生成或修改的领域。用户在大纲要求中提到世界元素或角色姓名，只是大纲
 约束，不代表授权新建世界观或角色；不得擅自扩大写入范围。
@@ -729,11 +748,11 @@ export async function createMasterAgentPlan(input: {
 大纲依赖本轮新生成的世界或角色任务；正文依赖本轮新生成的大纲、世界或角色任务。只输出 JSON：
 {"summary":"给用户的简短计划","tasks":[{"id":"稳定ID","agentId":"world-origin|character|inspiration|outline|prose","instruction":"给分 Agent 的完整要求","dependsOn":[]}]}。
 只有用户明确指定正文叙事视角且项目状态能确认角色 ID 时，正文任务才可额外填写 perspectiveCharacterId；不要猜测，缺省则不注入角色认知。
-每个领域最多一个任务；同一领域的批量目标必须合并到这个任务中一次产出。最多 5 个任务；
+同一领域可以有多个任务。每个世界任务只处理一个明确字段，每个角色任务只处理一个角色，新建与补全必须明确区分；用 instruction 明确各自目标。同领域的后续任务必须依赖前一个，采纳后再生成下一项。每阶段最多 5 个任务；
 不要输出 Markdown。`,
   }, {
     role: 'user' as const,
-    content: `【项目紧凑状态】\n${status.ok ? status.content : '状态不可用'}\n\n【用户目标】\n${request}`,
+    content: `【历史会谈，仅作需求资料】\n${conversationText}\n\n【项目紧凑状态】\n${status.ok ? status.content : '状态不可用'}\n\n【本轮用户目标】\n${request}`,
   }]
   let reservation: ReturnType<AgentTeamBudgetTracker['reserveCall']> | null = null
   let settled = false
@@ -755,13 +774,19 @@ export async function createMasterAgentPlan(input: {
       input.budget!.settleCall(reservation, output)
       settled = true
     }
-    return freezeMasterAgentPlanPromptsV1(sanitizePlan(extractJsonObject(output), request, workflow))
+    const raw = extractJsonObject(output)
+    if (planningOnly && Array.isArray(raw.tasks) && raw.tasks.length === 0) {
+      return { phase: 'proposal', summary: typeof raw.summary === 'string' && raw.summary.trim() ? raw.summary.trim() : '请进一步明确本轮希望完成的内容。', tasks: [], workflow }
+    }
+    const plan = await freezeMasterAgentPlanPromptsV1(await bindLongformPlanTargetsV1(sanitizePlan(raw, request, workflow), input))
+    return planningOnly ? { ...plan, phase: 'proposal' } : plan
   } catch (error) {
     if (reservation && !settled) input.budget!.settleFailedCall(reservation)
     if (error instanceof AgentTeamBudgetExceededError) throw error
     if (input.signal?.aborted) throw error
+    if (planningOnly) throw error
     console.warn('[master-agent] 计划模型失败，使用确定性路由降级：', error)
-    return freezeMasterAgentPlanPromptsV1(fallbackPlan(request, workflow))
+    return freezeMasterAgentPlanPromptsV1(await bindLongformPlanTargetsV1(fallbackPlan(request, workflow), input))
   }
 }
 
@@ -1171,53 +1196,6 @@ async function executeSequentialMasterAgentPlan(
             runtimeOutput: result.output,
           })
           outputs.set(task.id, draft)
-        } else if (skill.executionMode === 'storyline-progress') {
-          if (task.storylineProgressChapterId == null) {
-            throw new Error('故事线进度任务缺少固定章节 ID。')
-          }
-          const prepared = await prepareStorylineProgressCopilotV1({
-            projectId: input.projectId,
-            scope,
-            worldGroupId: input.worldGroupId,
-            chapterId: task.storylineProgressChapterId,
-            authorRequest: task.instruction,
-            skillId: skill.id as AgentSkillId,
-            supplementalContext: upstream,
-            routingCategory: `${AGENT_ROLE_CATEGORIES.outline}.storyline-progress`,
-            contextProfile,
-            contextCompressionRuntime,
-            signal: input.signal,
-          })
-          const result = await runBudgetedGenerationNode({
-            node: prepared.node,
-            prepared: prepared.prepared,
-            budget,
-            callLabel: '故事线进度映射 Skill',
-            maxOutputTokens: skill.maxOutputTokens,
-          })
-          const draft = JSON.stringify(result.output, null, 2)
-          candidates.push({
-            payload: {
-              version: 1,
-              taskId: task.id,
-              agentId: task.agentId,
-              skillId: skill.id as AgentSkillId,
-              executionBinding,
-              label: prepared.label,
-              contextSources: prepared.contextSources,
-              contextEvidence: prepared.contextEvidence,
-              baseSnapshot: prepared.snapshot,
-              storylineProgressChapterId: prepared.chapterId,
-              workspaceScope: scope,
-              dependsOnTaskIds: task.dependsOn,
-              generator: prepared.modelIdentity,
-              structuredOutputEvidence: result.structuredOutputEvidence,
-            },
-            draft,
-            runtimeNode: prepared.node,
-            runtimeOutput: result.output,
-          })
-          outputs.set(task.id, draft)
         } else {
           throw new Error(`主 Agent 不支持世界领域 Skill ${skill.id}；请使用已登记的字段、故事核心或创作规则入口。`)
         }
@@ -1459,7 +1437,63 @@ async function executeSequentialMasterAgentPlan(
         })
         outputs.set(task.id, draft)
       } else if (task.agentId === 'outline') {
-        if (skill.executionMode === 'character-revision') {
+        if (skill.executionMode === 'details') {
+          const prepared = await prepareDetailedOutlineAuthoringV1({ projectId: input.projectId, scope, worldGroupId: input.worldGroupId, authorRequest: task.instruction, signal: input.signal })
+          await input.executionTrace?.contextGatewayPrepared?.(task, { execution: prepared.assembled.contextGatewayExecution, assembled: prepared.assembled, renderedRequest: prepared.prepared.messages })
+          const startedAt = Date.now()
+          const result = await runBudgetedGenerationNode({ node: prepared.node, prepared: prepared.prepared, budget, callLabel: '场景细纲 Agent', maxOutputTokens: skill.maxOutputTokens })
+          const draft = result.output
+          const creativeArtifact = await createDetailedOutlineCreativeArtifactV1({ raw: draft, operation: 'enhanced', narrativeBrief: prepared.narrativeBrief, qualityMode: useAIConfigStore.getState().creativeQualityMode, modelIdentity: prepared.modelIdentity, inputText: prepared.prepared.messages.map(message => message.content).join('\n'), durationMs: Date.now() - startedAt })
+          candidates.push({ payload: { version: 1, taskId: task.id, agentId: task.agentId, skillId: skill.id as AgentSkillId, executionBinding, label: prepared.label, contextSources: prepared.contextSources, contextEvidence: prepared.contextEvidence, baseSnapshot: prepared.snapshot, workspaceScope: scope, dependsOnTaskIds: task.dependsOn, generator: prepared.modelIdentity, creativeArtifact, narrativeBrief: prepared.narrativeBrief }, draft, runtimeNode: prepared.node, runtimeOutput: result.output, contextGatewayRuntime: { execution: prepared.assembled.contextGatewayExecution, assembled: prepared.assembled, renderedRequest: prepared.prepared.messages, rawResponse: draft } })
+          outputs.set(task.id, draft)
+        } else if (skill.executionMode === 'storyline-progress') {
+          if (task.storylineProgressChapterId == null) {
+            throw new Error('故事线进度任务缺少固定章节 ID。')
+          }
+          const prepared = await prepareStorylineProgressCopilotV1({
+            projectId: input.projectId,
+            scope,
+            worldGroupId: input.worldGroupId,
+            chapterId: task.storylineProgressChapterId,
+            authorRequest: task.instruction,
+            skillId: skill.id as AgentSkillId,
+            supplementalContext: upstream,
+            routingCategory: `${AGENT_ROLE_CATEGORIES.outline}.storyline-progress`,
+            contextProfile,
+            contextCompressionRuntime,
+            signal: input.signal,
+          })
+          const result = await runBudgetedGenerationNode({
+            node: prepared.node,
+            prepared: prepared.prepared,
+            budget,
+            callLabel: '故事线进度映射 Skill',
+            maxOutputTokens: skill.maxOutputTokens,
+          })
+          const draft = JSON.stringify(result.output, null, 2)
+          candidates.push({
+            payload: {
+              version: 1,
+              taskId: task.id,
+              agentId: task.agentId,
+              skillId: skill.id as AgentSkillId,
+              executionBinding,
+              label: prepared.label,
+              contextSources: prepared.contextSources,
+              contextEvidence: prepared.contextEvidence,
+              baseSnapshot: prepared.snapshot,
+              storylineProgressChapterId: prepared.chapterId,
+              workspaceScope: scope,
+              dependsOnTaskIds: task.dependsOn,
+              generator: prepared.modelIdentity,
+              structuredOutputEvidence: result.structuredOutputEvidence,
+            },
+            draft,
+            runtimeNode: prepared.node,
+            runtimeOutput: result.output,
+          })
+          outputs.set(task.id, draft)
+        } else if (skill.executionMode === 'character-revision') {
           if (!task.characterRevisionRequest) {
             throw new Error('角色中途重规划任务缺少固定变更请求。')
           }
@@ -1887,6 +1921,7 @@ async function executeFanOutMasterAgentPlan(
 export async function executeMasterAgentPlan(
   input: ExecuteMasterAgentPlanInput,
 ): Promise<ExecutedMasterCandidate[]> {
+  if (input.plan.phase === 'proposal') throw new Error('创作计划尚未获得作者确认。')
   const workflow = getMasterWorkflowV1(input.plan.workflow)
   return workflow.strategy === 'fan-out' && isMasterFanOutEnabledV1()
     ? executeFanOutMasterAgentPlan(input)
@@ -2178,6 +2213,9 @@ export async function adoptMasterCandidate(input: {
       result: result as InspirationCopilotResult,
     })
   } else if (input.payload.agentId === 'outline') {
+    if (input.payload.skillId === 'outline.details') {
+      await adoptDetailedOutlineAuthoringV1(scope, input.worldGroupId, input.payload.baseSnapshot as DetailedOutlineAuthoringSnapshotV1, input.draft)
+    } else
     if (input.payload.skillId === 'outline.character-revision') {
       if (!input.payload.characterRevisionRequest) {
         throw new Error('角色中途重规划候选缺少固定变更请求，请重新生成。')
@@ -2242,6 +2280,7 @@ export async function adoptMasterCandidate(input: {
     useWorldviewStore.getState().loadAll(scope, input.worldGroupId),
     useCharacterStore.getState().loadAll(scope),
     useOutlineStore.getState().loadAll(scope),
+    useDetailedOutlineStore.getState().loadAll(scope),
     useStoryArcStore.getState().loadAll(scope),
     useChapterStore.getState().loadAll(scope),
     useCharacterDrivenPlanStore.getState().loadAll(scope),
@@ -2266,7 +2305,7 @@ export async function adoptMasterCandidate(input: {
       : input.payload.agentId === 'inspiration'
         ? `已保存新的${input.payload.mode === 'multiworld' ? '多世界' : '单世界'}灵感版本。`
         : input.payload.agentId === 'outline'
-          ? input.payload.skillId === 'outline.character-revision'
+          ? input.payload.skillId === 'outline.details' ? '场景细纲已写入当前章节，可在分步骤的场景细纲中继续编辑。' : input.payload.skillId === 'outline.character-revision'
             ? '选中的未来大纲 patch 已写入项目；已写正文、故事主线和只读影响建议均未修改。'
             : input.payload.skillId === 'outline.character-driven'
             ? '角色驱动卷章方案已保存到当前版本。'

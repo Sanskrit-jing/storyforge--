@@ -51,7 +51,7 @@ function batch<T>(value: unknown, label: string, validate: (item: unknown, index
   if (new Set(stableKeys).size !== stableKeys.length) throw new Error(`[motion-drama] ${label} stableKey 重复`)
 }
 
-const SERIES_KEYS = ['version', 'titlePromise', 'logline', 'coreTheme', 'emotionalPromise', 'audiencePromise', 'storyEngine', 'worldRules', 'seasonArc', 'protagonistArc', 'relationshipArcs', 'episodeArchitecture', 'hookPatterns', 'visualLanguage', 'soundLanguage', 'continuityRules', 'productionConstraints'] as const
+export const SERIES_KEYS = ['version', 'titlePromise', 'logline', 'coreTheme', 'emotionalPromise', 'audiencePromise', 'storyEngine', 'worldRules', 'seasonArc', 'protagonistArc', 'relationshipArcs', 'episodeArchitecture', 'hookPatterns', 'visualLanguage', 'soundLanguage', 'continuityRules', 'productionConstraints'] as const
 
 export function assertMotionDramaSeriesBibleV1(value: unknown): asserts value is MotionDramaSeriesBibleV1 {
   const row = exact(value, SERIES_KEYS, 'SeriesBible')
@@ -75,7 +75,7 @@ function assertEpisodeBeat(value: unknown, index: number): void {
   texts(row.sourceUnitKeys, 'beat.sourceUnitKeys', { stable: true })
 }
 
-const EPISODE_KEYS = ['stableKey', 'episodeNumber', 'title', 'logline', 'synopsis', 'openingHook', 'beats', 'endHook', 'continuityIn', 'continuityOut', 'sourceUnitKeys'] as const
+export const EPISODE_KEYS = ['stableKey', 'episodeNumber', 'title', 'logline', 'synopsis', 'openingHook', 'beats', 'endHook', 'continuityIn', 'continuityOut', 'sourceUnitKeys'] as const
 
 export function assertMotionDramaEpisodeCandidateV1(value: unknown): asserts value is MotionDramaEpisodeCandidateV1 {
   const row = exact(value, EPISODE_KEYS, 'Episode')
@@ -105,7 +105,7 @@ function assertDialogue(value: unknown, label: string): void {
   integer(row.estimatedSeconds, `${label}.estimatedSeconds`, 1, 120)
 }
 
-const SCENE_KEYS = ['stableKey', 'episodeNumber', 'sceneNumber', 'order', 'heading', 'location', 'timeOfDay', 'dramaticPurpose', 'entryState', 'exitState', 'visibleAction', 'dialogue', 'narration', 'soundCues', 'emotionalTurn', 'estimatedSeconds', 'characterKeys', 'sourceUnitKeys'] as const
+export const SCENE_KEYS = ['stableKey', 'episodeNumber', 'sceneNumber', 'order', 'heading', 'location', 'timeOfDay', 'dramaticPurpose', 'entryState', 'exitState', 'visibleAction', 'dialogue', 'narration', 'soundCues', 'emotionalTurn', 'estimatedSeconds', 'characterKeys', 'sourceUnitKeys'] as const
 
 export function assertMotionDramaScriptSceneCandidateV1(value: unknown): asserts value is MotionDramaScriptSceneCandidateV1 {
   const row = exact(value, SCENE_KEYS, 'ScriptScene')
@@ -122,7 +122,7 @@ export function assertMotionDramaScriptSceneCandidateV1(value: unknown): asserts
   texts(row.sourceUnitKeys, 'ScriptScene.sourceUnitKeys', { stable: true })
 }
 
-const ASSET_KEYS = ['stableKey', 'kind', 'label', 'identity', 'appearance', 'palette', 'materials', 'continuityLocks', 'prohibitedChanges', 'basePrompt', 'negativePrompt', 'referenceBrief', 'sourceUnitKeys'] as const
+export const ASSET_KEYS = ['stableKey', 'kind', 'label', 'identity', 'appearance', 'palette', 'materials', 'continuityLocks', 'prohibitedChanges', 'basePrompt', 'negativePrompt', 'referenceBrief', 'sourceUnitKeys'] as const
 
 export function assertMotionDramaAssetSubjectCandidateV1(value: unknown): asserts value is MotionDramaAssetSubjectCandidateV1 {
   const row = exact(value, ASSET_KEYS, 'AssetSubject')
@@ -136,7 +136,7 @@ export function assertMotionDramaAssetSubjectCandidateV1(value: unknown): assert
   texts(row.sourceUnitKeys, 'AssetSubject.sourceUnitKeys', { stable: true })
 }
 
-const SHOT_KEYS = ['stableKey', 'episodeNumber', 'sceneKey', 'shotNumber', 'order', 'narrativeFunction', 'targetSeconds', 'shotSize', 'cameraAngle', 'cameraMovement', 'composition', 'visibleAction', 'performance', 'lighting', 'transitionIn', 'transitionOut', 'dialogue', 'narration', 'soundPlan', 'subjectKeys', 'sourceUnitKeys', 'imagePrompt', 'negativeImagePrompt', 'firstFramePrompt', 'keyFramePrompt', 'lastFramePrompt', 'videoPrompt', 'negativeVideoPrompt'] as const
+export const SHOT_KEYS = ['stableKey', 'episodeNumber', 'sceneKey', 'shotNumber', 'order', 'narrativeFunction', 'targetSeconds', 'shotSize', 'cameraAngle', 'cameraMovement', 'composition', 'visibleAction', 'performance', 'lighting', 'transitionIn', 'transitionOut', 'dialogue', 'narration', 'soundPlan', 'subjectKeys', 'sourceUnitKeys', 'imagePrompt', 'negativeImagePrompt', 'firstFramePrompt', 'keyFramePrompt', 'lastFramePrompt', 'videoPrompt', 'negativeVideoPrompt'] as const
 
 export function assertMotionDramaShotCandidateV1(value: unknown): asserts value is MotionDramaShotCandidateV1 {
   const row = exact(value, SHOT_KEYS, 'Shot')

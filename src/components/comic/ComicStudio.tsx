@@ -1,3 +1,7 @@
+import {readComicAuthorDraft,saveComicAuthorDraft} from '../../lib/comic/authoring';
+import {queueCandidateDraftV1,flushCandidateDraftsV1} from '../../lib/agent/candidate-draft-coordinator';
+import {registerPendingDraftFlusherV1} from '../../lib/authoring/pending-edit-coordinator';
+import ComicReleaseHistory from './ComicReleaseHistory';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { nanoid } from "nanoid";
 import {
@@ -82,9 +86,15 @@ import {
   type ComicSubjectDraft,
 } from "./studio-model";
 import "./comic-studio.css";
+import ComicSourcePanel from './ComicSourcePanel';
+import ComicPlanning, {type ComicPlanningStage} from './ComicPlanning';
+import ComicReader from './ComicReader';
+import type {ComicProfessionalStageV1} from '../../lib/comic/durable-production';
+import {flushPendingEditsV1} from '../../lib/authoring/pending-edit-coordinator';
 
 interface Props {
   scope: WorkspaceScope;
+  page?: string;
 }
 
 function downloadBlob(filename: string, blob: Blob): void {
@@ -108,7 +118,7 @@ function safeName(value: string): string {
   return value.replace(/[\\/:*?"<>|]+/g, "-").trim() || "comic";
 }
 
-export default function ComicStudio({ scope }: Props) {
+export default function ComicStudio({ scope, page }: Props) {
   const [adaptation, setAdaptation] = useState<AdaptationProject | null>(null);
   const [work, setWork] = useState<Work | null>(null);
   const [units, setUnits] = useState<AdaptationSourceUnit[]>([]);
@@ -240,6 +250,12 @@ export default function ComicStudio({ scope }: Props) {
       setError(cause instanceof Error ? cause.message : "读取漫画失败"),
     );
   }, [reload]);
+  useEffect(() => {
+    if (!['review','versions'].includes(page ?? '') || !adaptation) return;
+    let cancelled=false;
+    void inspectComicQualityV1(scope).then(report=>{if(!cancelled)setQuality(report)}).catch(c=>{if(!cancelled)setError(String(c))});
+    return ()=>{cancelled=true};
+  }, [scope,page,adaptation,groups]);
   const currentGroup = useMemo(
     () => groups.find((group) => group.page.id === selectedPageId) ?? null,
     [groups, selectedPageId],
@@ -259,10 +275,22 @@ export default function ComicStudio({ scope }: Props) {
   useEffect(() => {
     const panel =
       currentGroup?.panels.find((row) => row.id === selectedPanelId) ?? null;
+    let cancelled=false;
     setEditingPanel(panel ? structuredClone(panel) : null);
-  }, [currentGroup, selectedPanelId]);
+    if(panel)void readComicAuthorDraft(scope,`panel:${panel.id}:r${panel.revision}`).then(text=>{if(!cancelled&&text)setEditingPanel(JSON.parse(text))}).catch(c=>setError(String(c)));
+    return ()=>{cancelled=true};
+  }, [currentGroup, selectedPanelId,scope]);
+  const draftPrefix=`comic:${scope.workId}:`;
+  useEffect(()=>registerPendingDraftFlusherV1(()=>flushCandidateDraftsV1(draftPrefix)),[draftPrefix]);
+  const updatePanelDraft: typeof setEditingPanel = nextValue => {
+    const next=typeof nextValue==='function'?nextValue(editingPanel):nextValue;
+    setEditingPanel(next);
+    if(next) { const key=`panel:${next.id}:r${next.revision}`;queueCandidateDraftV1({key:draftPrefix+key,draft:JSON.stringify(next),debounceMs:200,persist:text=>saveComicAuthorDraft(scope,key,text),onError:c=>setError(c.message)}); }
+  };
   useEffect(() => {
     const subject = subjects.find((row) => row.id === selectedSubjectId);
+    let cancelled=false;
+    if(subject)void readComicAuthorDraft(scope,`subject:${subject.id}:r${subject.revision}`).then(text=>{if(text&&!cancelled)setSubjectDraft(JSON.parse(text))}).catch(c=>setError(String(c)));
     if (subject)
       setSubjectDraft({
         stableKey: subject.stableKey,
@@ -274,7 +302,14 @@ export default function ComicStudio({ scope }: Props) {
         sourceUnitIds: [...subject.sourceUnitIds],
         status: subject.status,
       });
-  }, [selectedSubjectId, subjects]);
+    return ()=>{cancelled=true};
+  }, [selectedSubjectId, subjects,scope]);
+  const updateSubjectDraft: typeof setSubjectDraft = nextValue => {
+    const next=typeof nextValue==='function'?nextValue(subjectDraft):nextValue;setSubjectDraft(next);
+    const subject=subjects.find(s=>s.id===selectedSubjectId);
+    if(subject){const key=`subject:${subject.id}:r${subject.revision}`;queueCandidateDraftV1({key:draftPrefix+key,draft:JSON.stringify(next),debounceMs:200,persist:text=>saveComicAuthorDraft(scope,key,text),onError:c=>setError(c.message)});}
+  };
+
 
   const visibleAssets = useMemo(
     () => {
@@ -337,7 +372,7 @@ export default function ComicStudio({ scope }: Props) {
   const productionReady = ["producing", "review", "complete"].includes(
     adaptation.status,
   );
-  if (!productionReady)
+  if (!productionReady && !page)
     return (
       <div className="comic-studio">
         <header className="comic-top">
@@ -360,6 +395,13 @@ export default function ComicStudio({ scope }: Props) {
       </div>
     );
 
+  const sourceStatus = <section className="cp-source-status"><div><strong>{adaptation.status==='complete'?'当前作品已发布':freshness?.status==='changed'?'原作已变化':freshness?.status==='missing'?'原作已删除，已有内容保留':'原作来源已固定'}</strong><span>来源版本 {adaptation.activeSourceManifestVersion} · {units.length} 个单元</span></div>{freshness?.changes.length? <details><summary>查看来源差异</summary>{freshness.changes.map((c,i)=><p key={i}>{c.label} · {c.kind}</p>)}</details>:null}{adaptation.status==='complete'?<button onClick={()=>void act(()=>reopenAdaptationProductionV1({scope,expectedRevision:adaptation.revision}))}>重新打开审校</button>:freshness?.status==='changed'?<button onClick={()=>void(async()=>{await flushPendingEditsV1();if(await dialog.confirm({title:'确认同步原作？',message:'同步会追加来源版本，需要重新确认分析、方案与受影响的制作内容。旧来源版本与发布记录保留。',confirmText:'确认同步'}))await act(()=>resyncAdaptationSource({adaptationProjectId:adaptation.id!,expectedRevision:adaptation.revision}))})()}>确认同步</button>:null}</section>;
+  const stageMap:Record<string,ComicProfessionalStageV1[]>={facts:['source-analysis'],causal:['causal-graph'],brief:['adaptation-brief'],decisions:['decision-pass'],script:['script-adaptation'],rhythm:['page-rhythm'],layout:['panel-plan'],lettering:['page-review'],visual:['visual-bible'],references:[],media:['image-request','targeted-repair'],review:['visual-continuity-review','page-review','targeted-repair'],versions:[],preview:[],source:[]};
+  const pipeline=<ComicPipelinePanel scope={scope} adaptation={adaptation} sourceUnits={units} pages={groups.map(g=>g.page)} panels={groups.flatMap(g=>g.panels)} subjectCount={subjects.length} onChanged={reload} stages={page?stageMap[page]:undefined}/>;
+  if(page==='source')return <div className="comic-studio">{sourceStatus}<ComicSourcePanel scope={scope} root={adaptation} units={units} onChanged={reload}/>{error&&<p role="alert">{error}</p>}</div>;
+  if(page&&['facts','causal','brief','decisions','script','rhythm','visual'].includes(page))return <div className="comic-studio">{sourceStatus}<ComicPlanning scope={scope} root={adaptation} units={units} stage={page as ComicPlanningStage} onChanged={reload}/>{pipeline}{error&&<p role="alert">{error}</p>}</div>;
+  if(page==='preview')return <div className="comic-studio">{sourceStatus}<ComicReader groups={groups} spec={adaptation.targetSpec} assetUrls={assetUrls}/></div>;
+  const viewTab=page?(page==='references'?'visual':['review','versions'].includes(page)?'qa':'storyboard'):tab;
   const sourceLabel =
     freshness?.status === "unchanged"
       ? "来源未变化"
@@ -441,8 +483,9 @@ export default function ComicStudio({ scope }: Props) {
   const savePanel = () =>
     editingPanel?.id &&
     void act(
-      () =>
-        updateComicPanel({
+      async () => {
+        await flushPendingEditsV1();
+        return updateComicPanel({
           scope,
           panelId: editingPanel.id!,
           expectedRevision: editingPanel.revision,
@@ -463,7 +506,7 @@ export default function ComicStudio({ scope }: Props) {
             imageTransform: editingPanel.imageTransform,
             status: editingPanel.status,
           },
-        }),
+        }); },
       "格已保存",
     );
   const generateMedia = async (regenerate: boolean, subject = false) => {
@@ -472,6 +515,8 @@ export default function ComicStudio({ scope }: Props) {
       setError(getAIConfigRequiredMessage(aiConfig));
       return;
     }
+    if(regenerate && !await dialog.confirm({title:"确认重新生成图片？",message:"这会发起新的图片请求，可能产生新的费用。请先确认上一请求的结果。",confirmText:"明确再生成"}))return;
+    await flushPendingEditsV1();
     const controller = new AbortController();
     abortRef.current = controller;
     setBusy(true);
@@ -676,7 +721,7 @@ export default function ComicStudio({ scope }: Props) {
   };
 
   return (
-    <div className="comic-studio">
+    <div className={`comic-studio ${page ? "comic-routed comic-page-"+page : ""}`}>
       <header className="comic-top">
         <div className="comic-title-block">
           <span>STORYFORGE · COMIC PRODUCTION</span>
@@ -731,15 +776,8 @@ export default function ComicStudio({ scope }: Props) {
           )}
         </div>
       </header>
-      <ComicPipelinePanel
-        scope={scope}
-        adaptation={adaptation}
-        sourceUnits={units}
-        pages={groups.map((group) => group.page)}
-        panels={groups.flatMap((group) => group.panels)}
-        subjectCount={subjects.length}
-        onChanged={reload}
-      />
+      {page&&sourceStatus}
+      {pipeline}
       <nav className="comic-toolbar">
         <div className="comic-mode-tabs" role="group" aria-label="漫画工作区">
         <button
@@ -785,7 +823,7 @@ export default function ComicStudio({ scope }: Props) {
         </label>
         </div>
       </nav>
-      {tab === "storyboard" && (
+      {viewTab === "storyboard" && (
         <div className="comic-layout">
           <aside className="comic-pages">
             <header>
@@ -1024,11 +1062,12 @@ export default function ComicStudio({ scope }: Props) {
             )}
           </main>
           <ComicPanelInspector
+            readOnly={isComplete}
             scope={scope}
             groups={groups}
             currentGroup={currentGroup}
             editingPanel={editingPanel}
-            setEditingPanel={setEditingPanel}
+            setEditingPanel={updatePanelDraft}
             units={units}
             subjects={subjects}
             busy={busy}
@@ -1052,15 +1091,17 @@ export default function ComicStudio({ scope }: Props) {
           />
         </div>
       )}
-      {tab === "visual" && (
+      {viewTab === "visual" && (
         <ComicVisualPanel
+          readOnly={isComplete}
+          rights={{declaration:rightsDeclaration,setDeclaration:setRightsDeclaration,commercialUse,setCommercialUse,redistribution,setRedistribution}}
           scope={scope}
           units={units}
           subjects={subjects}
           selectedSubjectId={selectedSubjectId}
           setSelectedSubjectId={setSelectedSubjectId}
           subjectDraft={subjectDraft}
-          setSubjectDraft={setSubjectDraft}
+          setSubjectDraft={updateSubjectDraft}
           characterOptions={characterOptions}
           locationOptions={locationOptions}
           selectedSubject={selectedSubject}
@@ -1075,7 +1116,8 @@ export default function ComicStudio({ scope }: Props) {
           act={act}
         />
       )}
-      {tab === "qa" && (
+      {page === "versions" && <ComicReleaseHistory scope={scope} revision={adaptation.revision}/> }
+      {viewTab === "qa" && (
         <ComicQaPanel
           scope={scope}
           work={work}
@@ -1101,7 +1143,7 @@ export default function ComicStudio({ scope }: Props) {
           {error || message}
         </div>
       )}
-      <ComicShowcase />
+      {!page&&<ComicShowcase />}
     </div>
   );
 }

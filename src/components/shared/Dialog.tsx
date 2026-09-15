@@ -106,15 +106,15 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
       {dialog && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/55 px-4">
           <div
-            className="w-full max-w-md rounded-lg border border-border bg-bg-surface shadow-2xl"
+            className="w-full max-w-lg rounded-3xl border border-border bg-bg-surface shadow-2xl"
             role="dialog"
             aria-modal="true"
             aria-labelledby="storyforge-dialog-title"
           >
-            <div className="flex items-start gap-3 border-b border-border px-4 py-3">
+            <div className="flex items-start gap-3 border-b border-border px-6 py-5">
               <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${isDanger ? 'text-error' : 'text-accent'}`} />
               <div className="min-w-0 flex-1">
-                <h2 id="storyforge-dialog-title" className="text-sm font-semibold text-text-primary">{dialog.title}</h2>
+                <h2 id="storyforge-dialog-title" className="font-serif text-xl text-text-primary">{dialog.title}</h2>
                 {dialog.message && (
                   <p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-text-muted">{dialog.message}</p>
                 )}
@@ -130,7 +130,7 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
             </div>
 
             {dialog.mode === 'prompt' && (
-              <div className="px-4 py-3">
+              <div className="px-6 py-5">
                 <input
                   autoFocus
                   value={inputValue}
@@ -140,17 +140,17 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
                     if (e.key === 'Escape') close(null)
                   }}
                   placeholder={dialog.placeholder}
-                  className="w-full rounded border border-border bg-bg-base px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none"
+                  className="w-full rounded-xl border border-border bg-bg-base px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none"
                 />
               </div>
             )}
 
-            <div className="flex justify-end gap-2 px-4 py-3">
+            <div className="flex justify-end gap-2 px-6 py-5">
               {dialog.mode !== 'alert' && (
                 <button
                   type="button"
                   onClick={() => close(null)}
-                  className="rounded border border-border px-3 py-1.5 text-sm text-text-secondary hover:bg-bg-elevated hover:text-text-primary"
+                  className="rounded-full border border-border px-5 py-2.5 text-sm text-text-secondary hover:bg-bg-elevated hover:text-text-primary"
                 >
                   {dialog.cancelText ?? '取消'}
                 </button>
@@ -158,7 +158,7 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 onClick={() => close(dialog.mode === 'prompt' ? inputValue : true)}
-                className={`rounded px-3 py-1.5 text-sm font-medium text-white ${
+                className={`rounded-full px-5 py-2.5 text-sm font-medium text-white ${
                   isDanger ? 'bg-error hover:bg-error/90' : 'bg-accent hover:bg-accent-hover'
                 }`}
               >

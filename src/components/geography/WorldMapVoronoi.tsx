@@ -15,6 +15,7 @@ interface Props {
   config?: Partial<MapGenConfig>
   onMapGenerated?: (data: VoronoiMapData) => void
   onConfigChange?: (patch: Partial<MapGenConfig>) => void | Promise<void>
+  readOnly?: boolean
 }
 
 // ── 图层名称 ──
@@ -32,7 +33,7 @@ const LAYER_LABELS: Record<keyof LayerVisibility, string> = {
   vignette: '暗角',
 }
 
-export default function WorldMapVoronoi({ config, onMapGenerated, onConfigChange }: Props) {
+export default function WorldMapVoronoi({ config, onMapGenerated, onConfigChange, readOnly = false }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const offscreenRef = useRef<HTMLCanvasElement | null>(null)
@@ -41,6 +42,18 @@ export default function WorldMapVoronoi({ config, onMapGenerated, onConfigChange
   const mapDataRef = useRef<VoronoiMapData | null>(null)
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  const regenerate = async () => {
+    if (!onConfigChange || saving || generating) return
+    setSaving(true); setError(null)
+    try {
+      // Persist the exact random seed before rendering it, so refresh reproduces
+      // the author's confirmed map. Failed writes keep the previous map visible.
+      await onConfigChange({seed: crypto.randomUUID()})
+    } catch (cause) { setError(`保存地图失败：${cause instanceof Error ? cause.message : String(cause)}`) }
+    finally { setSaving(false) }
+  }
 
   const vpRef = useRef({ scale: 1, offsetX: 0, offsetY: 0 })
   const [scalePercent, setScalePercent] = useState(100)
@@ -239,7 +252,11 @@ export default function WorldMapVoronoi({ config, onMapGenerated, onConfigChange
     setScalePercent(Math.round(fitScale * 100)); paint()
   }, [mapData, paint])
 
-  const handleKmPerPixelChange = useCallback((newVal: number) => {
+  const handleKmPerPixelChange = useCallback(async (newVal: number) => {
+    if (saving || generating) return
+    setSaving(true)
+    try {
+    await onConfigChange?.({ kmPerPixel: newVal })
     kmPerPixelRef.current = newVal
     setKmPerPixel(newVal)
     const current = mapDataRef.current
@@ -256,9 +273,10 @@ export default function WorldMapVoronoi({ config, onMapGenerated, onConfigChange
       mapDataRef.current = next
       setMapData(next)
     }
-    void onConfigChange?.({ kmPerPixel: newVal })
     rerender()
-  }, [onConfigChange, rerender])
+    } catch (cause) {setError(`保存比例尺失败：${cause instanceof Error ? cause.message : String(cause)}`)}
+    finally {setSaving(false)}
+  }, [onConfigChange, rerender, saving, generating])
 
   const toggleLayer = useCallback((key: keyof LayerVisibility) => {
     setLayers(prev => {
@@ -381,13 +399,14 @@ export default function WorldMapVoronoi({ config, onMapGenerated, onConfigChange
             {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
             {exporting ? '导出中...' : '导出高清'}
           </button>
-          <button
-            onClick={() => doGenerate({ ...mergedConfig, seed: undefined })}
+          {!readOnly && <button
+            onClick={() => void regenerate()}
+            disabled={saving || generating || !onConfigChange}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1e2230] text-gray-300 hover:text-white text-xs rounded-lg shadow-lg border border-gray-700/50 hover:border-gray-600 transition-colors"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            重新生成
-          </button>
+            {saving ? '正在保存…' : '重新生成'}
+          </button>}
         </div>
       )}
 
@@ -469,7 +488,8 @@ export default function WorldMapVoronoi({ config, onMapGenerated, onConfigChange
             <span className="text-[10px] text-gray-400 whitespace-nowrap">比例尺</span>
             <select
               value={kmPerPixel}
-              onChange={e => handleKmPerPixelChange(Number(e.target.value))}
+              disabled={saving}
+              onChange={e => void handleKmPerPixelChange(Number(e.target.value))}
               className="bg-transparent text-[10px] text-gray-200 outline-none cursor-pointer"
             >
               {!STANDARD_KM_PER_PIXEL.includes(kmPerPixel) && (

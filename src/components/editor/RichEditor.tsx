@@ -314,7 +314,9 @@ const RichEditor = forwardRef<RichEditorHandle, Props>(function RichEditor(
 
   // 同步 editable 状态
   useEffect(() => {
-    if (editor && !editor.isDestroyed) editor.setEditable(!disabled)
+    // TipTap 默认会为 setEditable 发出 update。初始化或切换只读状态并非
+    // 作者编辑；此时回传空文档会与正文载入竞争，甚至触发自动保存覆盖原稿。
+    if (editor && !editor.isDestroyed) editor.setEditable(!disabled, false)
   }, [disabled, editor])
 
   useEffect(() => {

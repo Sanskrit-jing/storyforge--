@@ -20,6 +20,7 @@ import {
   confirmShortNovelBriefV1,
   confirmShortNovelStoryDesignV1,
   ensureShortNovelProductionV1,
+  assertShortNovelPlanV1,
 } from '../../short-novel/service'
 import {
   parseShortNovelBriefV1,
@@ -263,6 +264,7 @@ async function assertPrerequisites(input: { scope: WorkspaceScope; artifactKind:
   const [production, manuscript] = await Promise.all([ensureShortNovelProductionV1(input.scope), buildShortNovelManuscriptSnapshotV1(input.scope)])
   if (input.artifactKind !== 'brief' && !production.briefConfirmedAt) throw new Error('[short-novel-run] 请先确认创作 Brief')
   if (!['brief', 'story-design'].includes(input.artifactKind) && !production.designConfirmedAt) throw new Error('[short-novel-run] 请先确认故事设计')
+  if (['chapter-draft', 'targeted-rewrite', 'continuity-review'].includes(input.artifactKind)) await assertShortNovelPlanV1(input.scope)
   if (['chapter-draft', 'targeted-rewrite'].includes(input.artifactKind)) {
     if (!input.chapterKey || !manuscript.chapters.some(chapter => chapter.stableKey === input.chapterKey)) throw new Error('[short-novel-run] 目标章节不存在')
   }
@@ -291,61 +293,70 @@ export async function generateShortNovelCandidateV1<K extends ShortNovelArtifact
   let snapshot = await createAgentRunV1({ scope: input.scope, worldGroupId: null, contract: runContract(input.scope, input.artifactKind) })
   snapshot = await append(input.scope, snapshot, 'step.scheduled', { stepId: config.stepId })
   snapshot = await append(input.scope, snapshot, 'step.started', { stepId: config.stepId, attempt: 1 })
-  const assembled = await assembleContext({
-    projectId: input.scope.projectId,
-    scope: input.scope,
-    sourceKeys: [...skill.contextSourceKeys],
-    provider: input.aiConfig?.provider,
-    model: input.aiConfig?.model,
-    inputBudgetMaxTokens: 64_000,
-  })
-  const manifest = await createContextManifestFromAssemblyV1({ runId: snapshot.run.id, stepId: config.stepId, attempt: 1, projectId: input.scope.projectId, worldGroupId: null, declaredSourceKeys: [...skill.contextSourceKeys], assembled, readerVersion: `${config.skillId}-context-v1` })
-  snapshot = await append(input.scope, snapshot, 'context.assembled', { stepId: config.stepId, attempt: 1, manifestHash: manifest.manifestHash })
-  const messages = buildShortNovelPromptV1({ kind: input.artifactKind, context: assembled.text, authorInstruction: input.authorInstruction ?? '', chapterKey: input.chapterKey, issue })
-  snapshot = await append(input.scope, snapshot, 'model.requested', { stepId: config.stepId, attempt: 1, bindingHash: await hashCanonicalValue(snapshot.contract.executionBindings?.[0]) })
-  let raw: string
   try {
-    raw = await (input.runAI ? input.runAI(messages) : chat(messages, input.aiConfig!, { category: config.category, projectId: input.scope.projectId, configOverrides: { maxTokens: skill.maxOutputTokens }, contextOverflowPolicy: 'reject' }, input.signal))
+    const assembled = await assembleContext({
+      projectId: input.scope.projectId,
+      scope: input.scope,
+      sourceKeys: [...skill.contextSourceKeys],
+      provider: input.aiConfig?.provider,
+      model: input.aiConfig?.model,
+      inputBudgetMaxTokens: 64_000,
+    })
+    const manifest = await createContextManifestFromAssemblyV1({ runId: snapshot.run.id, stepId: config.stepId, attempt: 1, projectId: input.scope.projectId, worldGroupId: null, declaredSourceKeys: [...skill.contextSourceKeys], assembled, readerVersion: `${config.skillId}-context-v1` })
+    snapshot = await append(input.scope, snapshot, 'context.assembled', { stepId: config.stepId, attempt: 1, manifestHash: manifest.manifestHash })
+    const messages = buildShortNovelPromptV1({ kind: input.artifactKind, context: assembled.text, authorInstruction: input.authorInstruction ?? '', chapterKey: input.chapterKey, issue })
+    snapshot = await append(input.scope, snapshot, 'model.requested', { stepId: config.stepId, attempt: 1, bindingHash: await hashCanonicalValue(snapshot.contract.executionBindings?.[0]) })
+    let raw: string
+    try {
+      raw = await (input.runAI ? input.runAI(messages) : chat(messages, input.aiConfig!, { category: config.category, projectId: input.scope.projectId, configOverrides: { maxTokens: skill.maxOutputTokens }, contextOverflowPolicy: 'reject' }, input.signal))
+    } catch (error) {
+      snapshot = await append(input.scope, snapshot, 'run.paused', { reason: `short-${input.artifactKind}-model-outcome-unknown`, recoverable: false })
+      throw error
+    }
+    if (input.signal?.aborted) throw new Error('[short-novel] 生成已取消，未保存候选')
+    snapshot = await append(input.scope, snapshot, 'model.responded', { stepId: config.stepId, attempt: 1, outputHash: await hashCanonicalValue({ raw }) })
+    let payload: ShortNovelCandidatePayloadMapV1[K]
+    try { payload = parsePayload(input.artifactKind, parseShortNovelModelJsonV1(raw)) } catch (error) {
+      snapshot = await append(input.scope, snapshot, 'step.failed', { stepId: config.stepId, attempt: 1, code: `short-${input.artifactKind}-protocol-failed`, retryable: false, category: 'protocol', action: 'fail' })
+      await append(input.scope, snapshot, 'run.failed', { code: `short-${input.artifactKind}-protocol-failed`, retryable: false })
+      throw error
+    }
+    if (input.artifactKind === 'brief') {
+      const brief = payload as ShortNovelBriefV1
+      if (brief.targetWordCount !== manuscript.work.targetWordCount || brief.chapterCount !== manuscript.chapters.length) throw new Error('[short-novel-run] Brief 的目标字数/章节数必须与当前 Work 骨架一致')
+    }
+    if (input.artifactKind === 'scene-plan' && (payload as ShortNovelChapterPlanV1[]).length !== manuscript.chapters.length) throw new Error('[short-novel-run] 章节计划数量与当前骨架不一致')
+    if (['chapter-draft', 'targeted-rewrite'].includes(input.artifactKind) && (payload as ShortNovelChapterDraftV1).chapterKey !== input.chapterKey) throw new Error('[short-novel-run] 模型返回了非目标章节')
+    const body = {
+      version: 1 as const,
+      kind: 'short-novel-structured-candidate' as const,
+      portable: false as const,
+      artifactKind: input.artifactKind,
+      projectId: input.scope.projectId,
+      worldId: input.scope.worldId,
+      workId: input.scope.workId,
+      productionRevision: production.revision,
+      manuscriptHash: manuscript.manuscriptHash,
+      chapterKey: input.chapterKey ?? null,
+      issueKey: input.issueKey ?? null,
+      contextManifestHash: manifest.manifestHash,
+      contextInputHash: await hashCanonicalValue({ text: assembled.text, sourceEvidence: assembled.sourceEvidence }),
+      promptHash: await hashCanonicalValue(messages),
+      modelOutputHash: await hashCanonicalValue({ raw }),
+      payload,
+      payloadHash: await hashCanonicalValue(payload),
+    }
+    const candidate = { ...body, candidateHash: await hashCanonicalValue(body) } as ShortNovelStructuredCandidateV1<K>
+    snapshot = (await createAgentRunCheckpointV1({ scope: input.scope, runId: snapshot.run.id, resumePayload: candidate })).snapshot
+    snapshot = await append(input.scope, snapshot, 'candidate.persisted', { stepId: config.stepId, attempt: 1, candidateHash: candidate.candidateHash, requiresConfirmation: true })
+    return { snapshot, candidate }
   } catch (error) {
-    snapshot = await append(input.scope, snapshot, 'run.paused', { reason: `short-${input.artifactKind}-model-outcome-unknown`, recoverable: false })
+    const current = await readAgentRunV1(input.scope, snapshot.run.id)
+    if (current.projection.state === 'running') {
+      await append(input.scope, current, 'run.failed', { code: `short-${input.artifactKind}-execution-failed`, retryable: false })
+    }
     throw error
   }
-  snapshot = await append(input.scope, snapshot, 'model.responded', { stepId: config.stepId, attempt: 1, outputHash: await hashCanonicalValue({ raw }) })
-  let payload: ShortNovelCandidatePayloadMapV1[K]
-  try { payload = parsePayload(input.artifactKind, parseShortNovelModelJsonV1(raw)) } catch (error) {
-    snapshot = await append(input.scope, snapshot, 'step.failed', { stepId: config.stepId, attempt: 1, code: `short-${input.artifactKind}-protocol-failed`, retryable: false, category: 'protocol', action: 'fail' })
-    await append(input.scope, snapshot, 'run.failed', { code: `short-${input.artifactKind}-protocol-failed`, retryable: false })
-    throw error
-  }
-  if (input.artifactKind === 'brief') {
-    const brief = payload as ShortNovelBriefV1
-    if (brief.targetWordCount !== manuscript.work.targetWordCount || brief.chapterCount !== manuscript.chapters.length) throw new Error('[short-novel-run] Brief 的目标字数/章节数必须与当前 Work 骨架一致')
-  }
-  if (input.artifactKind === 'scene-plan' && (payload as ShortNovelChapterPlanV1[]).length !== manuscript.chapters.length) throw new Error('[short-novel-run] 章节计划数量与当前骨架不一致')
-  if (['chapter-draft', 'targeted-rewrite'].includes(input.artifactKind) && (payload as ShortNovelChapterDraftV1).chapterKey !== input.chapterKey) throw new Error('[short-novel-run] 模型返回了非目标章节')
-  const body = {
-    version: 1 as const,
-    kind: 'short-novel-structured-candidate' as const,
-    portable: false as const,
-    artifactKind: input.artifactKind,
-    projectId: input.scope.projectId,
-    worldId: input.scope.worldId,
-    workId: input.scope.workId,
-    productionRevision: production.revision,
-    manuscriptHash: manuscript.manuscriptHash,
-    chapterKey: input.chapterKey ?? null,
-    issueKey: input.issueKey ?? null,
-    contextManifestHash: manifest.manifestHash,
-    contextInputHash: await hashCanonicalValue({ text: assembled.text, sourceEvidence: assembled.sourceEvidence }),
-    promptHash: await hashCanonicalValue(messages),
-    modelOutputHash: await hashCanonicalValue({ raw }),
-    payload,
-    payloadHash: await hashCanonicalValue(payload),
-  }
-  const candidate = { ...body, candidateHash: await hashCanonicalValue(body) } as ShortNovelStructuredCandidateV1<K>
-  snapshot = (await createAgentRunCheckpointV1({ scope: input.scope, runId: snapshot.run.id, resumePayload: candidate })).snapshot
-  snapshot = await append(input.scope, snapshot, 'candidate.persisted', { stepId: config.stepId, attempt: 1, candidateHash: candidate.candidateHash, requiresConfirmation: true })
-  return { snapshot, candidate }
 }
 
 async function parseCandidate(value: unknown): Promise<ShortNovelStructuredCandidateV1> {
@@ -513,4 +524,29 @@ export async function rejectShortNovelCandidateV1(input: { scope: WorkspaceScope
   const stepId = ARTIFACT_CONFIG[candidate.artifactKind].stepId
   snapshot = await append(input.scope, snapshot, 'confirmation.recorded', { stepId, candidateHash: candidate.candidateHash, decision: 'reject' })
   return append(input.scope, snapshot, 'run.cancelled', { reason: `author-rejected-${candidate.artifactKind}` })
+}
+
+/** Explicit author cleanup, never repeats the provider request. */
+export async function listShortNovelTasksV1(scope: WorkspaceScope) {
+  const rows = (await readOwnedRows<any>(scope, 'agentRuns', { owner: 'work' }))
+    .filter(row => ['awaiting_confirmation', 'running', 'paused'].includes(row.status) && row.contractJson?.includes('short:'))
+  return Promise.all(rows.sort((a, b) => b.id - a.id).map(async row => {
+    let canResumeAdoption = false
+    try { canResumeAdoption = !!(await latestState(scope, row.id)).intent } catch { /* Pre-candidate tasks can only be closed. */ }
+    return {...row, canResumeAdoption}
+  }))
+}
+export async function closeShortNovelTaskV1(scope: WorkspaceScope, runId: number) {
+  const snapshot = await readAgentRunV1(scope, runId)
+  if (!snapshot.contract.executionBindings?.some(binding => binding.stepId.startsWith('short:'))) throw new Error('不是短篇创作任务')
+  if (!['running', 'paused', 'awaiting_confirmation'].includes(snapshot.projection.state)) throw new Error('任务已结束')
+  let state: Awaited<ReturnType<typeof latestState>> | null = null
+  try { state = await latestState(scope, runId) } catch { /* A failed pre-candidate run has no checkpoint. */ }
+  if (state?.intent) throw new Error('此任务已记录采纳意图，请先继续完成采纳')
+  return append(scope, snapshot, 'run.cancelled', { reason: 'author-closed-short-task' })
+}
+export async function resumeShortNovelAdoptionV1(scope: WorkspaceScope, runId: number) {
+  const state = await latestState(scope, runId)
+  if (!state.intent) throw new Error('尚未记录作者采纳意图，请先检查候选并确认')
+  return adoptShortNovelCandidateV1({ scope, runId })
 }

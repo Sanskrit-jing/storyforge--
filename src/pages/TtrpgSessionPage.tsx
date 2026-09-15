@@ -1,3 +1,4 @@
+import ProductFrame from '../components/navigation/ProductFrame'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { ArrowLeft, Settings } from 'lucide-react'
@@ -11,10 +12,10 @@ import './ttrpg-community.css'
 export default function TtrpgSessionPage() {
   const { sessionId } = useParams()
   // A route change must unmount the old table before any asynchronous reads.
-  return <TtrpgSessionView key={sessionId} sessionId={Number(sessionId)} />
+  return <ProductFrame product="ttrpg" title="跑团" page="跑团桌面" navigation={[{label:"作品库",path:"/ttrpg/library"},{label:"游玩",path:"/ttrpg/play",active:true},{label:"通用设置",path:"/home/settings"}]}><TtrpgSessionView key={sessionId} sessionId={Number(sessionId)} embedded /></ProductFrame>
 }
 
-function TtrpgSessionView({ sessionId }: { sessionId: number }) {
+export function TtrpgSessionView({ sessionId, embedded = false }: { sessionId: number; embedded?: boolean }) {
   const navigate = useNavigate()
   const [checkpoints, setCheckpoints] = useState<ProductRuntimeCheckpoint[]>([])
   const [restoring, setRestoring] = useState(false), [playing, setPlaying] = useState(false)
@@ -52,7 +53,7 @@ function TtrpgSessionView({ sessionId }: { sessionId: number }) {
       if (!mounted.current) return
       const child = await branchProductRuntimeSession({ parentSessionId: sessionId, throughSequence: checkpoint.throughSequence,
         title: `${loaded.session.title} · ${checkpoint.name}` })
-      if (mounted.current) navigate(`/play/session/${child.id}`)
+      if (mounted.current) navigate(`/ttrpg/play?project=${child.projectId}&work=${child.workId}&session=${child.id}`)
     } catch (cause) {
       if (mounted.current) setRestoreError(cause instanceof Error ? cause.message : String(cause))
     } finally {
@@ -60,8 +61,8 @@ function TtrpgSessionView({ sessionId }: { sessionId: number }) {
       if (mounted.current) setRestoring(false)
     }
   }
-  return <div className="sf-community sf-community-playing">
-    <header className="sf-community-nav"><Link to="/play"><ArrowLeft size={16} />我的冒险</Link><Link to={`/settings?returnTo=${encodeURIComponent(`/play/session/${sessionId}`)}`}><Settings size={16} />API 设置</Link></header>
+  return <div className={`sf-community sf-community-playing${embedded ? " sf-community-embedded" : ""}`}>
+    <header className="sf-community-nav"><Link to="/ttrpg/library"><ArrowLeft size={16} />我的冒险</Link><Link to={`/home/settings?returnTo=${encodeURIComponent(`/play/session/${sessionId}`)}`}><Settings size={16} />API 设置</Link></header>
     <main className="sf-community-table">
       {loaded && checkpoints.length > 0 && <details className="sf-community-checkpoints"><summary>读取存档 · {checkpoints.length}</summary>
         <p>读取时会另建一条冒险记录，保留现在的进度。</p>

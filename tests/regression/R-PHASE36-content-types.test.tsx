@@ -2,7 +2,8 @@ import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import ContentTypeBadge from '../../src/components/layout/ContentTypeBadge'
-import Sidebar from '../../src/components/layout/Sidebar'
+import LongformLayout from '../../src/components/longform/LongformLayout'
+import { MemoryRouter } from 'react-router'
 import {
   MODULE_CONTENT_TYPES,
   NAV_TREE,
@@ -79,21 +80,17 @@ describe('Phase 36 · 页面上游/下游内容标记', () => {
     expect(experience.querySelector('[data-content-type="experience"]')).not.toBeNull()
   })
 
-  it('侧栏在展开时给每个页面显示类型标记，并保持导航回调', async () => {
+  it('新版长篇内层导航保留模块回调且不混入产品运行时', async () => {
     const onSelect = vi.fn()
-    const host = await mount(createElement(Sidebar, {
-      active: 'inventory',
-      onSelect,
-      onBack: vi.fn(),
-      projectName: '测试项目',
-      collapsed: false,
-      onToggleCollapse: vi.fn(),
-    }))
+    const host = await mount(createElement(MemoryRouter, {}, createElement(LongformLayout, {
+      section: 'workbench', mode: 'steps', module: 'inventory', onSection: vi.fn(),
+      onModule: onSelect, onHome: vi.fn(), children: null,
+    })))
 
     const inventoryButton = Array.from(host.querySelectorAll('button')).find(button =>
       button.textContent?.includes('物品栏'),
     )!
-    expect(inventoryButton.textContent).toContain('产物')
+    expect(inventoryButton).toBeDefined()
     await act(async () => inventoryButton.click())
     expect(onSelect).toHaveBeenCalledWith('inventory')
 

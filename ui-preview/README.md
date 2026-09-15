@@ -1,13 +1,23 @@
 # 新版 UI 展示预览
 
-首页通过独立 HTML 入口打开本目录。当前版本含 199 个示例页面，用于公开展示正在优化调整中的 UI；所有内容都是示例，真实业务尚未接入。
+本目录保留 199 个已确认样式的示例页面。独立 HTML 预览继续可用；正式应用的首页及尚未完成接入的产品页直接复用这些组件。长篇入口转入真实长篇工作台，其余复用页面明确标注为示例。
 
 - `src/catalog.ts` 定义产品、页面、字段和内部覆盖编号。
-- `src/main.tsx` 只管理内存中的导航、展示状态和弹窗；顶部持续标明预览范围并提供返回正式版链接。
+- `src/PreviewApp.tsx` 管理展示状态与弹窗，并接收可选的受控路由；`src/main.tsx` 是独立 HTML 启动入口。独立预览使用 hash 导航，正式应用使用 React Router。
 - 不导入正式应用的 store、DB、AI、registry 或业务服务，不注册 service worker。
 - 复用 `public/demo-assets/mist-harbor` 与 `public/prototypes/tidewake-town/media` 中的既有示例图。本目录只新增纸面外框背景、地图与少量本地示例素材。
 - 原始云文档设计参考图与内部审核材料不包含在公开预览中。
 
-Vite 使用独立 HTML 构建入口。运行 `npm run dev` 后可打开 `/storyforge/ui-preview/index.html#home/today`。`npm run build` 同时检查预览 TypeScript 并生成页面；正式首页只载入入口卡片，不加载预览的代码和样式。预览专属 HTML/JS/CSS 不进入正式应用的 PWA 预缓存。
+Vite 使用独立 HTML 构建入口。运行 `npm run dev` 后可打开 `/storyforge/ui-preview/index.html#home/today`。`npm run build` 同时检查预览 TypeScript 并生成页面；正式应用通过懒加载的 `PreviewRoutePage` 复用页面，并以 Shadow DOM 隔离预览的全局样式，避免污染已接入的正文编辑器。独立 HTML 预览仍不启动业务数据库；正式应用入口沿用原有启动流程。独立预览入口保持原有 PWA 排除规则，共用组件随应用构建分包。
 
 后续实装必须按产品逐步接入现行契约，示例中的「已保存」「已发布」等状态不代表真实业务能力或写入结果。
+
+## 新版应用导航
+
+- `/storyforge/`：新版首页；`/storyforge/long`：已接入功能的长篇。
+- `/storyforge/short`、`/world`、`/script`、`/comic`、`/motion`、`/ttrpg`、`/chat`、`/town`、`/avg`、`/adventure`、`/openworld`（均在 `/storyforge` 基址下）：对应已做好的产品 UI。可选末段为页面 ID，例如 `/storyforge/short/intent`。
+- 顶部产品名称与顺序统一来自 `catalog.ts`，不再合并为“其他作品”。
+- 原 `?tab=...` 深链接暂留给尚未迁移的真实功能和回归测试；新版顶部导航和返回首页不经过旧版总览。
+- 预览页面的示例操作只改变内存，不创建作品、不采纳内容、不调用业务模型。后续逐个产品替换页面内容与操作。
+
+短篇已由 `/storyforge/short/:pageId?` 接入真实六阶段功能；独立静态预览仍供样式参考，其他尚未接入的产品保留示例提示。

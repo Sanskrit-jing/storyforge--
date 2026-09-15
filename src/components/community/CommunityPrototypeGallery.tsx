@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { CheckCircle2, Download, FlaskConical, Loader2, ShieldCheck } from 'lucide-react'
-import { importMarketplaceProductDistributionV2 } from '../../lib/product-platform/distribution-bundle'
+import { createWorkspace } from '../../lib/workspace/create-workspace'
+import { importMarketplaceProductDistributionV2, verifyProductDistributionBundleV2 } from '../../lib/product-platform/distribution-bundle'
 import {
   loadCommunityPrototypeCatalogV1,
   loadCommunityPrototypeReleaseBundleV1,
@@ -14,10 +15,12 @@ function messageOf(cause: unknown): string {
 }
 
 export default function CommunityPrototypeGallery(props: {
-  scope: WorkspaceScope
+  scope?: WorkspaceScope
   productType: ProductionProductKindV1
   onImported?: (release: ProductRelease) => void | Promise<void>
 }) {
+  const importing = useRef(false)
+  const retryScopes = useRef<Record<string, WorkspaceScope>>({})
   const [entries, setEntries] = useState<CommunityPrototypeCatalogEntryV1[]>([])
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -43,11 +46,18 @@ export default function CommunityPrototypeGallery(props: {
   }, [])
 
   const importPrototype = async (entry: CommunityPrototypeCatalogEntryV1) => {
+    if (importing.current) return
+    importing.current = true
     setBusyId(entry.prototypeId); setMessage(''); setError('')
     try {
       const bundle = await loadCommunityPrototypeReleaseBundleV1({ entry })
+      // Verify the complete release before creating a local sample workspace.
+      await verifyProductDistributionBundleV2(bundle)
+      if (!props.scope && entry.productType !== 'ai-town') throw new Error('请先选择对应产品的作品。')
+      const scope = props.scope ?? retryScopes.current[entry.prototypeId] ?? (await createWorkspace({ name: `${entry.title}（体验副本）`, genres: [], description: entry.summary, targetWordCount: 0, status: 'drafting' }, { purpose: 'independent-work', kind: 'ai-town' })).scope
+      if (!props.scope) retryScopes.current[entry.prototypeId] = scope
       const release = await importMarketplaceProductDistributionV2({
-        scope: props.scope,
+        scope,
         bundle,
         provenance: {
           listingId: `listing.prototype.${entry.prototypeId}`,
@@ -67,11 +77,12 @@ export default function CommunityPrototypeGallery(props: {
           acquiredAt: Date.now(),
         },
       })
-      setMessage(`《${entry.title}》已验签并导入当前 Work；现在可在下方创建自己的小镇存档。`)
+      setMessage(`《${entry.title}》已导入；现在可以创建自己的小镇存档。`)
       await props.onImported?.(release)
     } catch (cause) {
       setError(messageOf(cause))
     } finally {
+      importing.current = false
       setBusyId(null)
     }
   }

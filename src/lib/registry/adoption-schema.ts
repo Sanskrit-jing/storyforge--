@@ -632,9 +632,10 @@ export const ADOPTION_EXTENSIONS: readonly AdoptionExtensionSpec[] = Object.free
       'src/lib/workspace/create-workspace.ts',
       'src/lib/world-engine/derivation.ts',
       'src/lib/world-engine/promotion.ts',
+      'src/lib/world-engine/draft.ts',
     ],
     policyRegistry: 'PROJECT_TABLES refs + world package trust + world release lifecycle',
-    reason: 'World 根创建、版本推进和引用级联是注册表约束的领域生命周期，不接受模型自由字段写回。',
+    reason: 'World 根创建、版本推进和引用级联是注册表约束的领域生命周期；draft.ts 仅允许作者显式修改名称与简介，校验 scope 和 updatedAt，不接受模型自由字段写回。',
     reviewAfter: '2027-08-01',
   },
   {
@@ -654,13 +655,13 @@ export const ADOPTION_EXTENSIONS: readonly AdoptionExtensionSpec[] = Object.free
       'src/lib/comic/release.ts',
     ],
     policyRegistry: 'PROJECT_TABLES refs + WorkspaceScope + stable work code + narrative lifecycle',
-    reason: 'Work 根创建、稳定 code 补齐和级联是受信生命周期；删除最后一个独占叙事蓝图时还必须原子清空 activeNarrativeModuleId。标题等作者内容仍经 adopt()。',
+    reason: 'Work 根创建、稳定 code 补齐和级联是受信生命周期；updateWorkCover 仅在作者明确确认后按显式 scope 和 updatedAt 更新封面，不接受模型写回。删除最后一个独占叙事蓝图时还必须原子清空 activeNarrativeModuleId。标题等作者内容仍经 adopt()。',
     reviewAfter: '2027-08-01',
   },
   {
     id: 'adaptation-root-lifecycle',
     target: 'adaptationProjects',
-    entrypoints: ['src/lib/adaptation/source-manifest.ts', 'src/lib/adaptation/completion.ts', 'src/lib/adaptation/analysis.ts', 'src/lib/screenplay/production.ts', 'src/lib/screenplay/release.ts', 'src/lib/comic/production.ts', 'src/lib/comic/release.ts', 'src/lib/motion-drama/service.ts', 'src/lib/motion-drama/release.ts'],
+    entrypoints: ['src/lib/adaptation/source-manifest.ts', 'src/lib/adaptation/completion.ts', 'src/lib/adaptation/analysis.ts', 'src/lib/screenplay/production.ts', 'src/lib/screenplay/release.ts', 'src/lib/comic/production.ts', 'src/lib/comic/release.ts', 'src/lib/comic/authoring.ts', 'src/lib/motion-drama/service.ts', 'src/lib/motion-drama/release.ts'],
     policyRegistry: 'PROJECT_TABLES + ADOPTION_SCHEMAS + adaptation state machine + source manifest CAS',
     reason: '改编创建、来源重同步、Brief/Plan 确认与阶段推进必须同步校验来源 manifest、目标 Work 和 revision；模型可编辑字段仍只作为候选进入正式确认服务。',
     reviewAfter: '2027-08-01',
@@ -716,17 +717,17 @@ export const ADOPTION_EXTENSIONS: readonly AdoptionExtensionSpec[] = Object.free
   {
     id: 'screenplay-scene-card-lifecycle',
     target: 'screenplaySceneCards',
-    entrypoints: ['src/lib/screenplay/production.ts'],
+    entrypoints: ['src/lib/screenplay/production.ts', 'src/lib/screenplay/service.ts'],
     policyRegistry: 'PROJECT_TABLES + FIELD_REGISTRY + closed Scene Card contract + Beat/source CAS',
-    reason: 'Scene Card 是场景 AST 之前的独立因果合同；场号、Beat、来源和状态必须整批校验。',
+    reason: '作者复制、拆分和合并场景时，在同一事务维护对应卡片和审查生命周期；Scene Card 是场景 AST 之前的独立因果合同；场号、Beat、来源和状态必须整批校验。',
     reviewAfter: '2027-09-01',
   },
   {
     id: 'screenplay-review-issue-lifecycle',
     target: 'screenplayReviewIssues',
-    entrypoints: ['src/lib/screenplay/production.ts'],
+    entrypoints: ['src/lib/screenplay/production.ts', 'src/lib/screenplay/service.ts'],
     policyRegistry: 'PROJECT_TABLES + FIELD_REGISTRY + scene/block/revision evidence validator',
-    reason: '审查问题必须定位到目标场景当前 revision；定点改写只能处理作者选择的开放问题。',
+    reason: '作者复制、拆分和合并场景时，在同一事务维护对应卡片和审查生命周期；审查问题必须定位到目标场景当前 revision；定点改写只能处理作者选择的开放问题。',
     reviewAfter: '2027-09-01',
   },
   {
@@ -772,7 +773,7 @@ export const ADOPTION_EXTENSIONS: readonly AdoptionExtensionSpec[] = Object.free
   {
     id: 'comic-panel-lifecycle',
     target: 'comicPanels',
-    entrypoints: ['src/lib/comic/service.ts', 'src/lib/comic/media-service.ts', 'src/lib/comic/production.ts'],
+    entrypoints: ['src/lib/comic/service.ts', 'src/lib/comic/media-service.ts', 'src/lib/comic/production.ts', 'src/lib/comic/authoring.ts'],
     policyRegistry: 'PROJECT_TABLES + FIELD_REGISTRY + ADOPTION_SCHEMAS + comic panel validator',
     reason: '漫画格包含几何、连续性、排字和稳定媒资选择；普通字段采纳不能绕过父页布局与媒资一致性校验。',
     reviewAfter: '2027-08-01',
@@ -788,9 +789,9 @@ export const ADOPTION_EXTENSIONS: readonly AdoptionExtensionSpec[] = Object.free
   {
     id: 'comic-media-asset-lifecycle',
     target: 'comicMediaAssets',
-    entrypoints: ['src/lib/comic/media-service.ts', 'src/lib/comic/service.ts'],
+    entrypoints: ['src/lib/comic/media-service.ts', 'src/lib/comic/service.ts', 'src/lib/comic/production.ts'],
     policyRegistry: 'PROJECT_TABLES + media capability registry + hash/rights/provider receipt + stable-key reference checks',
-    reason: '媒体候选不是普通文本字段；上传和 provider 结果必须先校验二进制、rights、owner 与请求证据，再原子提交并由作者另行选片。',
+    reason: '媒体候选不是普通文本字段；上传和 provider 结果必须先校验二进制、rights、owner 与请求证据，再原子提交并由作者另行选片；作者确认重做规划时，在同一事务清理旧页格媒资引用，提交后仅回收没有 Release 强引用的 Blob。',
     reviewAfter: '2027-08-01',
   },
   {
@@ -919,6 +920,7 @@ export const ADOPTION_EXTENSIONS: readonly AdoptionExtensionSpec[] = Object.free
     target: 'shortNovelProductions',
     entrypoints: [
       'src/lib/workspace/create-workspace.ts',
+      'src/lib/workspace/works.ts',
       'src/lib/short-novel/service.ts',
       'src/lib/agent/run/short-novel-durable.ts',
     ],

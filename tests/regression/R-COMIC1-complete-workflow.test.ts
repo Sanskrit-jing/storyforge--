@@ -174,14 +174,14 @@ describe('COMIC-1/2 · complete comic production workflow', () => {
 
     const low = base64(pngBytes(100, 100))
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: 'low', data: [{ b64_json: low }, { b64_json: low }] }), { status: 200, headers: { 'content-type': 'application/json' } })))
-    await expect(generateComicPanelCandidatesV1({ scope: item.scope, panelId: panel.id!, expectedPanelRevision: panel.revision, aiConfig, count: 2, rights: rights('provider-generated') })).rejects.toThrow('最小尺寸')
+    await expect(generateComicPanelCandidatesV1({ scope: item.scope, panelId: panel.id!, expectedPanelRevision: panel.revision, aiConfig, count: 2, rights: rights('provider-generated'), regenerateNonce:'after-network-confirmed' })).rejects.toThrow('最小尺寸')
     expect(await db.comicMediaAssets.count()).toBe(0); expect(await db.mediaBlobObjects.count()).toBe(0)
 
     const valid = base64(pngBytes())
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: 'request-1', data: [{ b64_json: valid }, { b64_json: valid }] }), { status: 200, headers: { 'content-type': 'application/json' } }))
     vi.stubGlobal('fetch', fetchMock)
-    const first = await generateComicPanelCandidatesV1({ scope: item.scope, panelId: panel.id!, expectedPanelRevision: panel.revision, aiConfig, count: 2, rights: rights('provider-generated') })
-    const replay = await generateComicPanelCandidatesV1({ scope: item.scope, panelId: panel.id!, expectedPanelRevision: panel.revision, aiConfig, count: 2, rights: rights('provider-generated') })
+    const first = await generateComicPanelCandidatesV1({ scope: item.scope, panelId: panel.id!, expectedPanelRevision: panel.revision, aiConfig, count: 2, rights: rights('provider-generated'), regenerateNonce:'after-low-size-confirmed' })
+    const replay = await generateComicPanelCandidatesV1({ scope: item.scope, panelId: panel.id!, expectedPanelRevision: panel.revision, aiConfig, count: 2, rights: rights('provider-generated'), regenerateNonce:'after-low-size-confirmed' })
     const requestBody = JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body))
     expect(requestBody.prompt).toContain('FINISHED SEQUENTIAL ART COMIC PANEL')
     expect(requestBody.prompt).toContain('PANEL SEQUENCE CONTEXT')

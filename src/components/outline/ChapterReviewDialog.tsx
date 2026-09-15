@@ -1,3 +1,4 @@
+import type { OutlineReviewTarget } from '../../lib/outline/review-adoption'
 import { useState } from 'react'
 import { X, Loader2, AlertTriangle, AlertCircle, Info, ChevronDown, ChevronUp, Check, RotateCw, Sparkles, Wand2, ArrowRight, Trash2, Plus, RefreshCw, MessageSquare } from 'lucide-react'
 import type { ChapterReviewIssue, ChapterReviewResult, RewriteResult, ChangeItem } from '../../lib/outline/chapter-reviewer'
@@ -6,7 +7,7 @@ interface Props {
   open: boolean
   onClose: () => void
   chapters: Array<{ index: number; title: string }>
-  onApplyRewrite: (chapterIndex: number, newSummary: string) => void
+  onApplyRewrite: (chapterIndex: number, newSummary: string, target?: OutlineReviewTarget) => void | Promise<void>
   onReview: (userQuestion?: string) => Promise<ChapterReviewResult>
   onRewrite: (issue: ChapterReviewIssue, customSuggestion?: string) => Promise<RewriteResult>
 }
@@ -39,6 +40,8 @@ export default function ChapterReviewDialog({
   onReview,
   onRewrite,
 }: Props) {
+  const [applyError, setApplyError] = useState('')
+  const [applying, setApplying] = useState(false)
   const [diagnosing, setDiagnosing] = useState(false)
   const [rewriting, setRewriting] = useState<string | null>(null)
   const [diagnosis, setDiagnosis] = useState<ChapterReviewResult | null>(null)
@@ -150,7 +153,7 @@ export default function ChapterReviewDialog({
     setAcceptedChanges(prev => ({ ...prev, [issueId]: new Set() }))
   }
 
-  const applyIssueChanges = (issue: ChapterReviewIssue) => {
+  const applyIssueChanges = async (issue: ChapterReviewIssue) => {
     const rewrite = rewrites[issue.id]
     const accepted = acceptedChanges[issue.id] || new Set()
     if (!rewrite || accepted.size === 0) return
@@ -168,8 +171,13 @@ export default function ChapterReviewDialog({
     }
 
     if (issue.affectedChapters.length > 0) {
-      onApplyRewrite(issue.affectedChapters[0], finalSummary)
-      setAppliedChapters(prev => new Set([...prev, issue.affectedChapters[0]]))
+      if (applying) return
+      setApplying(true); setApplyError('')
+      try {
+        await onApplyRewrite(issue.affectedChapters[0], finalSummary, rewrite.target)
+        setAppliedChapters(prev => new Set([...prev, issue.affectedChapters[0]]))
+      } catch (cause) { setApplyError(cause instanceof Error ? cause.message : String(cause)) }
+      finally { setApplying(false) }
     }
   }
 
@@ -295,6 +303,7 @@ export default function ChapterReviewDialog({
             </div>
           )}
 
+          {applyError && <p role="alert" className="text-error p-3">{applyError}</p>}
           {diagnosis && !diagnosing && (
             <div className="space-y-4">
               {/* Summary */}
@@ -556,8 +565,8 @@ export default function ChapterReviewDialog({
                                 {/* Action buttons */}
                                 <div className="flex gap-2 pt-1 flex-wrap">
                                   <button
-                                    onClick={() => applyIssueChanges(issue)}
-                                    disabled={getAcceptedCount(issue.id) === 0}
+                                    onClick={() => { void applyIssueChanges(issue) }}
+                                    disabled={applying || getAcceptedCount(issue.id) === 0}
                                     className="flex items-center gap-1 px-3 py-1.5 text-xs bg-success text-white rounded hover:bg-success/80 disabled:opacity-50"
                                   >
                                     <Check className="w-3 h-3" />

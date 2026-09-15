@@ -1,3 +1,4 @@
+import { openSeededRuntime } from './product-entry'
 import { expect, type Locator, type Page } from '@playwright/test'
 
 export interface CurrentTtrpgSeedSeat {
@@ -74,8 +75,7 @@ export async function seedCurrentTtrpgProduct(page: Page, input: CurrentTtrpgSee
 }
 
 export async function openCurrentTtrpgPlayer(page: Page): Promise<Locator> {
-  await page.reload()
-  await page.getByTestId('product-tab-ttrpg').click()
+  await openSeededRuntime(page,'ttrpg','ttrpg/play')
   await page.getByRole('button', { name: '主持、联机与存档工具', exact: true }).click()
   const guide = page.getByTestId('formal-ttrpg-campaign-guide')
   await expect(guide).toBeVisible({ timeout: 20_000 })
@@ -106,8 +106,7 @@ export async function seedCurrentAiTownProduct(page: Page) {
 }
 
 export async function openCurrentAiTownPlayer(page: Page): Promise<Locator> {
-  await page.reload()
-  await page.getByTestId('product-tab-town').click()
+  await openSeededRuntime(page,'ai-town','town/play')
   const player = page.getByTestId('ai-town-player')
   await expect(player).toBeVisible({ timeout: 20_000 })
   return player

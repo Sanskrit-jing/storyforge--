@@ -455,7 +455,7 @@ function readRequiredSkillId(
     'world-origin': new Set(['worldview-field', 'story-core', 'creative-rules']),
     character: new Set(['create', 'supplement', 'lifecycle']),
     inspiration: new Set(['reverse']),
-    outline: new Set(['auto', 'story-arcs', 'storyline-progress', 'character-driven', 'character-revision', 'volumes', 'chapters']),
+    outline: new Set(['auto', 'details', 'story-arcs', 'storyline-progress', 'character-driven', 'character-revision', 'volumes', 'chapters']),
     prose: new Set(['auto', 'generate', 'continue']),
   }
   if (!allowedModes[agentId].has(skill.executionMode)) {
@@ -709,6 +709,7 @@ export function buildMasterAgentRunContractV1(input: {
   includeDependencyReceiptPolicy?: boolean
   includeCandidateSemanticReviewPolicy?: boolean
 }) {
+  if (input.plan.phase === 'proposal') throw new Error('创作计划尚未获得作者确认。')
   const plan = parseMasterAgentPlanV1(input.plan)
   const policy = resolveAgentTeamBudgetPolicy(input.budgetEvidence.profile)
   const workflow = getMasterWorkflowV1(plan.workflow)
@@ -1831,6 +1832,7 @@ export async function runDurableMasterAgentPlanV1(
   input: RunDurableMasterAgentInputV1,
   dependencies: MasterAgentDurableDependenciesV1 = {},
 ): Promise<DurableMasterAgentResultV1> {
+  if (input.plan?.phase === 'proposal') throw new Error('创作计划尚未获得作者确认。')
   const now = input.now ?? Date.now
   const execute = dependencies.execute ?? executeMasterAgentPlan
   if (dependencies.disableAutomaticReplanForTest && import.meta.env.MODE !== 'test') {

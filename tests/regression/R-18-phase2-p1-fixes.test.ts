@@ -155,11 +155,11 @@ describe('R-18: multiworld context wiring', () => {
 })
 
 describe('R-18: onboarding settings route', () => {
-  it('WelcomeGuide settings CTA goes to a global settings route, not an invalid workspace id', () => {
+  it('Home settings CTA goes to a global settings route, not an invalid workspace id', () => {
     const app = readFileSync(resolve(process.cwd(), 'src/App.tsx'), 'utf8')
-    const home = readFileSync(resolve(process.cwd(), 'src/pages/ProductHubPage.tsx'), 'utf8')
+    const home = readFileSync(resolve(process.cwd(), 'src/pages/HomePage.tsx'), 'utf8')
     expect(app).toContain('path="/settings"')
-    expect(home).toContain("navigate('/settings')")
+    expect(home).toContain("['settings','设置'")
     expect(home).not.toContain("navigate('/workspace/settings')")
   })
 })

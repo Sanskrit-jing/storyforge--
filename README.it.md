@@ -22,7 +22,7 @@ StoryForge è uno strumento open source per creare e vivere storie con l’IA, p
 
 Indaga su un vecchio naufragio con due compagni IA, proteggi i segreti del tuo personaggio e decidi come torneranno le navi stanotte. Un narratore IA (KP) conduce l’avventura con regole originali **2d6**, **7 scene, 6 indizi e 3 finali**.
 
-![Schermata di avvio dell’avventura Fog Harbor](./docs/assets/readme/ttrpg-preview.png)
+![Schermata di avvio dell’avventura Fog Harbor](./docs/assets/readme/ttrpg-current.png)
 
 Il gioco e i contenuti multimediali inclusi sono nel repository. Configura la tua API del modello per iniziare. L’immagine mostra il vero punto di accesso all’avventura.
 
@@ -68,15 +68,15 @@ Dalla home, apri le impostazioni del modello in alto a destra (`模型与本地�
 
 ## Scegli da dove iniziare
 
-![Pagina dei prodotti StoryForge](./docs/assets/readme/product-hub.png)
+![Pagina dei prodotti StoryForge](./docs/assets/readme/home-current.png)
 
 | Obiettivo | Accesso | Risultato e stato |
 |---|---|---|
-| Scrivere un romanzo | Nuovo → Romanzo | Personaggi, scalette, capitoli, continuità e revisione; percorso tecnico attuale validato |
-| Concludere un’opera breve | Nuovo → Narrativa breve | Progetto, schede dei capitoli, stesura, revisione, edizione immutabile; Markdown/TXT/JSON |
-| Adattare in sceneggiatura | Nuovo → Romanzo in sceneggiatura | Fonti fissate, decisioni, scene strutturate, verifiche; Fountain/FDX/stampa |
-| Adattare in fumetto | Nuovo → Romanzo in fumetto | Pagine, vignette, riferimenti visivi, lettering, edizioni; PNG/WebP/CBZ/PDF |
-| Creare un mondo | Nuovo → Motore dei mondi | Contenuto semantico, derivazione esplicita, versioni immutabili e lettura |
+| Scrivere un romanzo | Romanzo | Personaggi, scalette, capitoli, continuità e revisione; percorso tecnico attuale validato |
+| Concludere un’opera breve | Narrativa breve | Progetto, schede dei capitoli, stesura, revisione, edizione immutabile; Markdown/TXT/JSON |
+| Adattare in sceneggiatura | Romanzo in sceneggiatura | Fonti fissate, decisioni, scene strutturate, verifiche; Fountain/FDX/stampa |
+| Adattare in fumetto | Romanzo in fumetto | Pagine, vignette, riferimenti visivi, lettering, edizioni; PNG/WebP/CBZ/PDF |
+| Creare un mondo | Motore dei mondi | Contenuto semantico, derivazione esplicita, versioni immutabili e lettura |
 | Comporre un flusso visivo | Modalità a nodi | Anteprima; condivide logica e dati del romanzo |
 | Giocare o creare esperienze | TTRPG / Chat con personaggi / Città IA / Giochi testuali | Anteprime con cicli propri di produzione ed esecuzione |
 
@@ -86,13 +86,13 @@ Scrivere un romanzo non richiede il motore dei mondi. L’autore può derivare e
 
 ## La tua prima sessione di scrittura
 
-1. Scegli **Nuovo** (`新建`) → **Romanzo** (`长篇小说`), inserisci titolo e descrizione.
+1. Apri **Romanzo** (`长篇`) → **Biblioteca** (`作品库`) → **Nuovo romanzo** (`新建长篇`) e inserisci il titolo.
 2. Annota intenzioni, riferimenti e regole di scrittura; aggiungi le informazioni utili alla storia.
 3. Progetta conflitto e personaggi, poi volumi e capitoli. Scrivi a mano o modifica e approva le proposte dell’IA.
 4. Sviluppa scene e testo. Controlla i cambiamenti a fatti, stati, relazioni e anticipazioni prima di continuare.
 5. Apri **Gestione dati** (`数据管理`) ed esporta il testo e un backup JSON completo.
 
-![Scaletta di romanzo con un esempio scritto manualmente](./docs/assets/readme/longform-outline.png)
+![Scaletta di romanzo con un esempio scritto manualmente](./docs/assets/readme/longform-outline-current.png)
 
 ## Cosa fa ogni prodotto per la tua opera
 

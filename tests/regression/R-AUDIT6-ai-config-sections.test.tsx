@@ -138,15 +138,12 @@ describe('AUDIT-6 / HEALTH-4 · AI 设置分区', () => {
     expect(onClear).toHaveBeenCalledOnce()
   })
 
-  it('主题区只标记当前主题并转发切换', async () => {
-    const onChange = vi.fn()
-    const host = await mount(ThemeSelector as ComponentType<never>, { value: 'warm', onChange })
-    expect(host.querySelectorAll('button[aria-pressed="true"]')).toHaveLength(1)
-    const paper = Array.from(host.querySelectorAll('button')).find(button => button.textContent?.includes('纸与墨'))!
-    await act(async () => paper.click())
-    expect(onChange).toHaveBeenCalledWith('paper')
+  it('外观区说明当前统一主题，不能恢复旧主题', async () => {
+    const host = await mount(ThemeSelector as ComponentType<never>, {})
+    expect(host.textContent).toContain('青绿山水')
+    expect(host.querySelectorAll('button')).toHaveLength(0)
+    expect(host.textContent).not.toContain('暖白编辑室')
   })
-
   it('连接测试区准确展示忙碌、结果、日志计数和代理提示', async () => {
     const onTest = vi.fn()
     const onToggleLogs = vi.fn()

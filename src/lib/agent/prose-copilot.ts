@@ -1,3 +1,5 @@
+import { readLatestChapterPostAdoptionRunV1 } from './run/chapter-post-adoption-durable'
+import { readWorkPostAdoptionSettingsV1 } from '../prose/post-adoption-policy'
 import { useAIConfigStore } from '../../stores/ai-config'
 import { buildChapterContentPrompt, buildContinuePrompt } from '../ai/adapters/chapter-adapter'
 import { chat, resolveRequestConfig, type ChatResult } from '../ai/client'
@@ -209,14 +211,19 @@ function selectTarget(
   const candidates = scopedOutlineChapters(nodes, worldGroupId)
   if (!candidates.length) throw new Error('当前世界还没有章纲，请先生成章节大纲。')
   const chaptersByOutline = buildBestChapterByOutlineMap(chapters)
-  const named = candidates.find(item => (
+  const namedMatches = candidates.filter(item => (
     item.outlineNode.title.trim() && request.includes(item.outlineNode.title.trim())
   ))
+  if (namedMatches.length > 1) throw new Error('多个章纲与指定标题匹配，请明确章节序号。')
+  const named = namedMatches[0]
   const ordinalMatch = request.match(/第\s*([零〇一二两三四五六七八九十\d]+)\s*章/)
   const requestedOrdinal = ordinalMatch ? chineseOrdinal(ordinalMatch[1]) : null
   const numbered = requestedOrdinal == null
     ? undefined
     : candidates.find(item => item.ordinal === requestedOrdinal)
+  if (ordinalMatch && !numbered) {
+    throw new Error(`未找到指定的第${ordinalMatch[1]}章，请选择已有章节。`)
+  }
   const automatic = operation === 'continue'
     ? [...candidates].reverse().find(item => {
         const chapter = chaptersByOutline.get(item.outlineNode.id!)
@@ -226,7 +233,7 @@ function selectTarget(
         const chapter = chaptersByOutline.get(item.outlineNode.id!)
         return !htmlToPlainText(chapter?.content ?? '').trim()
       })
-  const selected = named ?? numbered ?? automatic
+  const selected = numbered ?? named ?? automatic
   if (!selected?.outlineNode.id) {
     throw new Error(operation === 'continue'
       ? '没有可续写的已写章节，请明确章节或先生成正文。'
@@ -241,6 +248,10 @@ function selectTarget(
     throw new Error(`《${selected.outlineNode.title}》尚无正文，请先生成正文。`)
   }
   return { outline: selected.outlineNode, chapter, ordinal: selected.ordinal }
+}
+
+export function resolveUnwrittenChapterTargetV1(request: string, nodes: OutlineNode[], chapters: Chapter[], worldGroupId: number | null) {
+  return selectTarget(request, nodes, chapters, worldGroupId, 'generate')
 }
 
 async function snapshotOf(
@@ -543,6 +554,15 @@ export async function prepareProseCopilot(input: {
   ])
   const operation = operationFor(request, skill.executionMode)
   const target = selectTarget(request, nodes, chapters, worldGroupId, operation)
+  if ((await readWorkPostAdoptionSettingsV1(scope)).policy !== 'off') {
+    const previousOutlines = scopedOutlineChapters(nodes, worldGroupId).filter(row => row.ordinal < target.ordinal)
+    for (const previous of previousOutlines) {
+      const chapter = buildBestChapterByOutlineMap(chapters).get(previous.outlineNode.id!)
+      if (!chapter?.id) continue
+      const downstream = await readLatestChapterPostAdoptionRunV1({ scope, chapterId: chapter.id })
+      if (downstream && downstream.projection.state !== 'completed') throw new Error(`《${chapter.title}》的章后处理尚未完成，请在正文页授权、确认或修复后再生成后续章节。`)
+    }
+  }
   const perspectiveCharacterId = input.perspectiveCharacterId === undefined
     ? target.chapter?.perspectiveCharacterId ?? null
     : input.perspectiveCharacterId

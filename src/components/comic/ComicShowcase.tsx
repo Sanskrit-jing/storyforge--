@@ -1,10 +1,13 @@
+import { useExampleReader } from '../examples/useExampleReader'
+import { useCallback } from 'react'
 import { useState, type CSSProperties } from 'react'
 import { ArrowUpRight, Images, X } from 'lucide-react'
-import rainPreview from '../../../showcase/comic/before-rain-stops/art/final/community-preview-ui.jpg'
-import flamePreview from '../../../showcase/comic/borrowed-flame/art/final/community-preview-ui.jpg'
-import gunPreview from '../../../showcase/comic/before-the-gun/art/final/community-preview-ui.jpg'
-import moonPreview from '../../../showcase/comic/moon-buys-bread/art/final/community-preview-ui.jpg'
+import rainPreview from '../../../showcase/comic/before-rain-stops/art/final/cover.png'
+import flamePreview from '../../../showcase/comic/borrowed-flame/art/final/cover.png'
+import gunPreview from '../../../showcase/comic/before-the-gun/art/final/cover.png'
+import moonPreview from '../../../showcase/comic/moon-buys-bread/art/final/cover.png'
 import './comic-showcase.css'
+const files = import.meta.glob('../../../showcase/comic/*/art/final/{pages/*.png,*.pdf,*.cbz}', { query: '?url', import: 'default', eager: true }) as Record<string, string>
 
 interface ShowcaseComic {
   slug: string
@@ -62,6 +65,8 @@ export const COMIC_SHOWCASES: ShowcaseComic[] = [
 
 export default function ComicShowcase() {
   const [selected, setSelected] = useState<ShowcaseComic | null>(null)
+  const close = useCallback(() => setSelected(null), [])
+  useExampleReader(Boolean(selected), close)
 
   return <section className="comic-showcase" data-testid="comic-showcase" aria-labelledby="comic-showcase-title">
     <header className="comic-showcase-heading">
@@ -89,7 +94,7 @@ export default function ComicShowcase() {
     {selected && <div className="comic-showcase-modal" role="dialog" aria-modal="true" aria-labelledby="comic-reader-title" onMouseDown={event => { if (event.currentTarget === event.target) setSelected(null) }}>
       <article>
         <header><div><span>{selected.genre} · {selected.artDirection}</span><h2 id="comic-reader-title">《{selected.title}》</h2><small>{selected.scale} · 完整发布</small></div><button type="button" aria-label="关闭漫画预览" onClick={() => setSelected(null)}><X /></button></header>
-        <div className="comic-showcase-reader"><img src={selected.preview} alt={`${selected.title}完整社区展示图`} /></div>
+        <div className="comic-showcase-reader"><nav aria-label="漫画下载">{['pdf','cbz'].map(extension => <a className="lf-action" key={extension} download href={files[`../../../showcase/comic/${selected.slug}/art/final/${selected.slug}.${extension}`]}>下载 {extension.toUpperCase()}</a>)}</nav>{Object.entries(files).filter(([path]) => path.includes(`/${selected.slug}/art/final/pages/`)).sort(([a],[b]) => a.localeCompare(b)).map(([path,url],index) => <figure key={path}><img src={url} alt={`${selected.title}第 ${index+1} 页`} loading="lazy"/><figcaption>第 {index+1} 页</figcaption></figure>)}</div>
       </article>
     </div>}
   </section>

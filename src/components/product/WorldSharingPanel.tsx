@@ -57,15 +57,18 @@ export default function WorldSharingPanel({ project, worldReleaseRevision = 0, o
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [preview, setPreview] = useState<Preview | null>(null)
-  const [latestRelease, setLatestRelease] = useState<WorldRelease | null>(null)
+  const [releases, setReleases] = useState<WorldRelease[]>([])
+  const [releaseId, setReleaseId] = useState<number | null>(null)
+  const latestRelease = releases.find(row => row.id === releaseId) ?? null
 
   useEffect(() => {
     let cancelled = false
-    if (!project?.id) { setLatestRelease(null); return }
+    setReleases([]); setReleaseId(null)
+    if (!project?.id) return
     void resolveWorkspaceScope(project.id)
       .then(scope => listWorldReleases(scope))
-      .then(releases => { if (!cancelled) setLatestRelease(releases[0] ?? null) })
-      .catch(() => { if (!cancelled) setLatestRelease(null) })
+      .then(rows => { if (!cancelled) { setReleases(rows); setReleaseId(previous => rows.some(row => row.id === previous) ? previous : rows[0]?.id ?? null) } })
+      .catch(cause => { if (!cancelled) setMessage(String(cause)) })
     return () => { cancelled = true }
   }, [project?.id, worldReleaseRevision])
 
@@ -107,7 +110,8 @@ export default function WorldSharingPanel({ project, worldReleaseRevision = 0, o
     try {
       const id = await importWorldPackage(preview.input)
       setMessage('已导入为新的本地世界副本，原有项目未被覆盖。')
-      onImported?.(id)
+      setPreview(null)
+      await onImported?.(id)
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '导入世界分享包失败。')
     } finally { setBusy(false) }
@@ -125,7 +129,8 @@ export default function WorldSharingPanel({ project, worldReleaseRevision = 0, o
       <div className="sf-sharing-grid">
         <div className="sf-sharing-column">
           <div className="sf-sharing-title"><Share2 className="h-4 w-4" /><strong>生成世界分享包</strong></div>
-          <p>{latestRelease ? `导出不可变版本 v${latestRelease.version} 的纯语义世界内容。` : '先在上方封存纯语义世界修订，才能生成分享包。'}产品制作、媒资、会话、API 配置和运行存档不会进入文件。</p>
+          <p>{latestRelease ? `导出不可变版本 v${latestRelease.version} 的纯语义世界内容。` : '先在“版本与封存”发布世界版本，才能生成分享包。'}产品制作、媒资、会话、API 配置和运行存档不会进入文件。</p>
+          <label className="sf-sharing-label">分享版本<select aria-label="分享世界版本" value={releaseId ?? ''} onChange={event => setReleaseId(Number(event.target.value) || null)}><option value="">选择已发布版本</option>{releases.map(row => <option key={row.id} value={row.id}>v{row.version} · {row.label}</option>)}</select></label>
           <label className="sf-sharing-label">作者署名<input value={authorName} onChange={event => setAuthorName(event.target.value)} placeholder="例如：林岚" /></label>
           <label className="sf-sharing-label">许可<select value={license} onChange={event => setLicense(event.target.value as CommunityWorldLicense)}>{LICENSE_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
           <fieldset className="sf-sharing-fieldset"><legend>允许的二创用途</legend><div className="sf-sharing-checks">{USE_OPTIONS.map(option => <label key={option.id}><input type="checkbox" checked={allowedUses[option.id]} onChange={event => setAllowedUses(previous => ({ ...previous, [option.id]: event.target.checked }))} />{option.label}</label>)}</div></fieldset>

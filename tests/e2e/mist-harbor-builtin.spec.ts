@@ -9,8 +9,7 @@ test('fresh install, AVG real art, complete route, refreshed save and separate r
 }, testInfo) => {
   test.setTimeout(180000)
   await page.goto('./')
-  await page.getByRole('button', { name: '跳过引导', exact: true }).first().click()
-  await page.getByRole('link', { name: '体验内置作品：雾港，失潮钟声' }).click()
+  await page.getByRole('button', { name: '了解作品与选择玩法' }).click()
   await expect(page.getByRole('heading', { name: '雾港 失潮钟声' })).toBeVisible()
   await page.getByRole('button', { name: '开始故事', exact: true }).click()
   await expect(page.locator('.avg-playing')).toBeVisible({ timeout: 60000 })

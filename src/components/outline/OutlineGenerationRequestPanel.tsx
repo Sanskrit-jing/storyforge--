@@ -109,7 +109,7 @@ export default function OutlineGenerationRequestPanel({
             disabled={loading || Boolean(error) || !preparedContext}
             className="px-2.5 py-1 text-xs text-white bg-accent rounded hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {transparentMode ? '预览最终提示词' : '确认生成'}
+            {transparentMode && mode !== 'chunked' ? '预览最终提示词' : '确认生成'}
           </button>
         </div>
       </div>
@@ -191,7 +191,7 @@ export default function OutlineGenerationRequestPanel({
         </div>
       )}
 
-      <label className="flex cursor-pointer items-start gap-2 rounded border border-border/70 bg-bg-base/60 px-2.5 py-2 text-xs">
+      {mode !== 'chunked' && <label className="flex cursor-pointer items-start gap-2 rounded border border-border/70 bg-bg-base/60 px-2.5 py-2 text-xs">
         <input
           type="checkbox"
           checked={transparentMode}
@@ -204,7 +204,8 @@ export default function OutlineGenerationRequestPanel({
             发送前查看并临时编辑拼接后的最终消息；默认关闭，本次编辑不会保存。
           </span>
         </span>
-      </label>
+      </label>}
+      {mode === 'chunked' && <p className="text-xs text-text-muted">精细模式先生成方向草案，选定后才生成该块章纲；每一块都会保存进度与候选。</p>}
       <div className="border-t border-accent/20 pt-3">
         <OutlineGenerationBasis
           context={preparedContext?.assembled ?? null}

@@ -24,7 +24,7 @@ function assetUrl(input: ComicPageRenderV1, key: string): string | undefined {
   return (input.assetDataUrls as Readonly<Record<string, string>>)[key]
 }
 
-function pagePixels(spec: ComicTargetSpecV1): { width: number; height: number; bleed: number } {
+export function comicPagePixelsV1(spec: ComicTargetSpecV1): { width: number; height: number; bleed: number } {
   if (spec.pageSize.unit === 'px') return { width: Math.round(spec.pageSize.width), height: Math.round(spec.pageSize.height), bleed: Math.round(spec.pageSize.bleed) }
   const scale = 144 / 25.4
   return { width: Math.round(spec.pageSize.width * scale), height: Math.round(spec.pageSize.height * scale), bleed: Math.round(spec.pageSize.bleed * scale) }
@@ -35,9 +35,20 @@ function textLines(text: string, width: number, fontSize: number): string[] {
   const result: string[] = []
   for (const paragraph of text.split(/\r?\n/)) {
     if (!paragraph) { result.push(''); continue }
-    for (let offset = 0; offset < paragraph.length; offset += max) result.push(paragraph.slice(offset, offset + max))
+    const chars = [...paragraph]
+    for (let offset = 0; offset < chars.length; offset += max) result.push(chars.slice(offset, offset + max).join(''))
   }
-  return result.slice(0, 40)
+  return result
+}
+
+export function comicLetteringOverflowsV1(panel:ComicPanel,item:ComicPanel['lettering'][number],spec:ComicTargetSpecV1):boolean {
+  const pixels=comicPagePixelsV1(spec),width=item.frame.width*panel.frame.width*pixels.width,height=item.frame.height*panel.frame.height*pixels.height
+  if(item.direction==='vertical') {
+    const perColumn=Math.max(1,Math.floor((height-item.fontSize)/(item.fontSize*1.15)))
+    const columns=Math.ceil([...item.text].length/perColumn)
+    return columns>Math.max(1,Math.floor(width/(item.fontSize*1.1))) || height<item.fontSize*1.2
+  }
+  return textLines(item.text,width*.82,item.fontSize).length*item.fontSize*1.2>height-item.fontSize*.2
 }
 
 function speechShape(item: ComicPanel['lettering'][number], x: number, y: number, width: number, height: number, panelX: number, panelY: number, panelWidth: number, panelHeight: number): string {
@@ -73,7 +84,7 @@ function letteringSvg(panel: ComicPanel, pageWidth: number, pageHeight: number):
     const font = item.fontFamily === 'storyforge-serif' ? 'serif' : 'sans-serif'
     const shape = speechShape(item, x, y, width, height, panelX, panelY, panelWidth, panelHeight)
     if (item.direction === 'vertical') {
-      const chars = [...item.text].slice(0, 200)
+      const chars = [...item.text]
       const perColumn = Math.max(1, Math.floor((height - item.fontSize) / (item.fontSize * 1.15)))
       const text = chars.map((char, index) => {
         const column = Math.floor(index / perColumn)
@@ -109,7 +120,7 @@ function storyboardPlaceholderSvg(panel: ComicPanel, index: number, x: number, y
 }
 
 export function renderComicPageSvgV1(input: ComicPageRenderV1): string {
-  const { width, height, bleed } = pagePixels(input.targetSpec)
+  const { width, height, bleed } = comicPagePixelsV1(input.targetSpec)
   const sorted = [...input.panels].sort((left, right) => left.order - right.order)
   if (!sorted.length) throw new Error('[comic-render] 页面没有格')
   const missing = sorted.filter(panel => !panel.selectedMediaAssetKey || !assetUrl(input, panel.selectedMediaAssetKey))
@@ -162,13 +173,13 @@ export function renderComicStoryboardTextV1(book: ComicBookRenderV1): string {
   ])].join('\n')
 }
 
-export async function renderComicArchiveV1(input: ComicBookRenderV1 & { format: 'png-zip' | 'webp-zip' | 'cbz' }): Promise<Blob> {
+export async function renderComicArchiveV1(input: ComicBookRenderV1 & { format: 'png-zip' | 'webp-zip' | 'cbz'; mode?: 'storyboard' | 'formal' }): Promise<Blob> {
   const zip = new JSZip()
   const mimeType = input.format === 'webp-zip' ? 'image/webp' : 'image/png'
   const extension = mimeType === 'image/webp' ? 'webp' : 'png'
   const manifest: Array<{ file: string; pageStableKey: string; chapterNumber: number; order: number }> = []
   for (const item of [...input.pages].sort((left, right) => left.page.order - right.page.order)) {
-    const svg = renderComicPageSvgV1({ ...item, targetSpec: input.targetSpec, mode: 'formal' })
+    const svg = renderComicPageSvgV1({ ...item, targetSpec: input.targetSpec, mode: input.mode ?? 'formal' })
     const blob = await rasterizeComicPageV1(svg, mimeType)
     const file = `pages/${fileNumber(item.page.order)}.${extension}`
     zip.file(file, blob); manifest.push({ file, pageStableKey: item.page.stableKey, chapterNumber: item.page.chapterNumber, order: item.page.order })
@@ -178,10 +189,10 @@ export async function renderComicArchiveV1(input: ComicBookRenderV1 & { format: 
   return zip.generateAsync({ type: 'blob', mimeType: input.format === 'cbz' ? 'application/vnd.comicbook+zip' : 'application/zip', compression: 'DEFLATE', compressionOptions: { level: 6 } })
 }
 
-export async function renderComicPrintHtmlV1(input: ComicBookRenderV1): Promise<string> {
+export async function renderComicPrintHtmlV1(input: ComicBookRenderV1 & { mode?: 'storyboard' | 'formal' }): Promise<string> {
   const pageDataUrls: string[] = []
   for (const item of [...input.pages].sort((left, right) => left.page.order - right.page.order)) {
-    const blob = await rasterizeComicPageV1(renderComicPageSvgV1({ ...item, targetSpec: input.targetSpec, mode: 'formal' }), 'image/png')
+    const blob = await rasterizeComicPageV1(renderComicPageSvgV1({ ...item, targetSpec: input.targetSpec, mode: input.mode ?? 'formal' }), 'image/png')
     pageDataUrls.push(await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(reader.error); reader.readAsDataURL(blob) }))
   }
   return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeXml(input.title)}</title><style>@page{size:${input.targetSpec.pageSize.width}${input.targetSpec.pageSize.unit} ${input.targetSpec.pageSize.height}${input.targetSpec.pageSize.unit};margin:0}html,body{margin:0;background:#222}.page{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;break-after:page}.page img{display:block;max-width:100%;max-height:100%;object-fit:contain}</style></head><body>${pageDataUrls.map((url, index) => `<section class="page" data-page="${index + 1}"><img src="${url}" alt="第 ${index + 1} 页"></section>`).join('')}</body></html>`

@@ -20,7 +20,7 @@ StoryForge is an open-source, local-first AI narrative creation and experience t
 
 Investigate an old shipwreck with two AI companions, protect your character's secrets and decide how tonight's ships will return. An AI KP hosts the adventure using original 2d6 rules, with seven scenes, six clues and three endings.
 
-![Fog Harbor adventure entry](./docs/assets/readme/ttrpg-preview.png)
+![Fog Harbor adventure entry](./docs/assets/readme/ttrpg-current.png)
 
 The game bundle ships with the repository. Configure your own model API to begin; the screenshot shows the actual adventure entry.
 
@@ -66,15 +66,15 @@ On the home page, open the top-right model/settings button (`模型与本地设�
 
 ## Choose your starting point
 
-![Current StoryForge product hub](./docs/assets/readme/product-hub.png)
+![Current StoryForge product hub](./docs/assets/readme/home-current.png)
 
 | Goal | Entry | Result and maturity |
 |---|---|---|
-| Write a novel | New → Long novel | Settings, characters, outlines, chapters, continuity and revision; current engineering workflow accepted |
-| Finish short fiction | New → Short novel | Story design, chapter cards, drafting, review, frozen release, Markdown/TXT/JSON export |
-| Adapt a novel into a screenplay | New → Novel to screenplay | Frozen source, adaptation decisions, beats, scene writing, review, Fountain/FDX/print export |
-| Adapt a novel into a comic | New → Novel to comic | Pages, panels, visual references, lettering, storyboard/visual releases and PNG/WebP/CBZ/PDF export; visual output depends on supported image services or suitable author assets |
-| Build a world | New → World engine | Semantic content, explicit derivation, frozen world versions and read access |
+| Write a novel | Long novel | Settings, characters, outlines, chapters, continuity and revision; current engineering workflow accepted |
+| Finish short fiction | Short novel | Story design, chapter cards, drafting, review, frozen release, Markdown/TXT/JSON export |
+| Adapt a novel into a screenplay | Novel to screenplay | Frozen source, adaptation decisions, beats, scene writing, review, Fountain/FDX/print export |
+| Adapt a novel into a comic | Novel to comic | Pages, panels, visual references, lettering, storyboard/visual releases and PNG/WebP/CBZ/PDF export; visual output depends on supported image services or suitable author assets |
+| Build a world | World engine | Semantic content, explicit derivation, frozen world versions and read access |
 | Compose a visual workflow | Node authoring | Preview; shares the long-form backend and work data |
 | Play an original adventure | TTRPG → Published adventures | Community preview of *Fog Harbor: The Last Light* |
 | Create interactive experiences | Character chat / Afterstory town / Text games | Preview; each product has its own production and runtime lifecycle |
@@ -83,14 +83,14 @@ Novel writing does **not** require the world engine. Long and short fiction may 
 
 ## Your first writing session
 
-1. Click **New** (`新建`) → **Long novel** (`长篇小说`), enter a title and description. A local folder can be configured later.
+1. Open **Long form** (`长篇`) → **Library** (`作品库`) → **New novel** (`新建长篇`) and enter a title. A local folder can be configured here or later in settings.
 2. Use project information, references and writing rules to record your intent. Fill only the settings needed for your story.
 3. Plan the conflict and characters, then create volumes and chapters in the outline. Write manually or edit and approve AI candidates.
 4. Open chapters, develop scene outlines and draft the text. Review before adopting results.
 5. Check changes to facts, character states, relationships and foreshadowing before continuing.
 6. Open **Data management** (`数据管理`) to export Markdown/TXT and a full JSON backup.
 
-![Long-form outline workspace with a manually written demonstration outline](./docs/assets/readme/longform-outline.png)
+![Current long-form outline workspace in an isolated demonstration project](./docs/assets/readme/longform-outline-current.png)
 
 ## What the architecture does for your work
 

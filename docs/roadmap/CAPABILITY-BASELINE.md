@@ -26,6 +26,8 @@
 
 > UI 展示预览（2026-09-14）：首页可显式进入 `/storyforge/ui-preview/index.html`，查看正在调整的 199 个示例页面。该入口独立于正式业务，不读取/写入作品数据库或调用 AI，不改变以下产品能力状态。
 
+> 首页正式接入（2026-09-15）：`/` 与 `/home/*` 使用真实 Work/World、创作任务、发布记录、续写位置、本地搜索、共享设置及备份服务；作品封面由作者选择图片并明确保存。正常首页和 `?tab=home` 已统一；`?tab=home&legacy=1` 仅保留旧工具兼容回归。纯 UI 预览继续独立。首页不新增 AI 调用，不直接采纳候选，不把未接入新版界面的产品标成已完成；印刷装帧、封面生成历史不在此次接入范围。
+
 ## B · 分步骤长篇与节点
 
 | ID | 状态 | 当前事实与证据 | 缺口 |
@@ -44,7 +46,7 @@
 | ID | 状态 | 当前事实与证据 | 缺口 |
 |---|---|---|---|
 | C-SHORT-01 | implemented | 独立 `ShortNovelProductionV1`、六个专属 Skill/durable run、3～8 章工作台、逐章确认、证据审校/定向重写、完成门、append-only `CreationReleaseV1` 及 Markdown/TXT/JSON 导出已通过确定性回归、备份往返和真实 UI E2E | 文学质量和 provider 表现持续评测；不把剧本或漫画能力混入短篇产品 |
-| C-SCREENPLAY-01 | implemented | Product Hub 正式入口、冻结来源事实/因果/删改决定、Beat/Scene Card/场景 AST、十个专属 Skill 与 durable run、来源/戏剧双审查、定点修订、完成门、append-only `CreationReleaseV1` 及 Fountain/FDX/打印导出已通过恢复、备份、生命周期、round-trip 和真实 Chromium E2E | provider 表现和人工盲评持续观察；旧一步式剧本候选与完稿入口已拒绝，不把漫画页格或媒资混入剧本产品 |
+| C-SCREENPLAY-01 | implemented | `/script` 九页正式入口与 Work 选择、原作导入/章节范围、冻结来源事实/因果/删改决定、Beat/Scene Card/场景 AST、十个专属 Skill 与 durable run、来源/戏剧双审查、定点修订、完成门、append-only `CreationReleaseV1` 及 Fountain/FDX/打印导出已通过恢复、备份、生命周期、round-trip 和真实 Chromium E2E | provider 表现和人工盲评持续观察；旧一步式剧本候选与完稿入口已拒绝，不把漫画页格或媒资混入剧本产品 |
 | C-COMIC-01 | implemented | Product Hub 正式入口、十二阶段专业改编、漫画脚本/分页/显式阅读链/页格/视觉圣经、provider 能力与参考图实传证据、叙事/视觉双审查、定点修复、storyboard/visual 不可变 Release、Release→Blob 强引用及 PNG/WebP/CBZ/PDF 导出已通过恢复、迁移、备份、媒资生命周期和真实 Chromium E2E | provider 缺少 reference/seed/inpainting 时诚实阻断或降级；新 provider 仍须各自完成真实能力与质量验收，不能把 Prompt 声明当实传证据 |
 | C-MOTION-DRAMA-01 | implemented | Product Hub 三种来源入口、冻结 Novel Work、系列/物料圣经、八个专业 Skill 与 durable 候选确认、逐集节拍/剧本/分镜、图片与试听音频版本、Image/Video Prompt IR、Seedance/Runway/LTX/generic 确定性适配包、双成熟度质量门、不可变 Release、v6 生命周期与隔离 Chromium E2E 已形成闭环 | 不包含视频生成、选片、剪辑、混音和成片；第三方能力变化继续通过 adapter 维护和目标工具实测，不把宣传能力当稳定合同 |
 
@@ -61,13 +63,15 @@
 
 | ID | 状态 | 当前事实与证据 | 缺口 |
 |---|---|---|---|
-| E-TTRPG-01 | partial | 已接入中立世界协议、专用需求适配器、统一 Production/Build/ProductRelease v1、AI GM runtime、事件/存档与在线 handoff | 专用生产体验、完整媒资、权限隔离、真实多人体验和产品级 E2E 尚未封板 |
-| E-CHAT-01 | partial | 单/多角色互动已接入专用需求适配器、统一 Production/Build/ProductRelease v1、玩家 runtime 与 runtime Skill | 主 Agent 会谈、多人导演、长期记忆/可见性和完整发布运行体验需验收 |
-| E-TOWN-01 | partial | 已有专属 Brief/SourceSelection/adapter、Production/Build/ProductRelease、六时段语义地图、居民日程、知识隔离、证据化对话记忆、关系/轻经营、离线演化、检查点/分支、14 日回放、重大变化确认、durable 自治导演、产品专属地点/肖像/表情/环境音媒资 lane、玩家界面与冻结 Build 浏览器旅程 E2E | 真实模型长期角色一致性、真实媒体 provider 的肖像/音频质量、权利/成本/性能回执及非 fixture 浏览器商业验收仍需继续 |
+| E-TTRPG-01 | partial | 已接入中立世界协议、专用需求适配器、统一 Production/Build/ProductRelease v1、AI GM runtime、事件/存档与在线 handoff；独立跑团 UI 已接作品库、无世界 S2 保存、九步配置与提案、实际制作检查发布、产物查看和团局 | 逐字段产物编辑、完整媒资、公共服务权限隔离、真实多人体验及产品整体验收尚未封板 |
+| E-CHAT-01 | partial | 单/多角色互动已接入独立 S2 草稿、主 Agent 候选确认、专用需求适配器、统一 Production/Build/ProductRelease、玩家对话、关系记忆及检查点分支；私密消息过滤、导演决策与部分回复恢复已有回归 | 当前为纯文字；商业内容质量、超长会话与更多模型供应商的实测仍需验收 |
+| E-TOWN-01 | partial | 已有专属 Brief/SourceSelection/adapter、Production/Build/ProductRelease、六时段语义地图、居民日程、知识隔离、证据化对话记忆、关系/轻经营、离线演化、检查点/分支、14 日回放、重大变化确认、durable 自治导演、产品专属地点/肖像/表情/环境音媒资 lane、玩家界面与冻结 Build 浏览器旅程 E2E；新版作者界面接入独立 S2 草稿、可恢复会谈候选、来源选择、生产检查与分区游玩 | 真实模型长期角色一致性、真实媒体 provider 的肖像/音频质量、权利/成本/性能回执及非 fixture 浏览器商业验收仍需继续 |
 | E-TEXTADV-01 | partial | 文字冒险已接入专用需求适配器、统一 Production/Build/ProductRelease v1 和独立玩家面 | 可玩内容、规则、媒资、结局和真实 E2E 仍需专项封板 |
-| E-AVG-01 | partial | AVG 已接入专用需求适配器、统一 Production/Build/ProductRelease v1、演出与独立玩家面 | 真实视觉/声音资产、演出绑定和完整体验未验收 |
+| E-AVG-01 | partial | `/avg/:pageId?` 已接真实作品库、无世界可保存的 S2 草稿、主 Agent 会谈候选回填、冻结版本引用、统一 Production/Build/Release、作者剧情/演出/媒资修订及玩家存档；schema v7 草稿与素材参与备份生命周期 | 通用外部模型生成的完整文学/视听质量与商业标准仍需逐作品验收；原型与内部评审不得冒充商业完成 |
 | E-OPENWORLD-01 | partial | 文字开放世界已接入专用需求适配器、统一 Production/Build/ProductRelease v1、专用运行 API 和独立玩家面；状态演化仅是该产品的内部能力 | 区域按需演化、角色自治、长期任务演化与性能门未完整 |
 | E-MIST-HARBOR | implemented | 内置《雾港：失潮钟声》：文字冒险与 AVG 两种玩法、原稿 18 节点/158 节拍/三结局、17 项原版美术；从明确开始经世界版本、正式生产发布到独立存档，支持完整备份恢复 | 预写作品，无运行时模型对话或配音；不提升通用产品成熟度 |
+
+> 页面状态（2026-09-15）：漫画、漫剧素材、角色聊天已接入真实产品入口，并按主要操作与页内内容分类分层。文字冒险、文字开放世界页面顶部明确标注“尚在开发完善中，目前非正式功能”；其他产品的真实入口不代表本表中的 partial 能力已经完成商业验收。
 
 ## F · 平台与商业化
 

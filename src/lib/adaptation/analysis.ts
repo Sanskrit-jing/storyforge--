@@ -150,7 +150,7 @@ export async function adoptAdaptationSourceFactsV1(
     ])
     if (input.replaceExisting === false) await db.adaptationSourceFacts.bulkPut(rows)
     else await db.adaptationSourceFacts.bulkAdd(rows)
-    await db.adaptationProjects.update(root.id!, { revision: root.revision + 1, updatedAt: now })
+    await db.adaptationProjects.update(root.id!, { ...(['screenplay', 'comic'].includes(root.medium) && root.plan ? { briefSourceManifestVersion: null, planSourceManifestVersion: null } : {}), revision: root.revision + 1, updatedAt: now })
     return db.adaptationSourceFacts.where('[adaptationProjectId+manifestVersion]').equals(key).sortBy('stableKey')
   })
 }
@@ -195,7 +195,7 @@ export async function adoptAdaptationCausalEdgesV1(
     })
     await db.adaptationCausalEdges.where('[adaptationProjectId+manifestVersion]').equals(key).delete()
     await db.adaptationCausalEdges.bulkAdd(rows)
-    await db.adaptationProjects.update(root.id!, { revision: root.revision + 1, updatedAt: now })
+    await db.adaptationProjects.update(root.id!, { ...(['screenplay', 'comic'].includes(root.medium) && root.plan ? { briefSourceManifestVersion: null, planSourceManifestVersion: null } : {}), revision: root.revision + 1, updatedAt: now })
     return db.adaptationCausalEdges.where('[adaptationProjectId+manifestVersion]').equals(key).sortBy('stableKey')
   })
 }
@@ -235,7 +235,7 @@ export async function adoptAdaptationDecisionsV1(
     })
     await db.adaptationDecisions.where('[adaptationProjectId+manifestVersion]').equals(key).delete()
     await db.adaptationDecisions.bulkAdd(rows)
-    await db.adaptationProjects.update(root.id!, { revision: root.revision + 1, updatedAt: now })
+    await db.adaptationProjects.update(root.id!, { ...(['screenplay', 'comic'].includes(root.medium) && root.plan ? { briefSourceManifestVersion: null, planSourceManifestVersion: null } : {}), revision: root.revision + 1, updatedAt: now })
     return db.adaptationDecisions.where('[adaptationProjectId+manifestVersion]').equals(key).sortBy('stableKey')
   })
 }

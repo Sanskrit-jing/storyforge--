@@ -1,3 +1,5 @@
+import JSZip from 'jszip'
+import { exportMotionMaterialBundle } from '../../src/lib/motion-drama/delivery'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createWorkspace } from '../../src/lib/workspace/create-workspace'
 import { createAdaptation, listActiveSourceUnits } from '../../src/lib/adaptation/source-manifest'
@@ -186,7 +188,7 @@ describe('MOTION-DRAMA-1 · independent preproduction pipeline', () => {
 
   it('八岗位提示词和 durable 候选保持作者确认边界，并拒绝 stale 候选', async () => {
     const item = await fixture()
-    expect(STORYFORGE_SCHEMA_VERSION).toBe(6)
+    expect(STORYFORGE_SCHEMA_VERSION).toBe(10)
     for (const stage of ['series-bible', 'asset-bible', 'episode-outline', 'episode-script', 'shot-design', 'image-prompts', 'video-prompts', 'quality-review'] as MotionDramaPromptStageV1[]) {
       const definition = getMotionDramaPromptDefinitionV1(stage)
       expect(definition.instruction).toContain('不针对任何比赛')
@@ -312,6 +314,11 @@ describe('MOTION-DRAMA-1 · independent preproduction pipeline', () => {
     const referenceRelease = await publishMotionDramaReleaseV1({ scope: item.scope, episodeNumbers: [1], providers: [...providers], tier: 'reference-ready', expectedProductionRevision: studio.production.revision })
     expect(referenceRelease).toMatchObject({ version: 2, parentReleaseId: promptRelease.id })
     expect(await db.creationReleaseAssets.where('releaseId').equals(referenceRelease.id).count()).toBe(5)
+    const bundle=await exportMotionMaterialBundle(item.scope,referenceRelease.id)
+    const zip=await JSZip.loadAsync(await bundle.arrayBuffer())
+    expect(zip.file('manifest.json')).not.toBeNull()
+    expect(zip.file('EP1-seedance/提示词.txt')).not.toBeNull()
+    expect(Object.keys(zip.files).some(name=>name.startsWith('references/')&&name.endsWith('.png'))).toBe(true)
     const protectedBlobIds = (await db.creationReleaseAssets.where('releaseId').equals(referenceRelease.id).toArray())
       .map(row => row.blobObjectId)
     const gcReceipt = await collectUnreferencedMediaBlobObjects({ scope: item.scope })

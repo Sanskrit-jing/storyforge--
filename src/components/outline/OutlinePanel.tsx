@@ -1,4 +1,6 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { adoptOutlineReview, freezeOutlineReviewTarget, type OutlineReviewTarget } from '../../lib/outline/review-adoption'
+import { flushPendingEditsV1 } from '../../lib/authoring/pending-edit-coordinator'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useOutlineStore } from '../../stores/outline'
 import { useWorldGroupStore } from '../../stores/world-group'
 import { useStoryArcStore } from '../../stores/story-arc'  // 添加导入
@@ -242,7 +244,7 @@ export default function OutlinePanel({ project, onOpenChapter, initialNodeId }: 
     onOutlineRecovered: () => loadAll(project.id!),
   })
 
-  const chunkedGen = useChunkedGeneration()
+  const chunkedGen = useChunkedGeneration(project)
   const startChunkedGeneration = chunkedGen.start
   const [, setPendingChunkedMode] = useState<{ mode: GenerationMode; config: ChunkedGenerationConfig } | null>(null)
 
@@ -275,7 +277,8 @@ export default function OutlinePanel({ project, onOpenChapter, initialNodeId }: 
         volumeTitle: selectedVol.title,
         volumeSummary: selectedVol.summary,
         totalChapters: targetChapters,
-        config: chunkedConfig,
+        config: { ...chunkedConfig, wordsPerChapter: Number(parameterValues.wordsPerChapter) || 3000 },
+        authorHint: [hint, systemOverride, userOverride].filter(Boolean).join('\n\n'),
         assembled,
         storyArcContext: storyArcContext || undefined,  // 传入故事线上下文
         onInfo: toast.info,
@@ -288,15 +291,13 @@ export default function OutlinePanel({ project, onOpenChapter, initialNodeId }: 
   }
 
   const handleApplyChunkedResult = async () => {
-    if (!chunkedGen.result || !selectedVol) return
-    const allChapters = chunkedGen.result.blocks.flatMap(b => b.chapters)
-    if (allChapters.length === 0) {
-      toast.error('没有可应用的章节')
-      return
-    }
-    setPreviewChapters(allChapters)
-    chunkedGen.reset()
-    toast.info('已生成章节大纲，请点击"采纳"按钮写入')
+    if (!chunkedGen.result) return
+    try {
+      await flushPendingEditsV1()
+      await chunkedGen.adopt()
+      await loadAll(project.id!)
+      toast.success('精细章纲已采纳并保存')
+    } catch (error) { toast.error(error instanceof Error ? error.message : String(error)) }
   }
 
   // ── 采纳预览 + 确认 ──
@@ -500,11 +501,16 @@ export default function OutlinePanel({ project, onOpenChapter, initialNodeId }: 
       .sort((a, b) => a.order - b.order)
   }, [nodes, selectedVol])
 
+  const reviewSnapshot = useRef<typeof volumeChapters>([])
+  const reviewContext = useRef<string | null>(null)
   const handleReviewChapters = async (userQuestion?: string): Promise<ChapterReviewResult> => {
     if (!selectedVol || volumeChapters.length === 0) {
       return { issues: [], summary: '没有可审校的章节' }
     }
-    const reviewChapters = toReviewChapters(volumeChapters)
+    await flushPendingEditsV1()
+    await loadAll(project.id!)
+    reviewSnapshot.current = useOutlineStore.getState().nodes.filter(node => node.parentId === selectedVol.id && node.type === 'chapter').sort((a, b) => a.order - b.order).map(node => ({ ...node }))
+    const reviewChapters = toReviewChapters(reviewSnapshot.current)
 
     // 获取设定上下文用于检查设定一致性
     const contextResult = await buildOutlineAssembledContext(
@@ -512,24 +518,26 @@ export default function OutlinePanel({ project, onOpenChapter, initialNodeId }: 
       selectedVol.worldGroupId ?? null,
       selectedVol.id,
     )
+    reviewContext.current = contextResult.text
     return reviewChapterOutlines(reviewChapters, userQuestion, contextResult.text)
   }
 
   const handleRewriteIssue = async (issue: ChapterReviewIssue, customSuggestion?: string): Promise<RewriteResult> => {
-    const reviewChapters = toReviewChapters(volumeChapters)
-    const contextResult = await buildOutlineAssembledContext(
-      { kind: 'chapters', volumeId: selectedVol!.id! },
-      selectedVol?.worldGroupId ?? null,
-      selectedVol?.id,
-    )
-    return rewriteChapterOutline(reviewChapters, issue, contextResult.text, customSuggestion)
+    const target = reviewSnapshot.current[issue.affectedChapters[0]]
+    if (!target) throw new Error('审校目标已失效，请重新诊断。')
+    const frozenTarget = await freezeOutlineReviewTarget(target)
+    const reviewChapters = toReviewChapters(reviewSnapshot.current)
+    if (reviewContext.current == null) throw new Error('审校上下文已失效，请重新诊断。')
+    const result = await rewriteChapterOutline(reviewChapters, issue, reviewContext.current, customSuggestion)
+    return { ...result, target: frozenTarget }
   }
 
-  const handleApplyRewrite = (chapterIndex: number, newSummary: string) => {
-    const chapter = volumeChapters[chapterIndex]
-    if (!chapter) return
-    updateNode(chapter.id!, { summary: newSummary })
-    toast.success(`已更新第${chapterIndex + 1}章的摘要`)
+  const handleApplyRewrite = async (_chapterIndex: number, newSummary: string, target?: OutlineReviewTarget) => {
+    if (!target) throw new Error('缺少审校目标证据，请重新生成候选。')
+    await flushPendingEditsV1()
+    await adoptOutlineReview(target, project.id!, newSummary)
+    await loadAll(project.id!)
+    toast.success('章纲修改已保存')
   }
 
   const batch = useOutlineBatchGeneration({
@@ -603,7 +611,7 @@ export default function OutlinePanel({ project, onOpenChapter, initialNodeId }: 
           onOpenChange={setPromptPanelOpen}
         />
 
-        {generation.pendingRequest && !chunkedGen.isRunning && !chunkedGen.result && (
+        {generation.pendingRequest && !chunkedGen.session && !chunkedGen.isRunning && (
           <OutlineGenerationRequestPanel
             request={generation.pendingRequest}
             preparedContext={generation.preparedContext}
@@ -621,6 +629,15 @@ export default function OutlinePanel({ project, onOpenChapter, initialNodeId }: 
           />
         )}
 
+        {chunkedGen.error && <p role="alert" className="mb-3 text-sm text-warning">{chunkedGen.error}</p>}
+        {chunkedGen.session && !chunkedGen.isRunning && <div className="mb-3 rounded-lg border border-border p-3 text-sm">
+          <p>精细章纲 · {chunkedGen.session.volumeTitle} · 已保存 {chunkedGen.session.blocks.length}/{chunkedGen.session.config.blockCount} 块</p>
+          {['direction', 'chapters'].includes(chunkedGen.session.phase) && <p>上次请求可能已停止或结果未知。继续会重新请求当前未完成部分，可能再次计费。</p>}
+          <div className="mt-2 flex gap-3">
+            {chunkedGen.session.phase !== 'completed' && <button className="lf-action" onClick={() => void chunkedGen.resume()}>{['direction', 'chapters'].includes(chunkedGen.session.phase) ? '重新请求未完成部分' : '继续精细生成'}</button>}
+            <button className="lf-action" onClick={() => void chunkedGen.dismiss()}>关闭这次任务</button>
+          </div>
+        </div>}
         {(chunkedGen.isRunning || chunkedGen.result) && (
           <ChunkedGenerationPanel
             progress={chunkedGen.progress}
@@ -631,7 +648,7 @@ export default function OutlinePanel({ project, onOpenChapter, initialNodeId }: 
             onSelectChoice={(choiceId) => { void chunkedGen.selectChoice(choiceId) }}
             onRegenerate={() => { void chunkedGen.regenerateChoice() }}
             onToggleFavorite={(choiceId) => { void chunkedGen.toggleFavorite(choiceId) }}
-            onCancel={() => { chunkedGen.cancel(); chunkedGen.reset() }}
+            onCancel={() => { if (chunkedGen.isRunning) chunkedGen.cancel(); else void chunkedGen.dismiss() }}
             onApplyResult={() => { void handleApplyChunkedResult() }}
           />
         )}

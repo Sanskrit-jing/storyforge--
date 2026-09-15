@@ -99,6 +99,7 @@ export async function updateScreenplayScene(input: {
 }): Promise<ScreenplayScene> {
   const { scope, adaptation } = await requireScreenplay(input.scope, true)
   return db.transaction('rw', scopeTransactionTables(db.screenplayScenes, db.adaptationProjects, db.adaptationSourceUnits, db.workCharacterBindings), async () => {
+    await requireScreenplay(input.scope, true)
     const scene = await db.screenplayScenes.get(input.sceneId)
     if (!scene || !await assertRecordInScope(scope, 'screenplayScenes', scene, { owner: 'work' }) || scene.adaptationProjectId !== adaptation.id) throw new Error('[screenplay] 场景不存在或越界')
     if (scene.revision !== input.expectedRevision) throw new Error('[screenplay] 场景已变化，请刷新')
@@ -131,7 +132,8 @@ export async function setScreenplaySceneLocked(input: { scope: WorkspaceScope; s
 
 export async function deleteScreenplayScene(input: { scope: WorkspaceScope; sceneId: number }): Promise<void> {
   const { scope, adaptation } = await requireScreenplay(input.scope, true)
-  await db.transaction('rw', db.screenplayScenes, async () => {
+  await db.transaction('rw', scopeTransactionTables(db.screenplayScenes, db.adaptationProjects), async () => {
+    await requireScreenplay(input.scope, true)
     const scene = await db.screenplayScenes.get(input.sceneId)
     if (!scene || !await assertRecordInScope(scope, 'screenplayScenes', scene, { owner: 'work' }) || scene.adaptationProjectId !== adaptation.id) throw new Error('[screenplay] 场景不存在或越界')
     if (scene.status === 'locked') throw new Error('[screenplay] 锁定场景必须先解锁才能删除')
@@ -142,7 +144,8 @@ export async function deleteScreenplayScene(input: { scope: WorkspaceScope; scen
 export async function reorderScreenplayScenes(input: { scope: WorkspaceScope; orderedSceneIds: number[] }): Promise<ScreenplayScene[]> {
   const { adaptation } = await requireScreenplay(input.scope, true)
   if (new Set(input.orderedSceneIds).size !== input.orderedSceneIds.length) throw new Error('[screenplay] 排序包含重复场景')
-  return db.transaction('rw', db.screenplayScenes, async () => {
+  return db.transaction('rw', scopeTransactionTables(db.screenplayScenes, db.adaptationProjects), async () => {
+    await requireScreenplay(input.scope, true)
     const rows = await db.screenplayScenes.where('adaptationProjectId').equals(adaptation.id!).toArray()
     if (rows.length !== input.orderedSceneIds.length || rows.some(row => !input.orderedSceneIds.includes(row.id!))) throw new Error('[screenplay] 排序必须覆盖全部场景')
     const byId = new Map(rows.map(row => [row.id!, row]))
@@ -153,45 +156,70 @@ export async function reorderScreenplayScenes(input: { scope: WorkspaceScope; or
   })
 }
 
+
+function structureTables() {
+  return scopeTransactionTables(db.screenplayScenes, db.screenplaySceneCards, db.screenplayReviewIssues, db.adaptationProjects, db.adaptationSourceUnits, db.workCharacterBindings, db.outlineNodes, db.chapters, db.storyCores)
+}
+
+async function copySceneCard(scope: WorkspaceScope, original: ScreenplayScene, next: ScreenplayScene) {
+  const { adaptation } = await requireScreenplay(scope, true)
+  const card = await db.screenplaySceneCards.where('[adaptationProjectId+manifestVersion]').equals([adaptation.id!, adaptation.activeSourceManifestVersion]).filter(row => row.stableKey === original.stableKey).first()
+  if (card) {
+    const { id: _id, ...body } = card
+    await db.screenplaySceneCards.add({ ...body, stableKey: next.stableKey, sceneNumber: next.sceneNumber, episodeNumber: next.episodeNumber, order: next.order, purpose: next.summary, estimatedSeconds: next.estimatedSeconds, revision: 1, createdAt: Date.now(), updatedAt: Date.now() })
+  }
+}
+
 export async function duplicateScreenplayScene(input: { scope: WorkspaceScope; sceneId: number }): Promise<ScreenplayScene> {
-  const scenes = await listScreenplayScenes(input.scope)
-  const scene = scenes.find(row => row.id === input.sceneId)
-  if (!scene) throw new Error('[screenplay] 场景不存在或越界')
-  const episodeScenes = scenes.filter(row => row.episodeNumber === scene.episodeNumber)
-  return createScreenplayScene(input.scope, {
-    ...scene,
-    stableKey: undefined,
-    sceneNumber: Math.max(0, ...episodeScenes.map(row => row.sceneNumber)) + 1,
-    order: scenes.length,
-    summary: `${scene.summary}（副本）`,
-    blocks: scene.blocks.map(block => ({ ...block, id: `block_${nanoid(12)}` })),
-    status: scene.status === 'locked' ? 'draft' : scene.status,
+  return db.transaction('rw', structureTables(), async () => {
+    const scenes = await listScreenplayScenes(input.scope)
+    const scene = scenes.find(row => row.id === input.sceneId)
+    if (!scene) throw new Error('[screenplay] 场景不存在或越界')
+    const episodeScenes = scenes.filter(row => row.episodeNumber === scene.episodeNumber)
+    const copy = await createScreenplayScene(input.scope, {
+      ...scene,
+      stableKey: undefined,
+      sceneNumber: Math.max(0, ...episodeScenes.map(row => row.sceneNumber)) + 1,
+      order: scenes.length,
+      summary: `${scene.summary}（副本）`,
+      blocks: scene.blocks.map(block => ({ ...block, id: `block_${nanoid(12)}` })),
+      status: scene.status === 'locked' ? 'draft' : scene.status,
+    })
+    await copySceneCard(input.scope, scene, copy)
+    return copy
   })
 }
 
 export async function splitScreenplayScene(input: { scope: WorkspaceScope; sceneId: number; blockIndex: number; expectedRevision: number }): Promise<[ScreenplayScene, ScreenplayScene]> {
-  const scenes = await listScreenplayScenes(input.scope)
-  const scene = scenes.find(row => row.id === input.sceneId)
-  if (!scene || scene.revision !== input.expectedRevision) throw new Error('[screenplay] 场景不存在或已变化')
-  if (scene.status === 'locked') throw new Error('[screenplay] 锁定场景必须先解锁')
-  if (!Number.isInteger(input.blockIndex) || input.blockIndex < 1 || input.blockIndex >= scene.blocks.length) throw new Error('[screenplay] 拆分位置非法')
-  const first = await updateScreenplayScene({ scope: input.scope, sceneId: scene.id!, expectedRevision: scene.revision, patch: { blocks: scene.blocks.slice(0, input.blockIndex), estimatedSeconds: Math.max(1, Math.round(scene.estimatedSeconds * input.blockIndex / scene.blocks.length)) } })
-  const second = await createScreenplayScene(input.scope, {
-    ...scene,
-    stableKey: undefined,
-    sceneNumber: Math.max(0, ...scenes.filter(row => row.episodeNumber === scene.episodeNumber).map(row => row.sceneNumber)) + 1,
-    order: scenes.length,
-    summary: `${scene.summary}（续）`,
-    estimatedSeconds: Math.max(1, scene.estimatedSeconds - first.estimatedSeconds),
-    blocks: scene.blocks.slice(input.blockIndex),
-    status: 'draft',
+  return db.transaction('rw', structureTables(), async () => {
+    const scenes = await listScreenplayScenes(input.scope)
+    const scene = scenes.find(row => row.id === input.sceneId)
+    if (!scene || scene.revision !== input.expectedRevision) throw new Error('[screenplay] 场景不存在或已变化')
+    if (scene.status === 'locked') throw new Error('[screenplay] 锁定场景必须先解锁')
+    if (!Number.isInteger(input.blockIndex) || input.blockIndex < 1 || input.blockIndex >= scene.blocks.length) throw new Error('[screenplay] 拆分位置非法')
+    const first = await updateScreenplayScene({ scope: input.scope, sceneId: scene.id!, expectedRevision: scene.revision, patch: { blocks: scene.blocks.slice(0, input.blockIndex), estimatedSeconds: Math.max(1, Math.round(scene.estimatedSeconds * input.blockIndex / scene.blocks.length)) } })
+    const second = await createScreenplayScene(input.scope, {
+      ...scene,
+      stableKey: undefined,
+      sceneNumber: Math.max(0, ...scenes.filter(row => row.episodeNumber === scene.episodeNumber).map(row => row.sceneNumber)) + 1,
+      order: scenes.length,
+      summary: `${scene.summary}（续）`,
+      estimatedSeconds: Math.max(1, scene.estimatedSeconds - first.estimatedSeconds),
+      blocks: scene.blocks.slice(input.blockIndex),
+      status: 'draft',
+    })
+    await copySceneCard(input.scope, scene, second)
+    const { adaptation } = await requireScreenplay(input.scope, true)
+    const firstCard = await db.screenplaySceneCards.where('[adaptationProjectId+manifestVersion]').equals([adaptation.id!, adaptation.activeSourceManifestVersion]).filter(card => card.stableKey === first.stableKey).first()
+    if (firstCard) await db.screenplaySceneCards.update(firstCard.id!, { estimatedSeconds: first.estimatedSeconds, revision: firstCard.revision + 1, updatedAt: Date.now() })
+    return [first, second] as [ScreenplayScene, ScreenplayScene]
   })
-  return [first, second]
 }
 
 export async function mergeScreenplayScenes(input: { scope: WorkspaceScope; firstSceneId: number; secondSceneId: number; expectedFirstRevision: number; expectedSecondRevision: number }): Promise<ScreenplayScene> {
   const { adaptation } = await requireScreenplay(input.scope, true)
-  return db.transaction('rw', scopeTransactionTables(db.screenplayScenes, db.adaptationProjects, db.adaptationSourceUnits, db.workCharacterBindings), async () => {
+  return db.transaction('rw', structureTables(), async () => {
+    await requireScreenplay(input.scope, true)
     const rows = await db.screenplayScenes.where('adaptationProjectId').equals(adaptation.id!).sortBy('order')
     const firstIndex = rows.findIndex(row => row.id === input.firstSceneId)
     const secondIndex = rows.findIndex(row => row.id === input.secondSceneId)
@@ -201,6 +229,10 @@ export async function mergeScreenplayScenes(input: { scope: WorkspaceScope; firs
     if (first.revision !== input.expectedFirstRevision || second.revision !== input.expectedSecondRevision) throw new Error('[screenplay] 待合并场景已变化')
     if (first.status === 'locked' || second.status === 'locked') throw new Error('[screenplay] 锁定场景必须先解锁')
     if (first.episodeNumber !== second.episodeNumber || first.planSectionKey !== second.planSectionKey) throw new Error('[screenplay] 只能合并同集、同计划段场景')
+    const cards = await db.screenplaySceneCards.where('[adaptationProjectId+manifestVersion]').equals([adaptation.id!, adaptation.activeSourceManifestVersion]).toArray()
+    const firstCard = cards.find(card => card.stableKey === first.stableKey)
+    const secondCard = cards.find(card => card.stableKey === second.stableKey)
+    if (firstCard && secondCard && firstCard.beatKey !== secondCard.beatKey) throw new Error('[screenplay] 不同节拍的场次请先在场次规划中调整归属，再合并')
     const blockIds = new Set(first.blocks.map(block => block.id))
     const appendedBlocks = second.blocks.map(block => blockIds.has(block.id) ? { ...block, id: `block_${nanoid(12)}` } : block)
     const next: ScreenplayScene = {
@@ -218,6 +250,11 @@ export async function mergeScreenplayScenes(input: { scope: WorkspaceScope; firs
     assertValidScreenplaySceneV1({ scene: next, adaptation, ...deps })
     await db.screenplayScenes.put(next)
     await db.screenplayScenes.delete(second.id!)
+    if (firstCard && secondCard) {
+      await db.screenplaySceneCards.update(firstCard.id!, { sourceUnitKeys: [...new Set([...firstCard.sourceUnitKeys, ...secondCard.sourceUnitKeys])], estimatedSeconds: next.estimatedSeconds, purpose: next.summary, revision: firstCard.revision + 1, updatedAt: Date.now() })
+      await db.screenplaySceneCards.delete(secondCard.id!)
+    }
+    await db.screenplayReviewIssues.where('adaptationProjectId').equals(adaptation.id!).filter(issue => issue.sceneKey === second.stableKey).delete()
     const remaining = rows.filter(row => row.id !== second.id).map((row, order) => row.id === first.id ? { ...next, order } : { ...row, order })
     await db.screenplayScenes.bulkPut(remaining)
     return { ...next, order: firstIndex }

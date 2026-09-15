@@ -22,7 +22,7 @@ StoryForge es una herramienta de código abierto para crear y vivir historias co
 
 Investiga un antiguo naufragio con dos compañeros IA, protege los secretos de tu personaje y decide cómo volverán los barcos esta noche. Un director de juego IA (KP) guía la aventura con reglas originales **2d6**, **7 escenas, 6 pistas y 3 finales**.
 
-![Pantalla de acceso a la aventura Fog Harbor](./docs/assets/readme/ttrpg-preview.png)
+![Pantalla de acceso a la aventura Fog Harbor](./docs/assets/readme/ttrpg-current.png)
 
 El juego y sus medios incluidos están en el repositorio. Configura tu propia API de modelo para empezar. La captura muestra la entrada real a la aventura.
 
@@ -68,15 +68,15 @@ En la página inicial, abre los ajustes del modelo de la esquina superior derech
 
 ## Elige tu punto de partida
 
-![Página de productos de StoryForge](./docs/assets/readme/product-hub.png)
+![Página de productos de StoryForge](./docs/assets/readme/home-current.png)
 
 | Objetivo | Entrada | Resultado y estado |
 |---|---|---|
-| Escribir una novela | Nuevo → Novela | Personajes, esquemas, capítulos, continuidad y revisión; proceso técnico actual validado |
-| Terminar una obra breve | Nuevo → Narrativa breve | Diseño, fichas de capítulos, borrador, revisión, edición inmutable; Markdown/TXT/JSON |
-| Adaptar a guion | Nuevo → Novela a guion | Fuentes fijadas, decisiones, escenas estructuradas, revisiones; Fountain/FDX/impresión |
-| Adaptar a cómic | Nuevo → Novela a cómic | Páginas, viñetas, referencias visuales, rotulación, ediciones; PNG/WebP/CBZ/PDF |
-| Crear un mundo | Nuevo → Motor de mundos | Contenido semántico, derivación explícita, versiones inmutables y lectura |
+| Escribir una novela | Novela | Personajes, esquemas, capítulos, continuidad y revisión; proceso técnico actual validado |
+| Terminar una obra breve | Narrativa breve | Diseño, fichas de capítulos, borrador, revisión, edición inmutable; Markdown/TXT/JSON |
+| Adaptar a guion | Novela a guion | Fuentes fijadas, decisiones, escenas estructuradas, revisiones; Fountain/FDX/impresión |
+| Adaptar a cómic | Novela a cómic | Páginas, viñetas, referencias visuales, rotulación, ediciones; PNG/WebP/CBZ/PDF |
+| Crear un mundo | Motor de mundos | Contenido semántico, derivación explícita, versiones inmutables y lectura |
 | Componer un proceso visual | Modo de nodos | Versión preliminar; comparte lógica y datos de la novela |
 | Jugar o crear experiencias | TTRPG / Chat de personajes / Ciudad IA / Juegos de texto | Versiones preliminares con ciclos propios de producción y ejecución |
 
@@ -86,13 +86,13 @@ Escribir novelas no requiere el motor de mundos. El autor puede derivar explíci
 
 ## Tu primera sesión de escritura
 
-1. Elige **Nuevo** (`新建`) → **Novela** (`长篇小说`) e introduce título y descripción.
+1. Abre **Novela** (`长篇`) → **Biblioteca** (`作品库`) → **Nueva novela** (`新建长篇`) e introduce el título.
 2. Registra intención, referencias y reglas de escritura; añade la ambientación necesaria.
 3. Planifica conflicto y personajes, luego volúmenes y capítulos. Escribe manualmente o edita y aprueba propuestas de la IA.
 4. Desarrolla escenas y texto. Revisa los cambios en hechos, estados, relaciones y pistas antes de seguir.
 5. En **Gestión de datos** (`数据管理`), exporta el texto y una copia JSON completa.
 
-![Esquema de novela con un ejemplo redactado manualmente](./docs/assets/readme/longform-outline.png)
+![Esquema de novela con un ejemplo redactado manualmente](./docs/assets/readme/longform-outline-current.png)
 
 ## Qué hace cada producto por tu obra
 

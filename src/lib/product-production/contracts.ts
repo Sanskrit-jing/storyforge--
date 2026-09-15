@@ -1,3 +1,5 @@
+import { parseChatAuthoringSettingsV1 } from '../character-interaction/authoring-contract'
+import { parseAvgAuthoringSettingsV1 } from '../avg/authoring-contract'
 import type {
   ProductConsultationBudgetV1,
   ProductProductionBlockerResolutionV1,
@@ -16,8 +18,8 @@ import type {
   ProviderCapabilityRequirementV1,
 } from '../types'
 import { PRODUCT_MEDIA_KINDS, PRODUCT_PRODUCTION_COMMAND_TYPES, PRODUCTION_PRODUCT_KINDS_V1 } from '../types'
-import { isSha256Hash } from './hash'
-import { parseProductWorldSourceSelectionV1 } from './runtime-package'
+import { isSha256Hash, canonicalProductProductionJsonV2 } from './hash'
+import { parseProductRuntimePackageV1, parseProductWorldSourceSelectionV1 } from './runtime-package'
 import { parseTtrpgProductionBriefV2 } from '../ttrpg/production-brief'
 import { parseAiTownProductionBriefV1 } from '../ai-town/contracts'
 
@@ -251,6 +253,9 @@ export function parseProductProductionBriefV3(value: unknown): ProductProduction
     'schema', 'version', 'source', 'intent', 'scale', 'media', 'consultationBudget',
     'productionBudget', 'qualityProfile', 'capabilityRequirements', 'externalDataPolicy',
     'fallbackPolicy', 'completionContract', 'unresolvedDecisionKeys',
+    ...(Object.prototype.hasOwnProperty.call(row, 'characterChat') ? ['characterChat'] : []),
+    ...(Object.prototype.hasOwnProperty.call(row, 'avg') ? ['avg'] : []),
+    ...(Object.prototype.hasOwnProperty.call(row, 'avgRevision') ? ['avgRevision'] : []),
     ...(Object.prototype.hasOwnProperty.call(row, 'ttrpg') ? ['ttrpg'] : []),
     ...(Object.prototype.hasOwnProperty.call(row, 'aiTown') ? ['aiTown'] : []),
     ...(Object.prototype.hasOwnProperty.call(row, 'authorConfirmations') ? ['authorConfirmations'] : []),
@@ -273,7 +278,21 @@ export function parseProductProductionBriefV3(value: unknown): ProductProduction
   const capabilityRequirements = row.capabilityRequirements.map(parseCapability)
   if (new Set(capabilityRequirements.map(item => item.requirementKey)).size !== capabilityRequirements.length) fail('capability requirementKey 重复')
 
+  if (row.characterChat && productType !== 'character-interaction') fail('角色聊天设置不能用于其他产品')
+  if (row.avg && productType !== 'avg') fail('AVG 设置只能用于 AVG')
+  let avgRevision: ProductProductionBriefV3['avgRevision']
+  if (row.avgRevision != null) {
+    const revision = record(row.avgRevision, 'avgRevision')
+    exactKeys(revision, ['version','basePackageHash','runtimePackage'], 'avgRevision')
+    if (productType !== 'avg' || revision.version !== 1 || !isSha256Hash(revision.basePackageHash)) fail('AVG 修订身份无效')
+    const runtimePackage = parseProductRuntimePackageV1(revision.runtimePackage)
+    if (runtimePackage.productType !== 'avg' || runtimePackage.sourceWorld.contentHash !== source.worldContentHash || canonicalProductProductionJsonV2(runtimePackage.sourceWorld.selection)!==canonicalProductProductionJsonV2(selection)) fail('AVG 修订不得替换冻结来源')
+    avgRevision = { version: 1, basePackageHash: revision.basePackageHash, runtimePackage }
+  }
   const parsed: ProductProductionBriefV3 = {
+    ...(avgRevision ? { avgRevision } : {}),
+    ...(row.characterChat ? { characterChat: parseChatAuthoringSettingsV1(row.characterChat) } : {}),
+    ...(row.avg ? { avg: parseAvgAuthoringSettingsV1(row.avg) } : {}),
     schema: 'storyforge.product-production-brief', version: 3,
     source: {
       worldReleaseId: positiveId(source.worldReleaseId, 'source.worldReleaseId'),

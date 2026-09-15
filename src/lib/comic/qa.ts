@@ -1,3 +1,4 @@
+import { comicLetteringOverflowsV1 } from './renderers'
 import { db } from '../db/schema'
 import type { ComicMediaAsset, ComicPanel, WorkspaceScope } from '../types'
 import { resolveScope } from '../workspace/scope'
@@ -29,13 +30,6 @@ export interface ComicQualityReportV1 {
 
 function push(issues: ComicQualityIssueV1[], issue: ComicQualityIssueV1): void {
   if (!issues.some(item => item.code === issue.code && item.pageKey === issue.pageKey && item.panelKey === issue.panelKey && item.message === issue.message)) issues.push(issue)
-}
-
-function letteringCapacity(panel: ComicPanel, index: number): number {
-  const item = panel.lettering[index]
-  const widthPx = item.frame.width * panel.frame.width * 1200
-  const heightPx = item.frame.height * panel.frame.height * 1700
-  return Math.max(1, Math.floor(widthPx / (item.fontSize * .9)) * Math.floor(heightPx / (item.fontSize * 1.2)))
 }
 
 export async function inspectComicQualityV1(scopeInput: WorkspaceScope): Promise<ComicQualityReportV1> {
@@ -96,7 +90,7 @@ export async function inspectComicQualityV1(scopeInput: WorkspaceScope): Promise
         else if (!subject.selectedMediaAssetKey) push(issues, { level: 'warning', code: 'continuity-reference-image-missing', pageKey: page.stableKey, panelKey: panel.stableKey, message: `${subject.label} 尚未选定设定图，人物/地点一致性只能依赖文字。` })
       }
       panel.lettering.forEach((item, index) => {
-        if ([...item.text].length > letteringCapacity(panel, index)) push(issues, { level: 'warning', code: 'lettering-overflow', pageKey: page.stableKey, panelKey: panel.stableKey, message: `排字 ${item.id} 可能超出气泡或文字框。` })
+        if (comicLetteringOverflowsV1(panel,item,root.targetSpec)) push(issues, { level: 'error', code: 'lettering-overflow', pageKey: page.stableKey, panelKey: panel.stableKey, message: `排字 ${item.id} 可能超出气泡或文字框。` })
         if (item.frame.x < .02 || item.frame.y < .02 || item.frame.x + item.frame.width > .98 || item.frame.y + item.frame.height > .98) push(issues, { level: 'warning', code: 'lettering-safe-area', pageKey: page.stableKey, panelKey: panel.stableKey, message: `排字 ${item.id} 靠近格边界。` })
         for (let right = index + 1; right < panel.lettering.length; right++) if (framesOverlap(item.frame, panel.lettering[right].frame)) push(issues, { level: 'warning', code: 'lettering-overlap', pageKey: page.stableKey, panelKey: panel.stableKey, message: `排字 ${item.id} 与 ${panel.lettering[right].id} 重叠。` })
       })
@@ -109,6 +103,7 @@ export async function inspectComicQualityV1(scopeInput: WorkspaceScope): Promise
   const selectedPanelCount = panels.filter(panel => panel.selectedMediaAssetKey).length
   const storyboardBlockers: string[] = []
   if (root.briefSourceManifestVersion !== root.activeSourceManifestVersion || !root.brief) storyboardBlockers.push('当前来源版本的改编 Brief 未确认')
+  if (root.planSourceManifestVersion !== root.activeSourceManifestVersion) storyboardBlockers.push('上游内容已变化，分页方案需要重新确认')
   if (!facts.length) storyboardBlockers.push('没有已确认来源事实')
   if (!decisions.length) storyboardBlockers.push('没有已确认改编决定')
   if (!beats.length) storyboardBlockers.push('没有已确认漫画脚本节拍')
@@ -116,7 +111,7 @@ export async function inspectComicQualityV1(scopeInput: WorkspaceScope): Promise
   if (pagePlans.length !== expectedPages || pages.length !== expectedPages) storyboardBlockers.push(`分页未覆盖目标 ${expectedPages} 页`)
   if (!panels.length) storyboardBlockers.push('没有漫画格')
   if (root.visualBibleSourceManifestVersion !== root.activeSourceManifestVersion || !root.visualBible || !subjects.length) storyboardBlockers.push('视觉圣经或 Subject 未确认')
-  const narrativeErrorCodes = new Set(['page-order-gap', 'stable-key-duplicate', 'page-layout', 'empty-page', 'narrative-review-stale'])
+  const narrativeErrorCodes = new Set(['page-order-gap', 'stable-key-duplicate', 'page-layout', 'empty-page', 'narrative-review-stale', 'lettering-overflow'])
   for (const issue of issues.filter(row => row.level === 'error' && narrativeErrorCodes.has(row.code))) storyboardBlockers.push(issue.message)
   if (reviewIssues.some(issue => issue.status === 'open' && ['narrative', 'reading-order', 'lettering'].includes(issue.category) && ['critical', 'major'].includes(issue.severity))) storyboardBlockers.push('仍有 critical/major 页级审查问题未处理')
   const visualBlockers = [...storyboardBlockers]

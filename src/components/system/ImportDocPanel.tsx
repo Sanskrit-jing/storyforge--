@@ -21,7 +21,7 @@ import useImportDocumentPreparation from './import/useImportDocumentPreparation'
 import useImportSessionRecovery from './import/useImportSessionRecovery'
 import type { Project } from '../../lib/types'
 import type { ImportSession, ChunkState, ImportTarget } from '../../lib/types/import-session'
-import type { SidebarModule } from '../layout/Sidebar'
+import type { SidebarModule } from '../layout/sidebar-tree'
 import { useDialog } from '../shared/Dialog'
 import { useToast } from '../shared/Toast'
 import {

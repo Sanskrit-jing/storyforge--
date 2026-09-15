@@ -1,16 +1,12 @@
 import { expect, test } from '@playwright/test'
 import { allPages } from '../../ui-preview/src/catalog'
 
-test('首页打开独立 UI 预览，提示范围、浏览全部页面并返回正式版', async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('storyforge_guide_completed', 'e2e'))
+test('新版 UI 原型仅保留独立设计参考，正式首页直接进入当前功能', async ({ page }) => {
   await page.goto('./')
-  const entry = page.getByTestId('ui-preview-entry')
-  await expect(entry).toContainText('优化调整中')
-  await expect(entry).toContainText('尚未接入真实功能')
-  await expect(entry).toContainText('待功能梳理完成后，新版 UI 将正式上线')
+  await expect(page.getByTestId('ui-preview-entry')).toHaveCount(0)
+  await expect(page.getByRole('heading',{name:/天地为炉/})).toBeVisible()
   const before = await page.evaluate(() => JSON.stringify(localStorage))
-  await entry.getByRole('link', { name: '浏览新版 UI 预览' }).click()
-  await expect(page).toHaveURL(/ui-preview\/index.html#home\/today$/)
+  await page.goto('./ui-preview/index.html#home/today')
   await expect(page.getByRole('note')).toContainText('正在梳理；梳理完成后上线')
   await page.getByRole('button', { name: /全部页面/ }).click()
   await expect(page.locator('.atlas section button')).toHaveCount(allPages.length)
@@ -22,7 +18,7 @@ test('首页打开独立 UI 预览，提示范围、浏览全部页面并返回�
   await page.getByRole('button', { name: '关闭', exact: true }).click()
   expect(await page.evaluate(() => JSON.stringify(localStorage))).toBe(before)
   await page.getByRole('link', { name: '返回正式版' }).click()
-  await expect(page.getByRole('heading', { name: '你的创作与游玩空间' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /天地为炉/ })).toBeVisible()
 })
 
 test('预览所有页面可直接加载与刷新，示例操作不会访问浏览器数据库或业务 API', async ({ page }) => {

@@ -1,3 +1,4 @@
+import { readLongformProgressV1 } from './longform-progress'
 import { db } from '../db/schema'
 import type { AssembleContextInput } from '../registry/types'
 import type { OutlineNode } from '../types'
@@ -84,6 +85,7 @@ export async function readAgentWorkStatus(input: AssembleContextInput): Promise<
     sum + (chapter.wordCount || countWords(htmlToPlainText(chapter.content || '')))
   ), 0)
 
+  const progress = await readLongformProgressV1(input.scope, input.worldGroupId ?? null)
   return [
     '【作品概况】',
     `作品：${work.title}`,
@@ -92,6 +94,9 @@ export async function readAgentWorkStatus(input: AssembleContextInput): Promise<
     `章节：${chapters.length}（已有正文 ${writtenChapters.length}）`,
     `世界组：${worldGroups}；世界观：${worldviews}；故事核心：${storyCores}`,
     `角色：${characters}；大纲节点：${outlineNodes}；伏笔：${foreshadows}；参考资料：${references}`,
+    `当前世界：${progress.volumes} 卷；${progress.rows.length} 个章纲；${progress.detailed} 章场景细纲；${progress.written} 章正文。`,
+    `建议下一阶段（仅建议，须作者确认）：${progress.nextRequest}`,
+    '单轮候选完成不代表全书完成；全书结局与修订需作者确认。',
   ].join('\n')
 }
 

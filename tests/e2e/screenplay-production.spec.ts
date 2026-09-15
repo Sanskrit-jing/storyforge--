@@ -1,3 +1,4 @@
+import { createLongform } from './helpers/product-entry'
 import { expect, test } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 
@@ -7,11 +8,7 @@ test('小说转剧本从产品入口冻结来源，经专业生产数据发布�
   })
   await page.goto('./')
 
-  await page.getByRole('banner').getByRole('button', { name: '新建', exact: true }).click()
-  await page.getByRole('button', { name: /长篇小说/ }).click()
-  await page.getByLabel('名称').fill('E2E 剧本来源小说')
-  await page.getByRole('button', { name: '创建长篇小说', exact: true }).click()
-  await expect(page).toHaveURL(/\/storyforge\/workspace\/\d+\?module=outline$/)
+  await createLongform(page,'E2E 剧本来源小说')
   await page.evaluate(async () => {
     const importer = new Function('path', 'return import(path)') as (path: string) => Promise<any>
     const [{ db }, { stampNewRecord }] = await Promise.all([
@@ -36,22 +33,16 @@ test('小说转剧本从产品入口冻结来源，经专业生产数据发布�
     }, { owner: 'work' }))
   })
 
-  await page.goto('./')
-  await page.getByRole('banner').getByRole('button', { name: '新建', exact: true }).click()
-  await page.getByRole('button', { name: /小说转剧本/ }).click()
+  await page.goto('./script/library')
+  await page.getByRole('button', { name: '新建剧本改编', exact: true }).click()
   await expect(page.getByLabel('小说来源')).toContainText('E2E 剧本来源小说')
-  await page.getByLabel('名称').fill('E2E 山门电影剧本')
+  await page.getByLabel('小说来源').selectOption({label:'E2E 剧本来源小说'})
+  await page.getByLabel('剧本名称',{exact:true}).fill('E2E 山门电影剧本')
   await page.getByLabel('剧本类型').selectOption('film')
   await page.getByLabel('单集目标分钟').fill('1')
-  await page.getByRole('button', { name: '创建剧本项目', exact: true }).click()
+  await page.getByRole('button', { name: '冻结来源并创建剧本', exact: true }).click()
 
-  await expect(page.getByRole('heading', { name: '正规剧本工作台', exact: true })).toBeVisible()
-  await expect(page.getByRole('heading', { name: '十步小说转剧本', exact: true })).toBeVisible()
-  for (const stage of ['1 来源事实', '2 因果图', '3 改编 Brief', '4 删改决定', '5 Beat Sheet', '6 Scene Cards', '7 逐场写作', '8 来源审查', '9 戏剧审查', '10 定点修订']) {
-    await expect(page.locator('.screenplay-pipeline-steps').getByText(stage, { exact: true })).toBeVisible()
-  }
-  await expect(page.getByText('候选 · 尚未写入')).toHaveCount(0)
-
+  await expect(page.getByRole('navigation',{name:'剧本页面导航'})).toBeVisible()
   const result = await page.evaluate(async () => {
     const importer = new Function('path', 'return import(path)') as (path: string) => Promise<any>
     const [
@@ -174,8 +165,7 @@ test('小说转剧本从产品入口冻结来源，经专业生产数据发布�
   expect(result.status).toBe('reviewed')
 
   await page.reload()
-  await page.getByTestId('product-tab-novel').click()
-  await expect(page.getByText('EXT 青云山门 - 晨', { exact: true })).toBeVisible()
+  await page.getByRole('navigation',{name:'剧本页面导航'}).getByRole('button',{name:'版本与导出',exact:true}).click()
   const publish = page.getByRole('button', { name: '发布不可变版本', exact: true })
   await expect(publish).toBeEnabled()
   await publish.click()
@@ -192,26 +182,17 @@ test('小说转剧本从产品入口冻结来源，经专业生产数据发布�
   expect(fountain).toContain('林惊羽')
 
   await page.reload()
-  await page.getByTestId('product-tab-novel').click()
+  await page.getByRole('navigation',{name:'剧本页面导航'}).getByRole('button',{name:'版本与导出',exact:true}).click()
   await expect(page.getByRole('button', { name: '已发布 v1', exact: true })).toBeVisible()
 
-  await page.getByRole('banner').getByRole('button', { name: '新建', exact: true }).click()
-  await page.getByRole('button', { name: /小说转剧本/ }).click()
-  await page.getByLabel('名称').fill('E2E 三集剧')
-  await page.getByLabel('剧本类型').selectOption('series')
-  await page.getByLabel('集数').fill('3')
-  await page.getByLabel('单集目标分钟').fill('45')
-  await page.getByRole('button', { name: '创建剧本项目', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'E2E 三集剧', exact: true })).toBeVisible()
-  await expect(page.getByText('剧集 · 结构化正规剧本', { exact: true })).toBeVisible()
-
-  await page.getByRole('banner').getByRole('button', { name: '新建', exact: true }).click()
-  await page.getByRole('button', { name: /小说转剧本/ }).click()
-  await page.getByLabel('名称').fill('E2E 短剧')
-  await page.getByLabel('剧本类型').selectOption('short-drama')
-  await page.getByLabel('集数').fill('12')
-  await page.getByLabel('单集目标分钟').fill('2')
-  await page.getByRole('button', { name: '创建剧本项目', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'E2E 短剧', exact: true })).toBeVisible()
-  await expect(page.getByText('短剧 · 结构化正规剧本', { exact: true })).toBeVisible()
+  for(const [format,title,count,minutes] of [['series','E2E 三集剧','3','45'],['short-drama','E2E 短剧','12','2']]){
+    await page.goto('./script/library?create=1')
+    await page.getByLabel('小说来源').selectOption({label:'E2E 剧本来源小说'})
+    await page.getByLabel('剧本名称',{exact:true}).fill(title)
+    await page.getByLabel('剧本类型',{exact:true}).selectOption(format)
+    await page.getByLabel('集数',{exact:true}).fill(count)
+    await page.getByLabel('单集目标分钟',{exact:true}).fill(minutes)
+    await page.getByRole('button',{name:'冻结来源并创建剧本',exact:true}).click()
+    await expect(page.getByRole('heading',{name:title,exact:true})).toBeVisible()
+  }
 })

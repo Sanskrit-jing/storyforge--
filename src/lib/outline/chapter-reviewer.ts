@@ -1,3 +1,4 @@
+import type { OutlineReviewTarget } from './review-adoption'
 import { executeRegisteredAIEntryV1 } from '../agent/formal-ai-entry'
 import { useAIConfigStore } from '../../stores/ai-config'
 import type { OutlineNode } from '../types'
@@ -38,6 +39,7 @@ export interface ChangeItem {
 }
 
 export interface RewriteResult {
+  target?: OutlineReviewTarget
   originalSummary: string
   revisedSummary: string
   changes: ChangeItem[]

@@ -1,3 +1,4 @@
+import { openSeededRuntime } from './helpers/product-entry'
 import { expect, test } from '@playwright/test'
 import { openCurrentAiTownPlayer, seedCurrentAiTownProduct } from './helpers/current-products'
 
@@ -28,6 +29,8 @@ test('后日谈小镇完成交谈、行动、离线演化、分支与刷新恢�
   await expect(player).toContainText('行动 3')
   await expect(player).toContainText('精力 72/100')
 
+  await page.getByRole('navigation',{name:'AI 小镇内容导航'}).getByRole('button',{name:'小镇档案',exact:true}).click()
+  player = page.getByTestId('ai-town-player')
   await player.getByRole('button', { name: '离线推进 1 日', exact: true }).click()
   await expect(player).toContainText('第 2 日')
   await expect(player.getByText('第 1 日', { exact: true })).toBeVisible()
@@ -41,7 +44,7 @@ test('后日谈小镇完成交谈、行动、离线演化、分支与刷新恢�
   await expect(player.getByText('茶屋修缮支线', { exact: true })).toBeVisible()
 
   await page.reload()
-  await page.getByTestId('product-tab-town').click()
+  await openSeededRuntime(page,'ai-town','town/play')
   player = page.getByTestId('ai-town-player')
   await expect(player).toContainText('茶屋修缮支线')
   await expect(player).toContainText('第 2 日')

@@ -37,6 +37,7 @@ const TARGET_TABLE_BY_AGENT: Record<string, string> = {
 function targetTableFor(candidate: MasterAgentDurableCandidateV1): string {
   if (candidate.payload.skillId === 'world-origin.story-core') return 'storyCores'
   if (candidate.payload.skillId === 'world-origin.creative-rules') return 'creativeRules'
+  if (candidate.payload.skillId === 'outline.details') return 'detailedOutlines'
   if (candidate.payload.skillId === 'outline.story-arcs') return 'storyArcs'
   if (candidate.payload.skillId === 'outline.storyline-progress') return 'storylineProgress'
   return TARGET_TABLE_BY_AGENT[candidate.payload.agentId] ?? 'unknown'
