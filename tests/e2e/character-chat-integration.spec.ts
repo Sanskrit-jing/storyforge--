@@ -94,3 +94,24 @@ test('S2 role settings reach the frozen production brief through the real confir
     expect(brief.intent.playerRole).toBe('守灯人');
     await page.screenshot({ path: info.outputPath('chat-confirmed-production.png') });
 });
+
+test('browser history keeps unsaved settings with their own Work',async({page})=>{
+ await page.goto('./chat/library')
+ const [a,b]=await page.evaluate(async()=>{const load=new Function('p','return import(p)');const {createChatDraftV1}=await load('/storyforge/src/lib/character-interaction/draft-service.ts');const {DEFAULT_CHAT_SETTINGS}=await load('/storyforge/src/lib/character-interaction/authoring-contract.ts');return Promise.all(['甲','乙'].map(async playerRole=>{const c=await createChatDraftV1(playerRole,{...DEFAULT_CHAT_SETTINGS,playerRole});return `./chat/vision?project=${c.scope.projectId}&work=${c.scope.workId}`}))})
+ await page.goto(a)
+ await expect(page.getByLabel('玩家身份',{exact:true})).toHaveValue('甲')
+ await page.getByLabel('玩家身份',{exact:true}).fill('甲的未保存身份')
+ await page.evaluate(href=>{history.pushState(null,'',href.replace('./','/storyforge/'));dispatchEvent(new PopStateEvent('popstate'))},b)
+ await expect(page.getByLabel('玩家身份',{exact:true})).toHaveValue('乙')
+ await page.goBack()
+ await expect(page.getByLabel('玩家身份',{exact:true})).toHaveValue('甲的未保存身份')
+ await page.getByRole('button',{name:'保存方案',exact:true}).click()
+ await page.goto(b)
+ await expect(page.getByLabel('玩家身份',{exact:true})).toHaveValue('乙')
+ await page.getByLabel('玩家身份',{exact:true}).fill('乙的本地修改')
+ await page.evaluate(async()=>{const load=new Function('p','return import(p)');const db=(await load('/storyforge/src/lib/db/schema.ts')).db;const svc=await load('/storyforge/src/lib/character-interaction/draft-service.ts');const work=await db.works.get(Number(new URLSearchParams(location.search).get('work')));const scope={projectId:work.projectId,worldId:work.worldId,workId:work.id};const d=await svc.readChatDraftV1(scope);await svc.saveChatDraftV1(scope,d.revision,{...JSON.parse(d.settingsJson),playerRole:'乙的另一个标签页修改'})})
+ await page.getByRole('button',{name:'保存方案',exact:true}).click()
+ await expect(page.getByRole('alert')).toContainText('其他页面修改')
+ const stored=await page.evaluate(async()=>{const load=new Function('p','return import(p)');const db=(await load('/storyforge/src/lib/db/schema.ts')).db;const d=await db.chatAuthoringDrafts.where('workId').equals(Number(new URLSearchParams(location.search).get('work'))).first();return JSON.parse(d.settingsJson).playerRole})
+ expect(stored).toBe('乙的另一个标签页修改')
+})
