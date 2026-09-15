@@ -29,7 +29,7 @@ import { exportProjectJSON, downloadJSON } from "../lib/export/json-export";
 import { useAutoBackup } from "../hooks/useAutoBackup";
 import { useGistAutoBackup } from "../hooks/useGistAutoBackup";
 import { PRODUCT_NAVIGATION } from "../components/navigation/product-navigation";
-import { AVG_PAGES } from "../components/avg/navigation";
+import { AVG_PAGES, AVG_PRIMARY_NAV, AVG_WORKBENCH_GROUPS, AVG_PLAYER_PAGES, avgPrimaryForPage } from "../components/avg/navigation";
 import "../components/longform/longform.css";
 import "../components/avg/avg.css";
 const Studio = lazy(
@@ -51,6 +51,14 @@ const PRODUCTS = ["avg"] as const;
 export default function AvgPage() {
   const { pageId = "library" } = useParams();
   const page = AVG_PAGES.find((p) => p[0] === pageId) ?? AVG_PAGES[0];
+  const primaryId = avgPrimaryForPage(page[0]);
+  const primary = AVG_PRIMARY_NAV.find(item => item[0] === primaryId)!;
+  const hasContentNav = primaryId === 'workbench' || primaryId === 'player';
+  const [contentMenu, setContentMenu] = useState(false);
+  const contentNavRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    contentNavRef.current?.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView({block:'nearest'});
+  }, [pageId, contentMenu]);
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const projectId = Number(params.get("project")) || null;
@@ -190,7 +198,8 @@ export default function AvgPage() {
     void run(async () => {
       const target = dirty ? await save() : row;
       setMenu(false);
-      navigate(path(id, target));
+      setContentMenu(false);
+      navigate(path(id, target, ["play", "history"].includes(id) && sessionId ? `&session=${sessionId}` : ""));
     });
   const update = <K extends keyof AvgAuthoringSettingsV1>(
     key: K,
@@ -273,7 +282,7 @@ export default function AvgPage() {
     });
   return (
     <div
-      className={`longform-app avg-app ${menu ? "lf-navigation-open" : ""}`}
+      className={`longform-app avg-app ${menu ? "lf-navigation-open" : ""} ${contentMenu ? "lf-step-menu-open" : ""}`}
       data-testid="avg-page"
     >
       <header className="lf-top">
@@ -305,47 +314,46 @@ export default function AvgPage() {
           {row?.work.title ?? "选择或新建 AVG"}
         </button>
         <nav aria-label="AVG 页面导航">
-          {[...new Set(AVG_PAGES.map((p) => p[2]))].map((group) => (
-            <section key={group}>
-              <h3>{group}</h3>
-              {AVG_PAGES.filter((p) => p[2] === group).map((p) => (
-                <button
-                  key={p[0]}
-                  aria-current={page[0] === p[0] ? "page" : undefined}
-                  onClick={() => go(p[0])}
-                >
-                  {p[1]}
-                </button>
-              ))}
-            </section>
+          {AVG_PRIMARY_NAV.map(([id, label, entry]) => (
+            <button key={id} aria-current={primaryId === id ? 'page' : undefined} onClick={() => go(entry)}>{label}</button>
           ))}
+          <button onClick={() => void run(async () => { if (dirty) await save(); navigate('/home/settings'); })}>通用设置</button>
         </nav>
-        <Link to="/home/settings">通用设置</Link>
       </aside>
       <section className="lf-main">
         <header className="lf-heading">
           <small>
-            AVG › {page[1]}
+            AVG › {primary[1]}{hasContentNav ? ` › ${page[1]}` : ''}
             {row ? ` · ${row.work.title}` : ""}
           </small>
-          <h2>{page[1]}</h2>
+          <h2>{primary[1]}</h2>
           <div className="lf-mobile-controls">
-            <button onClick={() => setMenu(!menu)}>AVG 目录</button>
+            <button aria-expanded={menu} onClick={() => {setMenu(!menu);setContentMenu(false);}}>AVG 目录</button>
+            {hasContentNav && <button aria-expanded={contentMenu} onClick={() => {setContentMenu(!contentMenu);setMenu(false);}}>{primaryId === 'workbench' ? '制作目录' : '游玩目录'}</button>}
           </div>
         </header>
-        <div className="lf-body">
+        <div className={`lf-body ${hasContentNav ? 'lf-with-steps' : ''}`}>
+          {hasContentNav && <aside ref={contentNavRef} className="lf-steps avg-content-sidebar">
+            <nav aria-label="AVG 内容导航">
+              {primaryId === 'workbench' ? AVG_WORKBENCH_GROUPS.map(group => <section key={group.label}>
+                <h3>{group.label}</h3>
+                {group.pages.map(item => <button key={item[0]} aria-current={page[0] === item[0] ? 'page' : undefined} onClick={() => go(item[0])}>{item[1]}</button>)}
+              </section>) : <section><h3>游玩与记录</h3>{AVG_PLAYER_PAGES.map(item => <button key={item[0]} aria-current={page[0] === item[0] ? 'page' : undefined} onClick={() => go(item[0])}>{item[1]}</button>)}</section>}
+            </nav>
+          </aside>}
           <main ref={contentRef} className="lf-content">
-            <nav className="avg-phases" aria-label="制作阶段">
+            {primaryId !== 'library' && primaryId !== 'player' && <nav className="avg-phases" aria-label="制作阶段">
               {[
                 ["source", "S1 · 世界封存"],
                 ["vision", "S2 · 产品定向"],
                 ["production", "S3 · 产品执行"],
               ].map(([id, label]) => (
-                <button key={id} onClick={() => go(id)}>
+                <button key={id} aria-current={(id === 'source' ? page[0] === 'source' : id === 'vision' ? page[2] === 'S2 · 产品定向' : page[2] === 'S3 · 产品执行') ? 'step' : undefined} onClick={() => go(id)}>
                   {label}
                 </button>
               ))}
-            </nav>
+            </nav>}
+            {primaryId === "workbench" && ["confirm", "production", "review"].includes(page[0]) && <h3 className="avg-page-heading">{page[1]}</h3>}
             {error && (
               <p className="avg-alert" role="alert">
                 {error}

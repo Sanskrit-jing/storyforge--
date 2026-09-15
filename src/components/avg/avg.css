@@ -230,3 +230,13 @@
 .avg-app h3 {
   font-family: var(--font-serif);
 }
+
+/* Product navigation stays outside; S2/S3 content stays in the workbench. */
+.avg-app .avg-content-sidebar nav{border:0;margin:0;padding:0}
+.avg-app .avg-content-sidebar h3{font:11px var(--font-sans);letter-spacing:1px;color:#718572;margin:6px 0;padding:12px}
+.avg-app .avg-content-sidebar section{display:grid;gap:4px;margin-bottom:16px}
+.avg-app .avg-content-sidebar button{font-size:13px;line-height:1.7;padding:11px 12px}
+.avg-app .avg-page-heading{font:24px var(--font-serif);margin:0 4px 22px}
+.avg-app .lf-sidebar nav button[aria-current]:hover{background:linear-gradient(95deg,#cbdcc6,#e0e5ce);color:#244842}
+.avg-app .avg-phases [aria-current=step]{background:#d9e6d1;border-color:#abc4a8;color:#285748}
+@media (min-width:901px) and (max-width:1200px){.avg-app .lf-with-steps .avg-consult{grid-template-columns:1fr}}

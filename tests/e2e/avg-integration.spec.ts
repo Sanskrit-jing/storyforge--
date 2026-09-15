@@ -55,7 +55,8 @@ test("AVG pages are open without a world; settings and confirmed conversation su
     page.getByRole("heading", { name: "叙事图与对白", exact: true }).first(),
   ).toBeVisible();
   const nav = page.getByRole("navigation", { name: "AVG 页面导航" });
-  await nav.getByRole("button", { name: "故事与体验", exact: true }).click();
+  const content = page.getByRole("navigation", { name: "AVG 内容导航" });
+  await content.getByRole("button", { name: "故事与体验", exact: true }).click();
   await page.getByLabel("AVG 作品名称").fill("AVG 接入验收");
   await page.getByLabel("玩家身份／主角", { exact: true }).fill("巡夜人");
   await page.getByLabel("开场与核心目标").fill("寻找遗失的信");
@@ -65,14 +66,14 @@ test("AVG pages are open without a world; settings and confirmed conversation su
   await expect(page.getByLabel("玩家身份／主角", { exact: true })).toHaveValue(
     "巡夜人",
   );
-  await nav.getByRole("button", { name: "制作流程", exact: true }).click();
+  await content.getByRole("button", { name: "制作流程", exact: true }).click();
   await expect(
     page.getByRole("heading", {
       name: "开始制作，需要一个世界引擎",
       exact: true,
     }),
   ).toBeVisible();
-  await nav.getByRole("button", { name: "方案会谈", exact: true }).click();
+  await content.getByRole("button", { name: "方案会谈", exact: true }).click();
   await page.getByLabel("AVG 会谈输入").fill("把主角改成灯塔档案员");
   await page.getByRole("button", { name: "发送", exact: true }).click();
   await expect(
@@ -100,7 +101,8 @@ test("AVG pages are open without a world; settings and confirmed conversation su
   await expect(
     page.getByRole("status").filter({ hasText: "世界版本已引用" }),
   ).toBeVisible();
-  await nav.getByRole("button", { name: "确认制作方案", exact: true }).click();
+  await nav.getByRole("button", { name: "制作台", exact: true }).click();
+  await content.getByRole("button", { name: "确认制作方案", exact: true }).click();
   await expect(page.getByLabel("玩家身份 / 主角", { exact: true })).toHaveValue(
     "灯塔档案员",
   );
@@ -160,4 +162,41 @@ test("author edits persist and run as a new version without an AI request", asyn
     "作者重新写下了这段开场。",
   );
   await page.screenshot({ path: info.outputPath("avg-revised-play.png") });
+});
+
+test('AVG operations contain workbench and player navigation without gating browsing',async({page},info)=>{
+ await page.goto('./avg/library');
+ const primary=page.getByRole('navigation',{name:'AVG 页面导航'});
+ const content=page.getByRole('navigation',{name:'AVG 内容导航'});
+ await expect(primary.getByRole('button')).toHaveText(['作品库','世界引擎','制作台','发布与版本','游玩','通用设置']);
+ await expect(content).toHaveCount(0);
+ await primary.getByRole('button',{name:'制作台',exact:true}).click();
+ await expect(primary.locator('[aria-current="page"]')).toHaveText('制作台');
+ await expect(content).toContainText('S2 · 产品定向');
+ await expect(content).toContainText('S3 · 产品执行');
+ await content.getByRole('button',{name:'音频与演出',exact:true}).click();
+ await page.reload();
+ await expect(content.locator('[aria-current="page"]')).toHaveText('音频与演出');
+ await expect(primary.locator('[aria-current="page"]')).toHaveText('制作台');
+ await page.screenshot({path:info.outputPath('avg-workbench-navigation.png')});
+ await primary.getByRole('button',{name:'发布与版本',exact:true}).click();
+ await expect(content).toHaveCount(0);
+ await primary.getByRole('button',{name:'游玩',exact:true}).click();
+ await content.getByRole('button',{name:'存档与路线',exact:true}).click();
+ await page.reload();
+ await expect(primary.locator('[aria-current="page"]')).toHaveText('游玩');
+ await expect(content.locator('[aria-current="page"]')).toHaveText('存档与路线');
+ await page.screenshot({path:info.outputPath('avg-player-navigation.png')});
+ await page.setViewportSize({width:390,height:844});
+ await page.getByRole('button',{name:'AVG 目录',exact:true}).click();
+ await primary.getByRole('button',{name:'制作台',exact:true}).click();
+ await page.getByRole('button',{name:'制作目录',exact:true}).click();
+ await content.getByRole('button',{name:'路线与结局目标',exact:true}).click();
+ await page.reload();
+ await page.getByRole('button',{name:'制作目录',exact:true}).click();
+ await expect(content.locator('[aria-current="page"]')).toHaveText('路线与结局目标');
+ await page.screenshot({path:info.outputPath('avg-content-mobile.png')});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+ const counts=await page.evaluate(async()=>{const load=new Function('p','return import(p)');const {db}=await load('/storyforge/src/lib/db/schema.ts');return [await db.works.count(),await db.productProductions.count(),await db.productRuntimeSessions.count()]});
+ expect(counts).toEqual([0,0,0]);
 });
