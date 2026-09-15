@@ -261,7 +261,7 @@ export async function adoptMotionDramaProfessionalCandidateV1(input: { scope: Wo
   let snapshot = await readAgentRunV1(input.scope, input.runId); const state = await latest(input.scope, input.runId); const candidate = state.candidate; const step = stepId(candidate.stage); let intent = state.intent
   if (candidate.projectId !== input.scope.projectId || candidate.worldId !== input.scope.worldId || candidate.workId !== input.scope.workId) throw new Error('[motion-drama-run] 候选越过当前 Work')
   if (snapshot.projection.state === 'completed' && snapshot.projection.terminalReceiptHash) return { snapshot, candidate, receiptHash: snapshot.projection.terminalReceiptHash }
-  if (snapshot.projection.state === 'awaiting_confirmation') {
+  if (snapshot.projection.state === 'awaiting_confirmation' && !intent) {
     await candidateFresh(input.scope, candidate)
     const authorPayload = parseMotionDramaCandidatePayloadV1(candidate.stage, input.authorPayload ?? candidate.payload) as MotionDramaCandidatePayloadV1
     const body = { version: 1 as const, kind: 'motion-drama-professional-intent' as const, candidate, authorPayload, authorPayloadHash: await hashCanonicalValue(authorPayload) }
@@ -271,6 +271,10 @@ export async function adoptMotionDramaProfessionalCandidateV1(input: { scope: Wo
     snapshot = await append(input.scope, snapshot, 'adoption.started', { stepId: step, candidateHash: candidate.candidateHash, intentHash: intent.intentHash })
   }
   if (!intent) throw new Error('[motion-drama-run] 候选不在可采纳状态')
+  // Resume from the frozen author intent even if interruption happened between
+  // checkpoint, confirmation and adoption events. Never replace author edits.
+  if (snapshot.projection.state === 'awaiting_confirmation') snapshot = await append(input.scope, snapshot, 'confirmation.recorded', { stepId: step, candidateHash: candidate.candidateHash, decision: 'adopt' })
+  if (!snapshot.events.some(event => event.type === 'adoption.started')) snapshot = await append(input.scope, snapshot, 'adoption.started', { stepId: step, candidateHash: candidate.candidateHash, intentHash: intent.intentHash })
   let adoptionHash = snapshot.projection.steps[step]?.adoptionHash
   if (!adoptionHash) {
     const roots = await requireMotionDramaRootsV1(input.scope)
@@ -291,12 +295,12 @@ export async function adoptMotionDramaProfessionalCandidateV1(input: { scope: Wo
   return { snapshot, candidate, receiptHash: receipt.receiptHash }
 }
 
-export async function readPendingMotionDramaCandidateV1(scope: WorkspaceScope): Promise<{ snapshot: AgentRunSnapshotV1; candidate: MotionDramaProfessionalCandidateV1 } | null> {
+export async function readPendingMotionDramaCandidateV1(scope: WorkspaceScope): Promise<{ snapshot: AgentRunSnapshotV1; candidate: MotionDramaProfessionalCandidateV1; authorPayload?: MotionDramaCandidatePayloadV1; resuming?: boolean } | null> {
   const runs = (await readOwnedRows<any>(scope, 'agentRuns', { owner: 'work' })).filter(row => ['awaiting_confirmation', 'running'].includes(row.status) && row.contractJson?.includes('motion-drama:')).sort((a, b) => (b.id ?? 0) - (a.id ?? 0))
   for (const run of runs) {
     if (!run.id) continue
     try {
-      let snapshot = await readAgentRunV1(scope, run.id); const state = await latest(scope, run.id); if (state.intent) continue; const step = stepId(state.candidate.stage)
+      let snapshot = await readAgentRunV1(scope, run.id); const state = await latest(scope, run.id); if (state.intent) return { snapshot, candidate: state.candidate, authorPayload: state.intent.authorPayload, resuming: true }; const step = stepId(state.candidate.stage)
       if (!snapshot.projection.steps[step]?.candidateHash && snapshot.projection.steps[step]?.status === 'running') snapshot = await append(scope, snapshot, 'candidate.persisted', { stepId: step, attempt: snapshot.projection.steps[step]?.attempt ?? 1, candidateHash: state.candidate.candidateHash, requiresConfirmation: true })
       if (snapshot.projection.state === 'awaiting_confirmation') return { snapshot, candidate: state.candidate }
     } catch { /* damaged and stale runs are not presented as candidates */ }
@@ -310,4 +314,11 @@ export async function rejectMotionDramaProfessionalCandidateV1(scope: WorkspaceS
   const step = stepId(state.candidate.stage)
   snapshot = await append(scope, snapshot, 'confirmation.recorded', { stepId: step, candidateHash: state.candidate.candidateHash, decision: 'reject' })
   await append(scope, snapshot, 'run.cancelled', { reason: `author-rejected-motion-drama-${state.candidate.stage}` })
+}
+
+export async function listMotionMaterialTasks(scope:WorkspaceScope):Promise<Array<{id:number;stage:MotionDramaPromptStageV1;status:string;resuming:boolean}>>{
+ const rows=(await readOwnedRows<import('../types').AgentRunRecord>(scope,'agentRuns',{owner:'work'})).filter(row=>['running','awaiting_confirmation','failed'].includes(row.status)&&row.contractJson.includes('motion-drama:'))
+ const tasks=[]
+ for(const row of rows){if(!row.id)continue;try{const state=await latest(scope,row.id);tasks.push({id:row.id,stage:state.candidate.stage,status:row.status,resuming:Boolean(state.intent)})}catch{/* no recoverable candidate yet */}}
+ return tasks.sort((a,b)=>b.id-a.id)
 }

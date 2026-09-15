@@ -22,6 +22,7 @@ StoryForge 当前是 React + TypeScript + Vite 的本地优先单页应用，核
 - `/town/:pageId?`：AI 小镇作品库、独立 S2 草稿与会谈、世界出口选择、制作检查与发布，以及分区游玩和存档；未选择世界也可浏览与保存配置。
 - `/ttrpg/:pageId?`：跑团作品库、可保存的九步配置、世界出口选择、提案比较、制作检查与发布、团局和游玩；内容分类位于页面内左侧，未选择世界仍可浏览和保存配置。
 - `/world/:pageId?`：世界内容编辑、地图、封存、版本资源出口与分享导入；`project` 选择世界工作区，未选择仍可浏览。一级目录按我的世界、世界设定、版本与封存、数据出口、分享与导入、社区与发行、通用设置组织；设定分类及其编辑模块在页面内左侧分层排列，原有内容深链保持有效。旧世界工作区链接重定向到此入口。
+- `/motion/:pageId?`：漫剧素材制作、质量审查和版本交付；输出参考素材与工具提示词包。
 - `/comic/:pageId?`：小说转漫画真实作品库、来源方案、脚本、页格排版、视觉素材、审校阅读和版本记录；外侧仅内容分类，编辑与生成操作位于内容页，`work` 选择独立漫画 Work。
 - `/script/:pageId?`：小说转剧本作品库、来源与改编规划、场次生产、审查及版本导出；`work` 查询参数选择独立剧本 Work，未选择仍可浏览。
 - `/workspace/:projectId`：作品工作区；独立长篇使用作品库、工作台、版本与导出、派生、导入、社区与设置导航，分步骤与节点复用原领域组件与数据。
@@ -96,7 +97,7 @@ flowchart TB
 | 当前事实 | 数值 | 单一事实源 |
 |---|---:|---|
 | 应用语义版本 | `3.9.1` | `package.json` |
-| TypeScript 生产源码 | 1124 个文件 / 355976 行 | `tsconfig.json` |
+| TypeScript 生产源码 | 1130 个文件 / 356298 行 | `tsconfig.json` |
 | IndexedDB schema | v9 / 122 张 required tables | `schema.ts` / `REQUIRED_TABLES` |
 | PROJECT_TABLES | 122 张表 | `project-tables.ts` |
 | Prompt 主线 | 65 个 moduleKey / 210 条内置模板 | `PromptModuleKey` / `prompt-seeds*.ts` |

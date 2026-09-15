@@ -10,6 +10,7 @@ const TtrpgPage = lazy(() => import('./pages/TtrpgPage'))
 const AvgPage = lazy(() => import('./pages/AvgPage'))
 const HomePage = lazy(() => import('./pages/HomePage'))
 const WorldEnginePage = lazy(() => import('./pages/WorldEnginePage'))
+const MotionMaterialsPage = lazy(() => import('./pages/MotionMaterialsPage'))
 const PreviewRoutePage = lazy(() => import('./pages/PreviewRoutePage'))
 const MistHarborPage = lazy(() => import('./pages/MistHarborPage'))
 const ProductHubPage = lazy(() => import('./pages/ProductHubPage'))
@@ -40,7 +41,8 @@ export default function App() {
     <>
     <ResumeTracker/>
     <Routes>
-      {[...PRODUCT_NAVIGATION.filter(item => !['home', 'long', 'short', 'script', 'world', 'avg', 'ttrpg', 'town', 'comic'].includes(item.id)), { id: 'community' }].map(item => <Route key={item.id} path={`/${item.id}/:pageId?`} element={<Suspense fallback={<RouteFallback />}><PreviewRoutePage productId={item.id}/></Suspense>}/>)}
+      {[...PRODUCT_NAVIGATION.filter(item => !['home', 'long', 'short', 'script', 'world', 'avg', 'ttrpg', 'town', 'comic', 'motion'].includes(item.id)), { id: 'community' }].map(item => <Route key={item.id} path={`/${item.id}/:pageId?`} element={<Suspense fallback={<RouteFallback />}><PreviewRoutePage productId={item.id}/></Suspense>}/>)}
+      <Route path="/motion/:pageId?" element={<Suspense fallback={<RouteFallback />}><MotionMaterialsPage/></Suspense>}/>
       <Route path="/town/:pageId?" element={<Suspense fallback={<RouteFallback />}><AiTownPage /></Suspense>}/>
       <Route path="/ttrpg/:pageId?" element={<Suspense fallback={<RouteFallback />}><TtrpgPage /></Suspense>}/>
       <Route path="/avg/:pageId?" element={<Suspense fallback={<RouteFallback />}><AvgPage /></Suspense>}/>

@@ -170,6 +170,11 @@ export async function adoptMotionDramaCandidateV1(input: { scope: WorkspaceScope
     const [adaptation, production] = await Promise.all([db.adaptationProjects.get(roots.adaptation.id), db.motionDramaProductions.get(roots.production.id)])
     if (!adaptation || !production || adaptation.revision !== input.expectedAdaptationRevision || production.revision !== input.expectedProductionRevision || production.currentEpisodeNumber !== input.episodeNumber) throw new Error('[motion-drama] 采纳 CAS 失败：生产内容已变化')
     const scope = roots.scope
+    // A pack is a frozen compilation of the series and material definitions.
+    // Keep authored scenes/shots, but require explicit recompilation after upstream edits.
+    if (input.stage === 'series-bible' || input.stage === 'asset-bible') {
+      await db.motionDramaPromptPacks.where('adaptationProjectId').equals(adaptation.id!).delete()
+    }
     if (input.stage === 'series-bible') {
       const latest = await db.motionDramaSeriesBibles.where('adaptationProjectId').equals(adaptation.id!).last()
       const version = (latest?.version ?? 0) + 1
@@ -183,7 +188,7 @@ export async function adoptMotionDramaCandidateV1(input: { scope: WorkspaceScope
         const existing = await db.motionDramaAssetSubjects.where('adaptationProjectId').equals(adaptation.id!).filter(row => row.stableKey === candidate.stableKey).first()
         const subject: MotionDramaAssetSubjectV1 = stampNewRecord(scope, 'motionDramaAssetSubjects', {
           ...(existing?.id ? { id: existing.id } : {}), projectId: scope.projectId, workId: scope.workId, adaptationProjectId: adaptation.id!, manifestVersion: adaptation.activeSourceManifestVersion,
-          ...structuredClone(candidate), selectedVersionKey: existing?.selectedVersionKey ?? null, authorStatus: 'confirmed', revision: (existing?.revision ?? 0) + 1,
+          ...structuredClone(candidate), selectedVersionKey: existing && existing.basePrompt === candidate.basePrompt && existing.appearance === candidate.appearance && existing.identity === candidate.identity ? existing.selectedVersionKey : null, authorStatus: 'confirmed', revision: (existing?.revision ?? 0) + 1,
           createdAt: existing?.createdAt ?? now, updatedAt: now,
         }, { owner: 'work' })
         await db.motionDramaAssetSubjects.put(subject)
@@ -325,4 +330,53 @@ export async function resyncMotionDramaSourceV1(input: { scope: WorkspaceScope; 
     },
   })
   if (next.activeSourceManifestVersion !== roots.adaptation.activeSourceManifestVersion + 1) throw new Error('[motion-drama] 来源同步版本异常')
+}
+
+/** Explicitly select an existing product-owned reference, retaining history/releases. */
+export async function selectMotionMaterialReference(input: {scope:WorkspaceScope; subjectKey:string; versionKey:string|null; expectedRevision:number}): Promise<void> {
+  const roots=await requireMotionDramaRootsV1(input.scope,true)
+  await db.transaction('rw',scopeTransactionTables(db.motionDramaProductions,db.motionDramaAssetSubjects,db.motionDramaAssetVersions,db.motionDramaPromptPacks),async()=>{
+    const production=await db.motionDramaProductions.get(roots.production.id)
+    const subject=await db.motionDramaAssetSubjects.where('adaptationProjectId').equals(roots.adaptation.id).filter(row=>row.stableKey===input.subjectKey).first()
+    if(!subject?.id||production?.revision!==input.expectedRevision)throw new Error('物料或制作内容已变化，请刷新')
+    if(input.versionKey){const version=await db.motionDramaAssetVersions.where('adaptationProjectId').equals(roots.adaptation.id).filter(row=>row.stableKey===input.versionKey&&row.subjectKey===input.subjectKey).first();if(!version?.blobObjectId)throw new Error('参考版本不存在或没有实际素材')}
+    await db.motionDramaAssetSubjects.update(subject.id,{selectedVersionKey:input.versionKey,revision:subject.revision+1,updatedAt:Date.now()})
+    await db.motionDramaPromptPacks.where('adaptationProjectId').equals(roots.adaptation.id).delete()
+    await db.motionDramaProductions.update(roots.production.id,{revision:production.revision+1,updatedAt:Date.now()})
+  })
+}
+export async function selectMotionFrameReference(input:{scope:WorkspaceScope;shotKey:string;role:'start-frame'|'key-frame'|'end-frame';referenceKey:string|null;expectedRevision:number}):Promise<void>{
+ const roots=await requireMotionDramaRootsV1(input.scope,true)
+ await db.transaction('rw',scopeTransactionTables(db.motionDramaProductions,db.motionDramaShots,db.motionDramaShotReferences,db.motionDramaPromptPacks),async()=>{
+  const production=await db.motionDramaProductions.get(roots.production.id)
+  const shot=await db.motionDramaShots.where('adaptationProjectId').equals(roots.adaptation.id).filter(row=>row.stableKey===input.shotKey).first()
+  if(!shot||production?.revision!==input.expectedRevision)throw new Error('镜头或制作内容已变化，请刷新')
+  const references=await db.motionDramaShotReferences.where('adaptationProjectId').equals(roots.adaptation.id).filter(row=>row.shotKey===input.shotKey&&row.role===input.role).toArray()
+  if(input.referenceKey&&!references.some(row=>row.stableKey===input.referenceKey&&row.blobObjectId!=null))throw new Error('参考帧不存在或越界')
+  for(const row of references)await db.motionDramaShotReferences.update(row.id!,{selected:row.stableKey===input.referenceKey,updatedAt:Date.now()})
+  await db.motionDramaPromptPacks.where('adaptationProjectId').equals(roots.adaptation.id).filter(row=>row.episodeNumber===shot.episodeNumber).delete()
+  await db.motionDramaProductions.update(roots.production.id,{revision:production.revision+1,updatedAt:Date.now()})
+ })
+}
+
+export async function removeMotionMaterialSubject(input:{scope:WorkspaceScope;subjectKey:string;expectedRevision:number}):Promise<void>{
+ const roots=await requireMotionDramaRootsV1(input.scope,true)
+ await db.transaction('rw',scopeTransactionTables(db.motionDramaProductions,db.motionDramaAssetSubjects,db.motionDramaAssetVersions,db.motionDramaAssetBindings,db.motionDramaShots,db.motionDramaScriptScenes,db.motionDramaShotReferences,db.motionDramaPromptPacks),async()=>{
+  const production=await db.motionDramaProductions.get(roots.production.id)
+  const subject=await db.motionDramaAssetSubjects.where('adaptationProjectId').equals(roots.adaptation.id).filter(row=>row.stableKey===input.subjectKey).first()
+  if(!subject?.id||production?.revision!==input.expectedRevision)throw new Error('物料或制作内容已变化，请刷新')
+  const versions=await db.motionDramaAssetVersions.where('adaptationProjectId').equals(roots.adaptation.id).filter(row=>row.subjectKey===input.subjectKey).toArray()
+  const keys=new Set(versions.map(v=>v.id))
+  const [shots,scenes,bindings,frames]=await Promise.all([
+   db.motionDramaShots.where('adaptationProjectId').equals(roots.adaptation.id).toArray(),
+   db.motionDramaScriptScenes.where('adaptationProjectId').equals(roots.adaptation.id).toArray(),
+   db.motionDramaAssetBindings.where('adaptationProjectId').equals(roots.adaptation.id).toArray(),
+   db.motionDramaShotReferences.where('adaptationProjectId').equals(roots.adaptation.id).toArray(),
+  ])
+  if(shots.some(s=>s.subjectKeys.includes(input.subjectKey)||s.soundPlan.some(c=>c.subjectKey===input.subjectKey))||scenes.some(s=>s.characterKeys.includes(input.subjectKey)||s.dialogue.some(d=>d.speakerKey===input.subjectKey)||s.soundCues.some(c=>c.subjectKey===input.subjectKey))||bindings.some(b=>b.subjectKey===input.subjectKey)||frames.some(f=>f.subjectKey===input.subjectKey||f.assetVersionId!=null&&keys.has(f.assetVersionId)))throw new Error('该物料仍被剧本、分镜或参考绑定引用，请先处理引用后再删除')
+  await db.motionDramaAssetSubjects.delete(subject.id)
+  await db.motionDramaAssetVersions.bulkDelete(versions.flatMap(v=>v.id?[v.id]:[]))
+  await db.motionDramaPromptPacks.where('adaptationProjectId').equals(roots.adaptation.id).delete()
+  await db.motionDramaProductions.update(roots.production.id,{revision:production.revision+1,updatedAt:Date.now()})
+ })
 }
