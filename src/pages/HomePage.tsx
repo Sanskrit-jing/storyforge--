@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { Fragment, lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
 import { ArrowRight, BookOpen, Clock, Compass, Flame, FolderOpen, Globe2, Library, Menu, Search, Settings, X } from 'lucide-react'
 import { PRODUCT_NAVIGATION } from '../components/navigation/product-navigation'
@@ -9,7 +9,7 @@ import { flushPendingEditsV1 } from '../lib/authoring/pending-edit-coordinator'
 import '../components/longform/longform.css'
 import '../components/home/home.css'
 const GlobalSettings=lazy(()=>import('../components/settings/SettingsPage'))
-const NAV=[['today','今天',Compass],['library','作品总览',Library],['results','最近成果',BookOpen],['tasks','任务中心',Clock],['search','搜索',Search],['settings','设置',Settings],['data','数据与备份',FolderOpen]] as const
+const NAV=[['today','今天',Compass],['library','作品总览',Library],['results','最近成果',BookOpen],['tasks','任务中心',Clock],['worlds','我的世界',Globe2],['search','搜索',Search],['data','数据与备份',FolderOpen],['settings','设置',Settings]] as const
 const TITLES:Record<string,string>={today:'今天',library:'作品总览',results:'最近成果',tasks:'任务中心',search:'搜索',settings:'通用设置',data:'数据与备份',detail:'作品详情',cover:'作品封面',products:'开始新的创作'}
 const PRODUCT_LABELS:Record<string,string>={ttrpg:'跑团','character-interaction':'角色聊天','ai-town':'AI 小镇',avg:'AVG','text-adventure':'文字冒险','open-world':'文字开放世界'}
 const STATUS:Record<string,string>={drafting:'草稿',ongoing:'创作中',paused:'已暂停',completed:'已完成'}
@@ -29,7 +29,7 @@ export default function HomePage(){
  return <div className={`longform-app home-app ${menu?'home-menu-open':''}`} data-testid="home-page">
  <header className="lf-top"><button className="lf-brand" aria-label="返回首页" onClick={()=>void open('/')}><Flame/><span><strong>StoryForge</strong><small>故事熔炉</small></span></button><nav aria-label="产品导航">{PRODUCT_NAVIGATION.map(p=><Link key={p.id} to={p.path} aria-current={p.id==='home'?'page':undefined} onClick={e=>{e.preventDefault();void open(p.path)}}>{p.label}</Link>)}</nav><div className="home-top-actions"><button aria-label="搜索" onClick={()=>void open('/home/search')}><Search size={19}/></button><button aria-label="任务中心" onClick={()=>void open('/home/tasks')}><Clock size={19}/></button><button className="home-menu-button" aria-label="页面目录" aria-expanded={menu} onClick={()=>setMenu(!menu)}>{menu?<X/>:<Menu/>}</button></div></header>
  {menu&&<button className="home-menu-scrim" aria-label="关闭页面目录" onClick={()=>setMenu(false)}/>}
- <aside className="lf-sidebar"><small>YOUR CREATIVE SPACE</small><h1>首页</h1><p>让故事，在此生长。</p><nav aria-label="首页导航">{NAV.map(([id,label,Icon])=><button key={id} aria-current={pageId===id?'page':undefined} onClick={()=>void open(id==='today'?'/':`/home/${id}`)}><Icon size={18}/>{label}</button>)}<button onClick={()=>void open('/world/worlds')}><Globe2 size={18}/>我的世界</button>{selected&&<><button aria-current={pageId==='detail'?'page':undefined} onClick={()=>void open(`/home/detail?work=${selected.work.id}`)}>作品详情</button><button aria-current={pageId==='cover'?'page':undefined} onClick={()=>void open(`/home/cover?work=${selected.work.id}`)}>作品封面</button></>}</nav><footer><button onClick={()=>void open('/home/products')}>浏览全部产品 <ArrowRight size={15}/></button><p>本地创作 · 自由生长</p></footer></aside>
+ <aside className="lf-sidebar"><small>YOUR CREATIVE SPACE</small><h1>首页</h1><p>让故事，在此生长。</p><nav aria-label="首页导航">{NAV.map(([id,label,Icon])=><Fragment key={id}>{id==='data'&&selected&&<><button aria-current={pageId==='detail'?'page':undefined} onClick={()=>void open(`/home/detail?work=${selected.work.id}`)}>作品详情</button><button aria-current={pageId==='cover'?'page':undefined} onClick={()=>void open(`/home/cover?work=${selected.work.id}`)}>作品封面</button></>}<button aria-current={pageId===id?'page':undefined} onClick={()=>void open(id==='worlds'?'/world/worlds':id==='today'?'/':`/home/${id}`)}><Icon size={18}/>{label}</button></Fragment>)}</nav><footer><button onClick={()=>void open('/home/products')}>浏览全部产品 <ArrowRight size={15}/></button><p>本地创作 · 自由生长</p></footer></aside>
  <main className="lf-main home-main" ref={content}><div className="home-breadcrumb">首页 › {TITLES[pageId]||'页面'}<span className="home-desktop-hint">本地工作空间</span><span className="home-mobile-hint">顶部产品可左右滑动</span></div>{(error||loadError)&&<p className="home-error" role="alert">{error||loadError}</p>}
  {!data?<div className="lf-paper" role="status">正在读取你的创作空间…</div>:<>
  {pageId==='today'?<>
