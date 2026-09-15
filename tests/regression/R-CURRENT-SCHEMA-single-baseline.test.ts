@@ -13,6 +13,7 @@ import {
   STORYFORGE_STORES_V5,
   STORYFORGE_STORES_V6,
   STORYFORGE_STORES_V7,
+  STORYFORGE_STORES_V8,
 } from '../../src/lib/db/schema'
 import {
   assertCurrentSchemaDefinition,
@@ -20,7 +21,7 @@ import {
   REQUIRED_TABLES,
 } from '../../src/lib/db/ensure-schema'
 
-describe('CURRENT-SCHEMA · v1/v2/v3/v4/v5 to v8 additive migration', () => {
+describe('CURRENT-SCHEMA · v1/v2/v3/v4/v5 to v9 additive migration', () => {
   beforeEach(async () => {
     db.close()
     await db.delete()
@@ -30,7 +31,7 @@ describe('CURRENT-SCHEMA · v1/v2/v3/v4/v5 to v8 additive migration', () => {
 
   it('数据库使用独立当前命名空间和 v8 schema', () => {
     expect(STORYFORGE_DATABASE_NAME).toBe('storyforge-core')
-    expect(STORYFORGE_SCHEMA_VERSION).toBe(8)
+    expect(STORYFORGE_SCHEMA_VERSION).toBe(9)
     expect(db.name).toBe(STORYFORGE_DATABASE_NAME)
     expect(db.verno).toBe(STORYFORGE_SCHEMA_VERSION)
   })
@@ -67,7 +68,7 @@ describe('CURRENT-SCHEMA · v1/v2/v3/v4/v5 to v8 additive migration', () => {
     const upgraded = new StoryForgeDB(databaseName)
     try {
       await upgraded.open()
-      expect(upgraded.verno).toBe(8)
+      expect(upgraded.verno).toBe(STORYFORGE_SCHEMA_VERSION)
       expect(await upgraded.projects.get(projectId)).toMatchObject({ name: '迁移保留样例' })
       expect(await upgraded.shortNovelProductions.count()).toBe(0)
       expect(await upgraded.creationReleases.count()).toBe(0)
@@ -111,7 +112,7 @@ describe('CURRENT-SCHEMA · v1/v2/v3/v4/v5 to v8 additive migration', () => {
     const upgraded = new StoryForgeDB(databaseName)
     try {
       await upgraded.open()
-      expect(upgraded.verno).toBe(8)
+      expect(upgraded.verno).toBe(STORYFORGE_SCHEMA_VERSION)
       expect(await upgraded.projects.get(projectId)).toMatchObject({ name: 'v2 短篇保留样例' })
       expect(await upgraded.creationReleases.count()).toBe(1)
       expect(await upgraded.adaptationSourceFacts.count()).toBe(0)
@@ -154,7 +155,7 @@ describe('CURRENT-SCHEMA · v1/v2/v3/v4/v5 to v8 additive migration', () => {
     const upgraded = new StoryForgeDB(databaseName)
     try {
       await upgraded.open()
-      expect(upgraded.verno).toBe(8)
+      expect(upgraded.verno).toBe(STORYFORGE_SCHEMA_VERSION)
       expect(await upgraded.projects.get(projectId)).toMatchObject({ name: 'v3 改编分析保留样例' })
       expect(await upgraded.adaptationSourceFacts.count()).toBe(1)
       expect(await upgraded.screenplayBeats.count()).toBe(0)
@@ -177,7 +178,7 @@ describe('CURRENT-SCHEMA · v1/v2/v3/v4/v5 to v8 additive migration', () => {
     const upgraded = new StoryForgeDB(databaseName)
     try {
       await upgraded.open()
-      expect(upgraded.verno).toBe(8)
+      expect(upgraded.verno).toBe(STORYFORGE_SCHEMA_VERSION)
       expect(await upgraded.screenplayBeats.count()).toBe(1)
       expect(await upgraded.comicScriptBeats.count()).toBe(0)
       expect(await upgraded.comicPagePlans.count()).toBe(0)
@@ -200,7 +201,7 @@ describe('CURRENT-SCHEMA · v1/v2/v3/v4/v5 to v8 additive migration', () => {
     const upgraded = new StoryForgeDB(databaseName)
     try {
       await upgraded.open()
-      expect(upgraded.verno).toBe(8)
+      expect(upgraded.verno).toBe(STORYFORGE_SCHEMA_VERSION)
       expect(await upgraded.comicScriptBeats.count()).toBe(1)
       expect(await upgraded.motionDramaProductions.count()).toBe(0)
       expect(await upgraded.motionDramaPromptPacks.count()).toBe(0)
@@ -216,7 +217,7 @@ describe('CURRENT-SCHEMA · v1/v2/v3/v4/v5 to v8 additive migration', () => {
     const id=await old.table('works').add({projectId:1,worldId:1,title:'作者原稿',kind:'novel',createdAt:1,updatedAt:1})
     const original=await old.table('works').get(id);old.close()
     const current=new StoryForgeDB(name)
-    try{await current.open();expect(await current.works.get(id)).toEqual(original);expect(await current.avgAuthoringDrafts.count()).toBe(0);expect(await current.avgDraftMedia.count()).toBe(0);expect(Object.keys(STORYFORGE_STORES).filter(k=>!(k in STORYFORGE_STORES_V6)).sort()).toEqual(['avgAuthoringDrafts','avgDraftMedia','ttrpgAuthoringDrafts'])}finally{current.close();await current.delete()}
+    try{await current.open();expect(await current.works.get(id)).toEqual(original);expect(await current.avgAuthoringDrafts.count()).toBe(0);expect(await current.avgDraftMedia.count()).toBe(0);expect(Object.keys(STORYFORGE_STORES).filter(k=>!(k in STORYFORGE_STORES_V6)).sort()).toEqual(['aiTownAuthoringDrafts','avgAuthoringDrafts','avgDraftMedia','ttrpgAuthoringDrafts'])}finally{current.close();await current.delete()}
   })
 
 })
@@ -233,10 +234,17 @@ it('v7 upgrades preserve author data and Brief revisions while allowing repeated
     await current.open();
     expect(await current.works.get(id as number)).toMatchObject(original);
     expect(await current.ttrpgAuthoringDrafts.count()).toBe(0);
-    expect(Object.keys(STORYFORGE_STORES).filter(k => !(k in STORYFORGE_STORES_V7))).toEqual(['ttrpgAuthoringDrafts']);
+    expect(Object.keys(STORYFORGE_STORES).filter(k => !(k in STORYFORGE_STORES_V7))).toEqual(['ttrpgAuthoringDrafts','aiTownAuthoringDrafts']);
     expect(await current.productProductionBriefs.get(briefId as number)).toEqual({ ...brief, id: briefId });
     await current.table('productProductionBriefs').add({ ...brief, id: undefined, revision: 2, authorizedAt: null });
     await expect(current.table('productProductionBriefs').add({ ...brief, id: undefined, revision: 2, briefHash: 'other' })).rejects.toThrow();
     expect(await current.productProductionBriefs.count()).toBe(2);
   } finally { current.close(); await current.delete(); }
+});
+
+it('v8 → v9 only adds town author drafts and preserves existing work/runtime data',async()=>{
+ const name='town-v8-migration';const old=new Dexie(name);old.version(8).stores(STORYFORGE_STORES_V8);await old.open();
+ const work={projectId:1,worldId:1,kind:'ttrpg',title:'已有作品',novelProfile:null};const id=await old.table('works').add(work);
+ const session={projectId:1,worldId:1,workId:id,kind:'ai-town',title:'旧存档',stateJson:'{"keep":true}'};const sid=await old.table('productRuntimeSessions').add(session);old.close();
+ const current=new StoryForgeDB(name);try{await current.open();expect(await current.works.get(id as number)).toEqual({...work,id});expect(await current.productRuntimeSessions.get(sid as number)).toEqual({...session,id:sid});expect(await current.aiTownAuthoringDrafts.count()).toBe(0);expect(Object.keys(STORYFORGE_STORES).filter(k=>!(k in STORYFORGE_STORES_V8))).toEqual(['aiTownAuthoringDrafts']);}finally{current.close();await current.delete();}
 });

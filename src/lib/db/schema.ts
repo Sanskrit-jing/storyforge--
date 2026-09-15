@@ -123,7 +123,7 @@ import type { RetrievalChunk } from '../types/retrieval-chunk'
 import type { TemporalFact } from '../types/temporal-fact'
 
 export const STORYFORGE_DATABASE_NAME = 'storyforge-core'
-export const STORYFORGE_SCHEMA_VERSION = 8
+export const STORYFORGE_SCHEMA_VERSION = 9
 
 /** The hard-cutover baseline released before independent creation releases. */
 export const STORYFORGE_STORES_V1 = {
@@ -278,12 +278,17 @@ export const STORYFORGE_STORES_V7 = {
   avgAuthoringDrafts: '++id, projectId, worldId, &workId, worldReleaseId, productionId, updatedAt',
 } as const satisfies Record<string, string>
 
-export const STORYFORGE_STORES = {
+export const STORYFORGE_STORES_V8 = {
   ...STORYFORGE_STORES_V7,
   // A new revision may restore earlier content. Identity is production + revision;
   // the content hash remains indexed and immutable, but is not a revision ID.
   productProductionBriefs: STORYFORGE_STORES_V7.productProductionBriefs.replace('&[productionId+briefHash]', '[productionId+briefHash]'),
   ttrpgAuthoringDrafts: '++id, projectId, worldId, &workId, worldReleaseId, productionId, savedRulePackId, updatedAt',
+} as const satisfies Record<string, string>
+
+export const STORYFORGE_STORES = {
+  ...STORYFORGE_STORES_V8,
+  aiTownAuthoringDrafts: '++id, projectId, worldId, &workId, worldReleaseId, productionId, updatedAt',
 } as const satisfies Record<string, string>
 
 export class StoryForgeDB extends Dexie {
@@ -394,6 +399,7 @@ export class StoryForgeDB extends Dexie {
   creationReleases!: Table<CreationReleaseV1, number>
   creationReleaseAssets!: Table<CreationReleaseAssetV1, number>
   avgDraftMedia!: Table<AvgDraftMediaV1, number>
+  aiTownAuthoringDrafts!: Table<import("../ai-town/authoring-contract").AiTownAuthoringDraftV1, number>
   ttrpgAuthoringDrafts!: Table<TtrpgAuthoringDraftV1, number>
   avgAuthoringDrafts!: Table<AvgAuthoringDraftV1, number>
   motionDramaProductions!: Table<MotionDramaProductionV1, number>
@@ -418,6 +424,7 @@ export class StoryForgeDB extends Dexie {
     this.version(5).stores(STORYFORGE_STORES_V5)
     this.version(6).stores(STORYFORGE_STORES_V6)
     this.version(7).stores(STORYFORGE_STORES_V7)
+    this.version(8).stores(STORYFORGE_STORES_V8)
     this.version(STORYFORGE_SCHEMA_VERSION).stores(STORYFORGE_STORES)
   }
 }

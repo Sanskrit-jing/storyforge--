@@ -5,7 +5,7 @@ export default function ResumeTracker(){
  const location=useLocation()
  useEffect(()=>{let active=true;const query=new URLSearchParams(location.search)
  const workspace=location.pathname.match(/^\/workspace\/(\d+)$/)
- const pid=workspace?Number(workspace[1]):(location.pathname.startsWith('/short/')||location.pathname.startsWith('/ttrpg/'))?Number(query.get('project')):0
+ const pid=workspace?Number(workspace[1]):(location.pathname.startsWith('/short/')||location.pathname.startsWith('/ttrpg/')||location.pathname.startsWith('/town/'))?Number(query.get('project')):0
  const wid=location.pathname.startsWith('/script/')?Number(query.get('work')):0
  if(!pid&&!wid)return
  void readHomeCatalog().then(catalog=>{const row=catalog.works.find(r=>wid?r.work.id===wid:r.project.id===pid&&r.work.id===r.project.activeWorkId);if(active&&row)rememberHomeWork(row,location.pathname+location.search)}).catch(()=>undefined)

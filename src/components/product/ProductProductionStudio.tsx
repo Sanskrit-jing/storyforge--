@@ -78,14 +78,7 @@ const PRODUCT_LABELS: Record<SupportedProduct, string> = {
   'text-open-world': '文字开放世界',
 }
 
-const DEFAULT_AI_TOWN_SETTINGS: AiTownBriefSettingsV1 = {
-  playerRole: 'new-resident', playerName: '新居民', homeConcept: '一间靠近公共空间、可安全休息的小屋',
-  townTitle: '', elapsedDays: 90, romance: 'off', residentTarget: 6, majorLocationTarget: 4,
-  actionsPerDay: 3, offlineEnabled: true, offlineMaximumDays: 3,
-  resourceKeys: ['materials', 'food', 'care'], startingMoney: 200,
-  sharedProjectConcept: '修复一处让居民能够共同生活与相遇的公共设施',
-  portraits: true, expressions: true, locationCards: true, ambientAudio: false,
-}
+import { DEFAULT_AI_TOWN_SETTINGS } from '../../lib/ai-town/authoring-contract'
 
 interface CommandActivityV1 {
   label: string

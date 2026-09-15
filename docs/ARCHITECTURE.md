@@ -19,6 +19,7 @@ StoryForge 当前是 React + TypeScript + Vite 的本地优先单页应用，核
 - `/long`：长篇作品库与产品内创建入口。
 - `/short/:pageId?`：短篇作品库、六阶段生产、版本导出与显式扩展；`project` 查询参数选择作品，未选择仍可浏览。
 - `/avg/:pageId?`：AVG 独立作品库、可恢复 S2 方案、冻结世界引用、真实制作与版本修订、玩家舞台；未选择世界可浏览和填写，正式制作需引用冻结版本。外侧按作品库、世界引擎、制作台、发布与版本、游玩、通用设置组织；S2/S3 内容位于制作台左侧，玩家舞台与存档位于游玩左侧，原有深链保持有效。
+- `/town/:pageId?`：AI 小镇作品库、独立 S2 草稿与会谈、世界出口选择、制作检查与发布，以及分区游玩和存档；未选择世界也可浏览与保存配置。
 - `/ttrpg/:pageId?`：跑团作品库、可保存的九步配置、世界出口选择、提案比较、制作检查与发布、团局和游玩；内容分类位于页面内左侧，未选择世界仍可浏览和保存配置。
 - `/world/:pageId?`：世界内容编辑、地图、封存、版本资源出口与分享导入；`project` 选择世界工作区，未选择仍可浏览。一级目录按我的世界、世界设定、版本与封存、数据出口、分享与导入、社区与发行、通用设置组织；设定分类及其编辑模块在页面内左侧分层排列，原有内容深链保持有效。旧世界工作区链接重定向到此入口。
 - `/script/:pageId?`：小说转剧本作品库、来源与改编规划、场次生产、审查及版本导出；`work` 查询参数选择独立剧本 Work，未选择仍可浏览。
@@ -94,11 +95,11 @@ flowchart TB
 | 当前事实 | 数值 | 单一事实源 |
 |---|---:|---|
 | 应用语义版本 | `3.9.1` | `package.json` |
-| TypeScript 生产源码 | 1103 个文件 / 353548 行 | `tsconfig.json` |
-| IndexedDB schema | v8 / 121 张 required tables | `schema.ts` / `REQUIRED_TABLES` |
-| PROJECT_TABLES | 121 张表 | `project-tables.ts` |
+| TypeScript 生产源码 | 1112 个文件 / 355542 行 | `tsconfig.json` |
+| IndexedDB schema | v9 / 122 张 required tables | `schema.ts` / `REQUIRED_TABLES` |
+| PROJECT_TABLES | 122 张表 | `project-tables.ts` |
 | Prompt 主线 | 65 个 moduleKey / 210 条内置模板 | `PromptModuleKey` / `prompt-seeds*.ts` |
-| CONTEXT_SOURCES | 101 个上下文源 | `context-sources.ts` |
+| CONTEXT_SOURCES | 102 个上下文源 | `context-sources.ts` |
 | 写回治理 | 53 个通用 adopt target / 58 个领域扩展 | `adoption-schema.ts` |
 <!-- project-metrics:end -->
 
@@ -228,7 +229,7 @@ src/
 - Project/World/Work 可以位于同一本地物理工作区，但身份权威已经拆分：Project 只管理工作区，World 管理世界身份，Work 管理独立作品；存在内部 World 语义 scope 不等于建立了可分享世界。
 - 分步骤长篇 Phase 5 工程主链和 10万/30万/100万字符规模门已经完成；真实作者长期文学一致性仍需持续研究，但不是尚未完成的功能施工项。
 - 世界 Release、中立资源协议、六类上层产品的需求适配器、五项逻辑契约校验、`S1 世界封存 → S2 产品定向 → S3 产品执行` runtime 闸门和产品成熟度门已经形成共享架构基线；它们规定接入方式，不替代各上层产品的 Brief/production/media/runtime 专项实现。
-- 当前 schema v8 直接表达 Product Production/Build/Release、Product Runtime、World、Work、独立创作产品、漫剧前期生产与 AVG 作者方案/媒资草稿与跑团 S2 草稿；保留 v1→v2→v3→v4→v5→v6→v7→v8 的受支持加表与索引迁移（v8 允许不同 Brief revision 使用同一内容 hash，已有记录不改写）以保护作者数据，不包含旧字段投影、双读或退役运行入口。非受支持数据库版本和非当前备份明确拒绝。
+- 当前 schema v9 直接表达 Product Production/Build/Release、Product Runtime、World、Work、独立创作产品、漫剧前期生产与 AVG 作者方案/媒资草稿与跑团及 AI 小镇 S2 草稿；保留 v1→v2→v3→v4→v5→v6→v7→v8→v9 的受支持加表与索引迁移（v8 允许不同 Brief revision 使用同一内容 hash，已有记录不改写；v9 仅新增小镇草稿表）以保护作者数据，不包含旧字段投影、双读或退役运行入口。非受支持数据库版本和非当前备份明确拒绝。
 - ProductRelease 谱系已经有跨产品逻辑 validator，并在角色互动参考纵切面落地；其它上层产品在转为 released 前仍需按自己的物理 schema 接入同一逻辑闸门。
 - 节点官方模板已绑定正式长篇领域 action，通用生成仅限显式 experimental draft 且不能采纳 Canon；完整跨模式真实 UI 体验仍是节点产品维护事项。
 - 账户、云端社区、支付和商业平台不是当前核心运行前提；相关代码必须 capability gate / experimental，不能掩盖主产品未完成。
