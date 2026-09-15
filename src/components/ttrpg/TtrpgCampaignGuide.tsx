@@ -237,6 +237,7 @@ function TabletopBoard(props: {
 }
 
 export default function TtrpgCampaignGuide(props: {
+  panel?: "inventory" | "tabletop" | "room" | "history";
   session: ProductRuntimeSession;
   state: ProductRuntimeState;
   workspaceScope?: WorkspaceScope;
@@ -1602,7 +1603,8 @@ export default function TtrpgCampaignGuide(props: {
           </section>
         )}
 
-        {frozen.onlineReleaseHash != null &&
+        {props.panel === "room" && frozen.onlineReleaseHash == null && <p>在线房间需要已发布战役。当前是制作预览，可先进行本地试玩。</p>}
+        {(!props.panel || props.panel === "room") && frozen.onlineReleaseHash != null &&
           (product.sessionZero.completed ||
             props.initialOnlineHandoff != null) && (
             <TtrpgOnlineRoomPanel
@@ -1630,7 +1632,7 @@ export default function TtrpgCampaignGuide(props: {
             />
           )}
 
-        {product.sessionZero.completed &&
+        {(!props.panel || props.panel === "tabletop") && product.sessionZero.completed &&
           viewerProjection?.media &&
           runtimeMediaScope &&
           runtimeMediaViewerKey && (
@@ -1660,7 +1662,7 @@ export default function TtrpgCampaignGuide(props: {
         )}
 
         {!product.sessionZero.completed && builderTemplate && (
-          <section
+          <section hidden={Boolean(props.panel && !["inventory"].includes(props.panel))}
             className="rounded border border-border bg-bg-base p-4"
             data-testid="ttrpg-character-builder"
           >
@@ -1888,7 +1890,7 @@ export default function TtrpgCampaignGuide(props: {
         )}
 
         {mode === "gm" && (
-          <section
+          <section hidden={Boolean(props.panel && !["tabletop"].includes(props.panel))}
             className="rounded border border-border bg-bg-base p-4"
             data-testid="ttrpg-gm-prep-board"
             aria-label="主持人准备台"
@@ -2056,7 +2058,7 @@ export default function TtrpgCampaignGuide(props: {
           </section>
         )}
 
-        <section>
+        <section hidden={Boolean(props.panel && !["inventory"].includes(props.panel))}>
           <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-text-primary">
             <Users className="h-4 w-4 text-accent" />
             预生成角色
@@ -2161,7 +2163,7 @@ export default function TtrpgCampaignGuide(props: {
         {product.sessionZero.completed &&
           selectedCharacterSheet &&
           selectedActorView && (
-            <section
+            <section hidden={Boolean(props.panel && !["inventory"].includes(props.panel))}
               className="rounded border border-border bg-bg-base p-4"
               data-testid="ttrpg-complete-character-sheet"
             >
@@ -2590,7 +2592,7 @@ export default function TtrpgCampaignGuide(props: {
             </section>
           )}
 
-        <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+        <section hidden={Boolean(props.panel && !["tabletop", "inventory"].includes(props.panel))} className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
           <div>
             <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-text-primary">
               <MapPinned className="h-4 w-4 text-accent" />
@@ -5067,7 +5069,7 @@ export default function TtrpgCampaignGuide(props: {
           </div>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-2">
+        <section hidden={Boolean(props.panel && !["tabletop"].includes(props.panel))} className="grid gap-4 lg:grid-cols-2">
           <div className="rounded border border-border bg-bg-base p-3">
             <div className="flex items-center gap-2 text-sm font-semibold text-text-primary">
               <ScrollText className="h-4 w-4 text-accent" />
@@ -5126,7 +5128,7 @@ export default function TtrpgCampaignGuide(props: {
         </section>
 
         {visibleContinuity && campaignState && (
-          <section
+          <section hidden={Boolean(props.panel && !["history"].includes(props.panel))}
             className="rounded border border-border bg-bg-base p-4"
             data-testid="ttrpg-long-campaign"
           >
@@ -5907,7 +5909,7 @@ export default function TtrpgCampaignGuide(props: {
           </section>
         )}
 
-        <section
+        <section hidden={Boolean(props.panel && !["history"].includes(props.panel))}
           className="rounded border border-border bg-bg-base p-4"
           data-testid="ttrpg-campaign-progress"
         >
@@ -6114,7 +6116,7 @@ export default function TtrpgCampaignGuide(props: {
         {viewerProjection &&
           (viewerProjection.recap.resolvedActionCount > 0 ||
             viewerProjection.recap.ending) && (
-            <section
+            <section hidden={Boolean(props.panel && !["history"].includes(props.panel))}
               className="rounded border border-border bg-bg-base p-4"
               data-testid="ttrpg-session-recap"
             >
@@ -6319,7 +6321,7 @@ export default function TtrpgCampaignGuide(props: {
           )}
 
         {mode === "gm" && (
-          <section
+          <section hidden={Boolean(props.panel && !["history"].includes(props.panel))}
             className="rounded border border-border bg-bg-base p-4"
             data-testid="ttrpg-save-and-branch"
           >

@@ -32,6 +32,32 @@ describe('PRODUCTPROD-1B · user command control plane', () => {
   beforeEach(async () => { await db.delete(); await db.open() })
   afterEach(() => db.close())
 
+  it('preserves earlier Brief revisions when an author restores the same content, requiring fresh start authorization', async () => {
+    const f = await fixture()
+    const created = await executeProductProductionCommand({ scope: f.scope, command: {
+      type: 'create-intent', commandId: 'repeat.intent', productionKey: 'repeat-brief', productType: 'avg', worldReleaseId: f.worldReleaseId, userText: 'test',
+    } })
+    const hashes: string[] = []
+    for (let index = 0; index < 3; index++) {
+      const brief = index === 1 ? { ...f.brief, intent: { ...f.brief.intent, openingSituation: '另一种开场' } } : f.brief
+      const receipt = await executeProductProductionCommand({ scope: f.scope, productionId: created.productionId, command: {
+        type: 'save-brief-revision', commandId: `repeat.${index}`, expectedStateRevision: index, parentRevision: index || null, brief,
+      } })
+      expect(receipt.ok).toBe(true)
+      hashes.push(String(receipt.result.briefHash))
+    }
+    expect(hashes[0]).toBe(hashes[2])
+    expect(hashes[0]).not.toBe(hashes[1])
+    const revisions = await db.productProductionBriefs.where('productionId').equals(created.productionId).sortBy('revision')
+    expect(revisions.map(r => r.revision)).toEqual([1, 2, 3])
+    expect(revisions.every(r => r.authorizedAt === null)).toBe(true)
+    expect(await db.productBuilds.count()).toBe(0)
+    const stale = await executeProductProductionCommand({ scope: f.scope, productionId: created.productionId, command: {
+      type: 'save-brief-revision', commandId: 'repeat.stale', expectedStateRevision: 1, parentRevision: 1, brief: f.brief,
+    } })
+    expect(stale).toMatchObject({ ok: false, errorCode: 'production-state-conflict' })
+  })
+
   it('offers explainable registered-source options without starting production', async () => {
     const f = await fixture()
     const suggestions = await suggestProductStartingPoints({ scope: f.scope, worldReleaseId: f.worldReleaseId })

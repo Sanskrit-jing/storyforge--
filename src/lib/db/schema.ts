@@ -1,3 +1,4 @@
+import type { TtrpgAuthoringDraftV1 } from "../ttrpg/authoring-contract";
 import type { AvgAuthoringDraftV1, AvgDraftMediaV1 } from '../avg/authoring-contract'
 import Dexie, { type Table } from 'dexie'
 import type {
@@ -122,7 +123,7 @@ import type { RetrievalChunk } from '../types/retrieval-chunk'
 import type { TemporalFact } from '../types/temporal-fact'
 
 export const STORYFORGE_DATABASE_NAME = 'storyforge-core'
-export const STORYFORGE_SCHEMA_VERSION = 7
+export const STORYFORGE_SCHEMA_VERSION = 8
 
 /** The hard-cutover baseline released before independent creation releases. */
 export const STORYFORGE_STORES_V1 = {
@@ -271,10 +272,18 @@ export const STORYFORGE_STORES_V6 = {
   motionDramaReviewIssues: '++id, projectId, workId, adaptationProjectId, &[adaptationProjectId+manifestVersion+stableKey], manifestVersion, episodeNumber, sceneKey, shotKey, category, severity, status, updatedAt',
 } as const satisfies Record<string, string>
 
-export const STORYFORGE_STORES = {
+export const STORYFORGE_STORES_V7 = {
   ...STORYFORGE_STORES_V6,
   avgDraftMedia: '++id, projectId, worldId, workId, blobObjectId',
   avgAuthoringDrafts: '++id, projectId, worldId, &workId, worldReleaseId, productionId, updatedAt',
+} as const satisfies Record<string, string>
+
+export const STORYFORGE_STORES = {
+  ...STORYFORGE_STORES_V7,
+  // A new revision may restore earlier content. Identity is production + revision;
+  // the content hash remains indexed and immutable, but is not a revision ID.
+  productProductionBriefs: STORYFORGE_STORES_V7.productProductionBriefs.replace('&[productionId+briefHash]', '[productionId+briefHash]'),
+  ttrpgAuthoringDrafts: '++id, projectId, worldId, &workId, worldReleaseId, productionId, savedRulePackId, updatedAt',
 } as const satisfies Record<string, string>
 
 export class StoryForgeDB extends Dexie {
@@ -385,6 +394,7 @@ export class StoryForgeDB extends Dexie {
   creationReleases!: Table<CreationReleaseV1, number>
   creationReleaseAssets!: Table<CreationReleaseAssetV1, number>
   avgDraftMedia!: Table<AvgDraftMediaV1, number>
+  ttrpgAuthoringDrafts!: Table<TtrpgAuthoringDraftV1, number>
   avgAuthoringDrafts!: Table<AvgAuthoringDraftV1, number>
   motionDramaProductions!: Table<MotionDramaProductionV1, number>
   motionDramaSeriesBibles!: Table<MotionDramaSeriesBibleRecordV1, number>
@@ -407,6 +417,7 @@ export class StoryForgeDB extends Dexie {
     this.version(4).stores(STORYFORGE_STORES_V4)
     this.version(5).stores(STORYFORGE_STORES_V5)
     this.version(6).stores(STORYFORGE_STORES_V6)
+    this.version(7).stores(STORYFORGE_STORES_V7)
     this.version(STORYFORGE_SCHEMA_VERSION).stores(STORYFORGE_STORES)
   }
 }

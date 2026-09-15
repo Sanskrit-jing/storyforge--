@@ -5,6 +5,7 @@ import ResumeTracker from './components/home/ResumeTracker'
 
 import { PRODUCT_NAVIGATION } from './components/navigation/product-navigation'
 
+const TtrpgPage = lazy(() => import('./pages/TtrpgPage'))
 const AvgPage = lazy(() => import('./pages/AvgPage'))
 const HomePage = lazy(() => import('./pages/HomePage'))
 const WorldEnginePage = lazy(() => import('./pages/WorldEnginePage'))
@@ -26,6 +27,7 @@ function RouteFallback() {
 function HomeRoute() {
   const [params] = useSearchParams()
   if (params.get('product') === 'avg') { const next = new URLSearchParams(params); next.delete('tab'); next.delete('product'); return <Navigate replace to={`/avg/production?${next}`}/> }
+  if (params.get('tab') === 'ttrpg' && params.get('legacy') !== '1' && !params.has('onlineHandoff')) { const next = new URLSearchParams(params); next.delete('tab'); const page = next.has('worldHandoff') ? 'source' : next.has('session') ? 'play' : next.has('project') ? 'production' : 'library'; return <Navigate replace to={`/ttrpg/${page}?${next}`}/> }
   // Preserve existing work/tool deep links while the remaining products are audited.
   return params.has('tab') && (params.get('tab') !== 'home' || params.get('legacy') === '1') ? <ProductHubPage /> : <HomePage />
 }
@@ -35,7 +37,8 @@ export default function App() {
     <>
     <ResumeTracker/>
     <Routes>
-      {[...PRODUCT_NAVIGATION.filter(item => !['home', 'long', 'short', 'script', 'world', 'avg'].includes(item.id)), { id: 'community' }].map(item => <Route key={item.id} path={`/${item.id}/:pageId?`} element={<Suspense fallback={<RouteFallback />}><PreviewRoutePage productId={item.id}/></Suspense>}/>)}
+      {[...PRODUCT_NAVIGATION.filter(item => !['home', 'long', 'short', 'script', 'world', 'avg', 'ttrpg'].includes(item.id)), { id: 'community' }].map(item => <Route key={item.id} path={`/${item.id}/:pageId?`} element={<Suspense fallback={<RouteFallback />}><PreviewRoutePage productId={item.id}/></Suspense>}/>)}
+      <Route path="/ttrpg/:pageId?" element={<Suspense fallback={<RouteFallback />}><TtrpgPage /></Suspense>}/>
       <Route path="/avg/:pageId?" element={<Suspense fallback={<RouteFallback />}><AvgPage /></Suspense>}/>
       <Route path="/home/:pageId?" element={<Suspense fallback={<RouteFallback />}><HomePage /></Suspense>}/>
       <Route path="/world/:pageId?" element={<Suspense fallback={<RouteFallback />}><WorldEnginePage /></Suspense>}/>

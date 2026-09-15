@@ -62,7 +62,7 @@ export default function WorldEnginePage(){
  }catch(c){setError(String(c))}}
  const enableMultiWorld=async()=>{if(!row||busy)return;setBusy(true);try{await flushPendingEditsV1();if(await useWorldGroupStore.getState().enableMultiWorld(row.project.id!)){await useProjectStore.getState().updateWorkspace(row.project.id!,{enableMultiWorld:true});await refresh()}}catch(c){setError(String(c))}finally{setBusy(false)}}
  const remove=async(target:Row)=>{try{await flushPendingEditsV1();await useProjectStore.getState().deleteProject(target.project.id!);if(projectId===target.project.id&&!(await db.projects.get(projectId!)))await go('/world/worlds')}catch(c){setError(String(c))}}
- const handoff=(value:ProductProductionHandoffV1)=>{void go(value.productType==='avg'?`/avg/source?worldHandoff=${encodeURIComponent(JSON.stringify(value))}`:`/?tab=${value.productType==='ttrpg'?'ttrpg':'text-games'}&worldHandoff=${encodeURIComponent(JSON.stringify(value))}`)}
+ const handoff=(value:ProductProductionHandoffV1)=>{void go(['avg','ttrpg'].includes(value.productType)?`/${value.productType}/source?worldHandoff=${encodeURIComponent(JSON.stringify(value))}`:`/?tab=${value.productType==='ttrpg'?'ttrpg':'text-games'}&worldHandoff=${encodeURIComponent(JSON.stringify(value))}`)}
  const modules=definition.modules??[]
  const primaryId=worldPrimaryPage(definition.id)
  const isWorldbuilding=primaryId==='worldbuilding'

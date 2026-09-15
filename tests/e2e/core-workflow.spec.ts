@@ -231,7 +231,7 @@ test('独立长篇保持独立，并可由作者显式派生且封存为世界 v
   await expect(page.getByRole('heading', { name: '我的世界', exact: true })).toBeVisible()
   await expect(page.locator('.lf-library-grid').getByRole('heading', { name: '分步骤世界基线 · 世界', exact: true })).toBeVisible()
   await expect(page.locator('.lf-library-grid article').first()).toContainText(/W-[A-Z0-9]+-[A-Z0-9]+ · 已发布 v1/)
-  await expect(page.getByRole('button', { name: '自然与地理', exact: true })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: '世界页面导航' }).getByRole('button', { name: '世界设定', exact: true })).toBeVisible()
   const identities = await page.evaluate(async () => {
     const importer = new Function('path', 'return import(path)') as (path: string) => Promise<any>
     const { db } = await importer('/storyforge/src/lib/db/schema.ts')

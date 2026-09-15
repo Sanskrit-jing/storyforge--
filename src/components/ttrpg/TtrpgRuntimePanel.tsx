@@ -16,6 +16,8 @@ import TtrpgPlayTable from './TtrpgPlayTable'
  * runtime factory after a verified ProductRelease or governed Build Preview.
  */
 export default function TtrpgRuntimePanel(props: {
+  authorPanel?: "inventory" | "tabletop" | "room" | "history"
+  onSessionSelected?: (id:number) => void
   project: Project
   worldGroupId: number | null
   workspaceScope: WorkspaceScope
@@ -82,7 +84,7 @@ export default function TtrpgRuntimePanel(props: {
         <p className="mt-1">游戏内容已固定，冒险进度自动保存在当前设备。</p>
       </div>
       <div className="space-y-1">
-        {sessions.map(session => <button key={session.id} onClick={() => void store.select(session.id!)} className={`w-full rounded px-3 py-2 text-left ${session.id === store.selectedSessionId ? 'bg-accent/10 text-accent' : 'text-text-secondary hover:bg-bg-hover'}`}>
+        {sessions.map(session => <button key={session.id} onClick={() => { void store.select(session.id!); props.onSessionSelected?.(session.id!) }} className={`w-full rounded px-3 py-2 text-left ${session.id === store.selectedSessionId ? 'bg-accent/10 text-accent' : 'text-text-secondary hover:bg-bg-hover'}`}>
           <div className="truncate text-sm font-medium">{session.title}</div>
           <div className="mt-0.5 text-[11px] text-text-muted">跑团 · {session.status}</div>
         </button>)}
@@ -96,11 +98,12 @@ export default function TtrpgRuntimePanel(props: {
           <button onClick={() => void remove()} className="rounded p-2 text-danger hover:bg-danger/10" title="删除跑团存档" aria-label={`删除跑团存档 ${selected.title}`}><Trash2 className="h-4 w-4" /></button>
         </header>
         {(store.error || actionError) && <div className="rounded border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{actionError || store.error}</div>}
-        {!props.initialOnlineHandoff && <TtrpgPlayTable key={selected.id} session={selected} state={store.runtimeState}
+        {!props.authorPanel && !props.initialOnlineHandoff && <TtrpgPlayTable key={selected.id} session={selected} state={store.runtimeState}
           scope={props.workspaceScope} onChanged={() => store.select(selected.id!)} onCheckpoint={name => store.checkpoint(name)} />}
         <Link to={`/play/session/${selected.id}`} className="inline-flex text-sm text-accent">打开沉浸游玩页面 →</Link>
         <button className="text-xs text-text-muted underline underline-offset-4" onClick={() => setToolsOpen(value => !value)}>{toolsOpen ? '收起主持工具' : '主持、联机与存档工具'}</button>
-        {(toolsOpen || props.initialOnlineHandoff) && <TtrpgCampaignGuide
+        {(props.authorPanel || toolsOpen || props.initialOnlineHandoff) && <TtrpgCampaignGuide
+          panel={props.authorPanel}
           session={selected}
           state={store.runtimeState}
           workspaceScope={props.workspaceScope}
