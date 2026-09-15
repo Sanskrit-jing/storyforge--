@@ -3,7 +3,7 @@ export const COMIC_PAGES = [
   ['script', '漫画脚本'], ['rhythm', '分页节奏'], ['layout', '页格分镜'], ['lettering', '对白与排字'],
   ['visual', '视觉设定'], ['references', '参考图与主体'], ['media', '格图与候选'], ['review', '质量审查'], ['preview', '阅读预览'], ['versions', '版本记录'], ['settings', '通用设置'],
 ] as const
-export const COMIC_GROUPS: Array<{id:string;label:string;pages:string[]}> = [
+export const COMIC_CONTENT_GROUPS: Array<{id:string;label:string;pages:string[]}> = [
   {id:'library',label:'作品库',pages:['library']},
   {id:'source',label:'原作与方案',pages:['source','facts','causal','brief','decisions']},
   {id:'script',label:'漫画脚本',pages:['script','rhythm']},
@@ -11,6 +11,13 @@ export const COMIC_GROUPS: Array<{id:string;label:string;pages:string[]}> = [
   {id:'visual',label:'视觉与素材',pages:['visual','references','media']},
   {id:'review',label:'审校与阅读',pages:['review','preview']},
   {id:'versions',label:'版本记录',pages:['versions']},
+  {id:'settings',label:'通用设置',pages:['settings']},
+]
+export const COMIC_GROUPS: Array<{id:string;label:string;pages:string[]}> = [
+  {id:'library',label:'作品库',pages:['library']},
+  {id:'source',label:'漫画制作台',pages:['source','facts','causal','brief','decisions','script','rhythm','layout','lettering','visual','references','media','review']},
+  {id:'preview',label:'阅读预览',pages:['preview']},
+  {id:'versions',label:'版本与导出',pages:['versions']},
   {id:'settings',label:'通用设置',pages:['settings']},
 ]
 export const comicPageDescription:Record<string,string>={

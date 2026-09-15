@@ -49,7 +49,7 @@ test('小说转漫画从独立产品入口冻结来源，经十二步正式数�
   await expect(page).toHaveURL(/comic\/source\?work=\d+/)
   const workId=new URL(page.url()).searchParams.get('work')!
   const categories=page.getByRole('navigation',{name:'漫画页面导航'})
-  await expect(categories.getByRole('button')).toHaveText(['作品库','原作与方案','漫画脚本','页格与排版','视觉与素材','审校与阅读','版本记录','通用设置'])
+  await expect(categories.getByRole('button')).toHaveText(['作品库','漫画制作台','阅读预览','版本与导出','通用设置'])
   await expect(categories.getByText(/生成|发布|采纳/)).toHaveCount(0)
   await expect(page.getByRole('heading',{name:'作品规格'})).toBeVisible()
   const seeded = await page.evaluate(async () => {
@@ -162,7 +162,8 @@ test('小说转漫画从独立产品入口冻结来源，经十二步正式数�
 
  test('漫画无作品可浏览分类，导入原作后编辑稿持久保存',async({page})=>{
   await page.goto('./comic/library')
-  await page.getByRole('navigation',{name:'漫画页面导航'}).getByRole('button',{name:'页格与排版'}).click()
+  await page.getByRole('navigation',{name:'漫画页面导航'}).getByRole('button',{name:'漫画制作台',exact:true}).click()
+  await page.getByRole('navigation',{name:'漫画内容分类'}).getByRole('button',{name:'页格分镜',exact:true}).click()
   await expect(page.getByRole('heading',{name:'页格分镜'}).first()).toBeVisible()
   await page.getByRole('button',{name:'选择或创建漫画',exact:true}).last().click()
   await page.getByLabel('漫画名称',{exact:true}).fill('手工改编')

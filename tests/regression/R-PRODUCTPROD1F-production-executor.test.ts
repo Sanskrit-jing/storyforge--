@@ -1,3 +1,5 @@
+import {DEFAULT_CHAT_SETTINGS} from '../../src/lib/character-interaction/authoring-contract'
+import {loadProductProductionConsultationSourceV2} from '../../src/lib/product-production/world-source'
 import { authoredScenarioFixture } from '../helpers/ttrpg-authored-scenario'
 import { resolveTtrpgProductionRulePackV2 } from '../../src/lib/ttrpg/production-brief'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -94,12 +96,14 @@ async function fixtureForProduct(productType: ProductionProductKindV1) {
   )
   const release = owned.release
   const suggestions = await suggestProductStartingPoints({ scope: owned.scope, worldReleaseId: release.id! })
+  const chatCatalog = productType === 'character-interaction' ? await loadProductProductionConsultationSourceV2({scope:owned.scope,worldReleaseId:release.id!}) : null
   const brief = await draftProductProductionBriefV3({
     scope: owned.scope, worldReleaseId: release.id!, suggestionKey: suggestions.suggestions[0].suggestionKey,
     productType, qualityProfile: 'prototype', scale: 'scene', visualLevel: 'none', audioLevel: 'none',
     playerRole: `扮演 ${productType} 的冻结世界行动者`,
     openingSituation: `从用户确认的雾港潮门入口开始 ${productType} 体验。`,
     requiredFacts: ['冻结世界事实保持一致'], forbiddenChanges: ['不得写回世界正式表'],
+    ...(chatCatalog ? {characterChat:{...DEFAULT_CHAT_SETTINGS,characters:[{sourceKey:chatCatalog.selectionOptions.characters.find(c=>c.label==='林舟')!.resourceKey,voiceRules:'简短直接',privateKnowledge:'独自保管的暗号',initialTrust:24}]}} : {}),
     confirmTtrpgDefaultMappings: productType === 'ttrpg',
   })
   const created = await executeProductProductionCommand({
@@ -1090,6 +1094,13 @@ describe('R-PRODUCTPROD-1F · configured formal production executor', () => {
       const runtimePackage = parseProductRuntimePackageV1(packageArtifact!.payloadJson)
       expect(runtimePackage.productType).toBe(productType)
       expect(runtimePackage.sourceWorld.selection).toEqual(owned.brief.source.selection)
+      if (productType === 'character-interaction') {
+        expect(runtimePackage.interaction!.profiles).toHaveLength(1)
+        expect(runtimePackage.interaction!.profiles[0]).toMatchObject({name:'林舟',voiceRules:expect.stringContaining('简短直接')})
+        expect(runtimePackage.interaction!.profiles[0].initialKnowledge).toContainEqual(expect.objectContaining({visibility:'private',content:'独自保管的暗号'}))
+        expect(runtimePackage.interaction!.profiles[0].relationshipDimensions[0].initial).toBe(24)
+        expect(runtimePackage.interaction!.sceneTemplates[0].directorBudget).toBe(120)
+      }
       if (productType === 'ai-town') {
         expect(runtimePackage.town).toMatchObject({
           schema: 'storyforge.ai-town-runtime-content',

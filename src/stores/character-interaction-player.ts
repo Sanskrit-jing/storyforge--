@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { db } from '../lib/db/schema'
 import {
+  readInteractionDirectorPlanV1,
   adoptInteractionRuntimeCandidateV1,
   cancelInteractionRuntimeRunV1,
   generateInteractionRuntimeCandidateV1,
@@ -60,7 +61,7 @@ interface CharacterInteractionPlayerState {
   busy: boolean
   generatingRunId: number | null
   error: string
-  load(scope: WorkspaceScope, worldGroupId: number | null): Promise<void>
+  load(scope: WorkspaceScope, worldGroupId: number | null, initialSessionId?: number | null): Promise<void>
   select(sessionId: number | null): Promise<void>
   start(productReleaseId: number, title?: string): Promise<number>
   startScene(sceneKey: string): Promise<void>
@@ -162,11 +163,13 @@ function commandId(prefix: string, sessionId: number): string {
 }
 
 export const useCharacterInteractionPlayerStore = create<CharacterInteractionPlayerState>((set, get) => {
+  let loadEpoch = 0
   const refresh = async () => {
     const scope = get().scope
     const id = get().selectedSessionId
     if (!scope || id == null) return
-    set(await details(scope, id))
+    const result = await details(scope, id)
+    if (get().scope === scope && get().selectedSessionId === id) set(result)
   }
   const reload = async (requested?: number | null) => {
     const scope = get().scope
@@ -183,11 +186,15 @@ export const useCharacterInteractionPlayerStore = create<CharacterInteractionPla
     else set({ events: [], checkpoints: [], recoverableRunIds: [], runtimeState: structuredClone(EMPTY_PRODUCT_RUNTIME_STATE) })
   }
   const withBusy = async <T>(operation: () => Promise<T>): Promise<T> => {
+    if (get().busy) throw new Error('当前操作尚未结束，请稍后再试。')
     set({ busy: true, error: '' })
     try { return await operation() } catch (reason) {
       set({ error: reason instanceof Error ? reason.message : String(reason) })
       throw reason
-    } finally { set({ busy: false }) }
+    } finally {
+      generationAbortController = null
+      try { await refresh() } finally { set({ busy: false, generatingRunId: null }) }
+    }
   }
   const version = async () => {
     const id = get().selectedSessionId
@@ -211,15 +218,23 @@ export const useCharacterInteractionPlayerStore = create<CharacterInteractionPla
     generatingRunId: null,
     error: '',
 
-    load: async (scope, worldGroupId) => {
+    load: async (scope, worldGroupId, initialSessionId) => {
+      const epoch = ++loadEpoch
+      if (get().busy) await new Promise<void>(resolve => {
+        const unsubscribe = useCharacterInteractionPlayerStore.subscribe(state => {
+          if (!state.busy) { unsubscribe(); resolve() }
+        })
+      })
+      if (epoch !== loadEpoch) return
       const changed = get().scope?.projectId !== scope.projectId || get().scope?.worldId !== scope.worldId
         || get().scope?.workId !== scope.workId || get().worldGroupId !== worldGroupId
       set({ scope, worldGroupId, loading: true, error: '', ...(changed ? { selectedSessionId: null } : {}) })
-      try { await reload() } catch (reason) { set({ error: reason instanceof Error ? reason.message : String(reason) }) }
+      try { await reload(initialSessionId ?? undefined) } catch (reason) { set({ error: reason instanceof Error ? reason.message : String(reason) }) }
       finally { set({ loading: false }) }
     },
 
     select: async selectedSessionId => {
+      if (get().busy) return
       set({ selectedSessionId, loading: true, error: '' })
       try {
         if (selectedSessionId == null) set({ events: [], checkpoints: [], recoverableRunIds: [], runtimeState: structuredClone(EMPTY_PRODUCT_RUNTIME_STATE) })
@@ -319,40 +334,61 @@ export const useCharacterInteractionPlayerStore = create<CharacterInteractionPla
       const sessionId = get().selectedSessionId
       const state = get().runtimeState.interaction
       if (!scope || sessionId == null || !state?.activeScene) throw new Error('当前没有进行中的互动场景。')
+      if (state.remainingDirectorBudget < 1) throw new Error('本场景的回复预算已用完。玩家消息已保存，请结束场景或进入下一场景。')
       generationAbortController = new AbortController()
       const signal = generationAbortController.signal
-      const active = state.activeScene.activeParticipantKeys
+      const playerMessage=state.messages.find(m=>m.eventSequence===input.replyToSequence && m.role==='player' && m.supersededBySequence==null)
+      if(!playerMessage || playerMessage.eventSequence <= state.activeScene.startedAtSequence)throw new Error('玩家消息不存在或不属于当前场景。')
+      const active = state.activeScene.activeParticipantKeys.filter(key=>playerMessage.audienceKeys==null || playerMessage.audienceKeys.includes(key))
+      if(!active.length)throw new Error('当前场景没有能够听见此消息的角色。')
       let responders: string[]
+      const intents = new Map<string, string>()
       if (input.preferredParticipantKey) {
         responders = [input.preferredParticipantKey]
       } else if (active.length === 1) {
         responders = [...active]
       } else {
-        const director = await generateInteractionRuntimeCandidateV1({
+        let decision = await readInteractionDirectorPlanV1(scope, sessionId, state.activeScene.sceneId, input.replyToSequence)
+        if (!decision) {
+          const generated = await generateInteractionRuntimeCandidateV1({
           scope,
           productRuntimeSessionId: sessionId,
           participantKey: active[0],
           skillId: 'prose.interaction-scene-director',
+          replyToSequence: input.replyToSequence,
           objective: `根据玩家消息 #${input.replyToSequence} 选择有必要回应的角色和顺序。`,
           aiConfig: input.aiConfig,
           signal,
           onRunCreated: id => { set({ generatingRunId: id }) },
         })
-        await adoptInteractionRuntimeCandidateV1({ scope, runId: director.snapshot.run.id })
+        await adoptInteractionRuntimeCandidateV1({ scope, runId: generated.snapshot.run.id })
+          if(generated.candidate.kind !== 'scene-director-candidate') throw new Error('导演候选类型错误')
+          decision = generated.candidate
+        }
+        const director = {candidate: decision}
         responders = director.candidate.kind === 'scene-director-candidate'
           ? director.candidate.responders.map(item => item.participantKey) : []
-        if (!responders.length) responders = [active[0]]
+        if (director.candidate.kind === 'scene-director-candidate') {
+          for (const responder of director.candidate.responders) intents.set(responder.participantKey, responder.intent)
+          if (director.candidate.shouldEnd) {
+            const base = await version()
+            await endInteractionScene({sessionId: base.id, commandId: commandId('interaction.director.end', base.id), baseSequence: base.sequence, baseStateHash: base.stateHash, sceneId: state.activeScene.sceneId, reason: director.candidate.endReason!})
+            return
+          }
+          if (!responders.length) return
+        }
       }
-      responders = [...new Set(responders)].filter(key => active.includes(key))
+      const completed = new Set(state.messages.filter(m=>m.role==='character' && m.replyToSequence===input.replyToSequence && m.supersededBySequence==null).map(m=>m.speakerKey))
+      responders = [...new Set(responders)].filter(key => active.includes(key) && !completed.has(key))
         .slice(0, state.remainingDirectorBudget)
-      if (!responders.length) throw new Error('导演没有返回当前场景中的有效角色。')
+      if (!responders.length) return
       for (const participantKey of responders) {
         const generated = await generateInteractionRuntimeCandidateV1({
           scope,
           productRuntimeSessionId: sessionId,
           participantKey,
           skillId: 'character.interaction-reply',
-          objective: `回应玩家消息 #${input.replyToSequence}，budgetCost 设为 1，只披露角色实际知道的信息。`,
+          objective: `回应意图：${intents.get(participantKey) ?? "直接回应玩家"}。回应玩家消息 #${input.replyToSequence}，budgetCost 设为 1，只披露角色实际知道的信息。`,
           replyToSequence: input.replyToSequence,
           replyBudgetCost: 1,
           aiConfig: input.aiConfig,
@@ -427,6 +463,8 @@ export const useCharacterInteractionPlayerStore = create<CharacterInteractionPla
       if (!state?.activeScene) throw new Error('当前没有进行中的场景。')
       const scope = get().scope
       const sessionId = get().selectedSessionId
+      generationAbortController = new AbortController()
+      const signal = generationAbortController.signal
       let curatorFailure = ''
       if (scope && sessionId != null && aiConfig && state.messages.length) {
         for (const participantKey of state.activeScene.activeParticipantKeys) {
@@ -436,16 +474,20 @@ export const useCharacterInteractionPlayerStore = create<CharacterInteractionPla
               productRuntimeSessionId: sessionId,
               participantKey,
               skillId: 'character.interaction-memory-curator',
+              signal,
               objective: `在场景 ${state.activeScene.sceneId} 结束前，仅依据该角色可见的真实消息提出一条可追溯摘要或关键记忆候选。`,
               aiConfig,
               onRunCreated: id => { set({ generatingRunId: id }) },
             })
             await adoptInteractionRuntimeCandidateV1({ scope, runId: generated.snapshot.run.id })
           } catch (cause) {
+            if (signal.aborted) throw cause
             curatorFailure = cause instanceof Error ? cause.message : String(cause)
+            break
           }
         }
       }
+      if (signal.aborted) throw new Error('已停止整理，场景未结束。')
       const base = await version()
       await endInteractionScene({
         sessionId: base.id,

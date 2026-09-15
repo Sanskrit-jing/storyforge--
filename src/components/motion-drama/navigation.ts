@@ -4,12 +4,18 @@ export const MOTION_PAGES = [
   ['frames', '参考帧'], ['image', '画面提示词'], ['video', '运动提示词'],
   ['pack', '工具适配包'], ['review', '质量审查'], ['versions', '版本与交付'], ['prompts', '提示词设置'], ['settings', '通用设置'],
 ] as const
-export const MOTION_GROUPS = [
+export const MOTION_CONTENT_GROUPS = [
   {id:'library',label:'作品库',pages:['library']}, {id:'source',label:'小说来源',pages:['source']},
   {id:'series',label:'系列设定',pages:['series','episodes']}, {id:'assets',label:'物料库',pages:['assets']},
   {id:'beats',label:'单集内容',pages:['beats','script','shots','frames','image','video']},
   {id:'pack',label:'工具适配包',pages:['pack']}, {id:'review',label:'质量审查',pages:['review']},
   {id:'versions',label:'版本与交付',pages:['versions']}, {id:'settings',label:'通用设置',pages:['settings','prompts']},
+]
+export const MOTION_GROUPS = [
+  {id:'library',label:'作品库',pages:['library']},
+  {id:'source',label:'漫剧制作台',pages:['source','series','episodes','assets','beats','script','shots','frames','image','video','review']},
+  {id:'versions',label:'版本与交付',pages:['pack','versions']},
+  {id:'settings',label:'通用设置',pages:['settings','prompts']},
 ]
 export const motionDescription: Record<string,string> = {
  source:'从一句话、本地小说或导入正文开始，明确原著范围与冻结版本。',

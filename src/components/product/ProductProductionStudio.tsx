@@ -1,3 +1,4 @@
+import type {ChatAuthoringSettingsV1} from '../../lib/character-interaction/authoring-contract'
 import type { AvgAuthoringSettingsV1 } from '../../lib/avg/authoring-contract'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -183,6 +184,8 @@ export default function ProductProductionStudio(props: {
   initialProduct?: SupportedProduct
   initialSource?: ProductProductionHandoffV1 | null
   managedCreation?: boolean
+  embedded?: boolean
+  chatSetup?: {settings:ChatAuthoringSettingsV1;title:string;worldReleaseId:number|null}
   avgSetup?: { settings: AvgAuthoringSettingsV1; title: string; worldReleaseId: number | null }
   initialProductionId?: number | null
   onProductionSelected?: (id: number | null) => void
@@ -201,21 +204,21 @@ export default function ProductProductionStudio(props: {
   const [productions, setProductions] = useState<ProductProductionRecordV1[]>([])
   const [selectedProductionId, setSelectedProductionId] = useState<number | null>(null)
   const [details, setDetails] = useState<ProductProductionDetailsV1 | null>(null)
-  const [worldReleaseId, setWorldReleaseId] = useState<number | null>(props.avgSetup?.worldReleaseId ?? null)
+  const [worldReleaseId, setWorldReleaseId] = useState<number | null>(props.chatSetup?.worldReleaseId ?? props.avgSetup?.worldReleaseId ?? null)
   const [suggestions, setSuggestions] = useState<ProductStartingPointSuggestionV1[]>([])
   const [suggestionKey, setSuggestionKey] = useState('')
   const [sourceOptions, setSourceOptions] = useState<ProductProductionSourceOptionsV1 | null>(null)
   const [selectionDefaults, setSelectionDefaults] = useState<Record<string, ProductProductionSourceSelectionV1>>({})
   const [sourceSelection, setSourceSelection] = useState<ProductProductionSourceSelectionV1 | null>(null)
-  const [title, setTitle] = useState(props.avgSetup?.title ?? '')
-  const [openingSituation, setOpeningSituation] = useState(props.avgSetup?.settings.openingSituation ?? '')
-  const [playerRole, setPlayerRole] = useState(props.avgSetup?.settings.playerRole ?? '')
+  const [title, setTitle] = useState(props.chatSetup?.title ?? props.avgSetup?.title ?? '')
+  const [openingSituation, setOpeningSituation] = useState(props.chatSetup?.settings.openingSituation ?? props.avgSetup?.settings.openingSituation ?? '')
+  const [playerRole, setPlayerRole] = useState(props.chatSetup?.settings.playerRole ?? props.avgSetup?.settings.playerRole ?? '')
   const [scale, setScale] = useState<ProductProductionScaleV1['scope']>('scene')
   const [requiredFactsText, setRequiredFactsText] = useState('')
   const [forbiddenChangesText, setForbiddenChangesText] = useState('')
   const [contentBoundariesText, setContentBoundariesText] = useState('不生成未授权的露骨或仇恨内容')
   const [productType, setProductType] = useState<SupportedProduct>(initialProduct)
-  const [qualityProfile, setQualityProfile] = useState<ProductProductionBriefV3['qualityProfile']>(props.avgSetup?.settings.qualityProfile ?? 'prototype')
+  const [qualityProfile, setQualityProfile] = useState<ProductProductionBriefV3['qualityProfile']>(props.chatSetup?.settings.qualityProfile ?? props.avgSetup?.settings.qualityProfile ?? 'prototype')
   const [visualLevel, setVisualLevel] = useState<'none' | 'key-scenes'>(props.avgSetup?.settings.visualLevel ?? (initialProduct === 'avg' || initialProduct === 'ai-town' ? 'key-scenes' : 'none'))
   const [audioLevel, setAudioLevel] = useState<'none' | 'music-sfx'>(props.avgSetup?.settings.audioLevel ?? (initialProduct === 'avg' ? 'music-sfx' : 'none'))
   const [confirmTtrpgDefaultMappings, setConfirmTtrpgDefaultMappings] = useState(false)
@@ -263,7 +266,7 @@ export default function ProductProductionStudio(props: {
     scope,
   } = props
 
-  const {avgSetup, initialProductionId, onProductionSelected} = props
+  const {chatSetup, avgSetup, initialProductionId, onProductionSelected} = props
   const refresh = useCallback(async (preferredId?: number | null) => {
     const { worldReleases: nextReleases, productions: nextProductions } = await listProductProductionWorkspaceV1(
       scope,
@@ -281,7 +284,7 @@ export default function ProductProductionStudio(props: {
     }
     setWorldReleaseId(current => parsedInitialSource
       ? handedOffRelease?.reference.localReleaseRecordId ?? null
-      : avgSetup ? avgSetup.worldReleaseId : current ?? nextReleases[0]?.reference.localReleaseRecordId ?? null)
+      : chatSetup ? chatSetup.worldReleaseId : avgSetup ? avgSetup.worldReleaseId : current ?? nextReleases[0]?.reference.localReleaseRecordId ?? null)
     const desired = preferredId !== undefined
       ? preferredId
       : initialProductionId != null && nextProductions.some(row=>row.id===initialProductionId) ? initialProductionId
@@ -357,7 +360,7 @@ export default function ProductProductionStudio(props: {
       setMediaRuntimeGateError('')
       setCompletedPlaythroughs([])
     }
-  }, [allowedProducts, initialSource, onProductSelected, scope, selectedProductionId, avgSetup, initialProductionId, onProductionSelected])
+  }, [allowedProducts, initialSource, onProductSelected, scope, selectedProductionId, chatSetup, avgSetup, initialProductionId, onProductionSelected])
 
   useEffect(() => { void refresh() }, [props.scope.projectId, props.scope.worldId, props.scope.workId]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => {
@@ -411,11 +414,12 @@ export default function ProductProductionStudio(props: {
     const next = await compileProductProductionBriefV3({
       scope: props.scope, worldReleaseId, suggestionKey, productType, qualityProfile,
       scale, visualLevel, audioLevel, playerRole, openingSituation,
+      ...(productType === "character-interaction" && props.chatSetup ? {characterChat:{...props.chatSetup.settings,playerRole,openingSituation,qualityProfile}} : {}),
       ...(productType === 'avg' && props.avgSetup ? { avg: {...props.avgSetup.settings,playerRole,openingSituation,visualLevel,audioLevel,qualityProfile} } : {}),
-      coreExperience: props.avgSetup ? [props.avgSetup.settings.experience,props.avgSetup.settings.routes && `人物路线：${props.avgSetup.settings.routes}`,props.avgSetup.settings.variables && `变量目标：${props.avgSetup.settings.variables}`,props.avgSetup.settings.endings && `结局方向：${props.avgSetup.settings.endings}`,props.avgSetup.settings.choiceBoundaries && `选择边界：${props.avgSetup.settings.choiceBoundaries}`].filter(Boolean) : openingSituation ? ['有后果的选择', openingSituation] : undefined,
+      coreExperience: props.chatSetup ? [props.chatSetup.settings.experience].filter(v=>v.trim()) : props.avgSetup ? [props.avgSetup.settings.experience,props.avgSetup.settings.routes && `人物路线：${props.avgSetup.settings.routes}`,props.avgSetup.settings.variables && `变量目标：${props.avgSetup.settings.variables}`,props.avgSetup.settings.endings && `结局方向：${props.avgSetup.settings.endings}`,props.avgSetup.settings.choiceBoundaries && `选择边界：${props.avgSetup.settings.choiceBoundaries}`].filter(Boolean) : openingSituation ? ['有后果的选择', openingSituation] : undefined,
       requiredFacts: nonEmptyLines(requiredFactsText),
       forbiddenChanges: nonEmptyLines(forbiddenChangesText),
-      contentBoundaries: nonEmptyLines(contentBoundariesText),
+      contentBoundaries: nonEmptyLines(props.chatSetup?.settings.contentBoundaries ?? contentBoundariesText),
       confirmTtrpgDefaultMappings: productType === 'ttrpg' && confirmTtrpgDefaultMappings,
       ttrpg: productType === 'ttrpg' ? toTtrpgProductionBriefDraftInputV2({
         value: ttrpgWizard,
@@ -788,12 +792,12 @@ export default function ProductProductionStudio(props: {
     }
   }, [capabilityReadiness, details?.brief])
 
-  return <div className="grid min-h-[720px] grid-cols-1 bg-bg-base text-text-primary lg:grid-cols-[260px_minmax(0,1fr)]" data-testid="product-production-studio">
-    <aside className="border-b border-border bg-bg-surface p-4 lg:border-b-0 lg:border-r">
-      <div className="flex items-center justify-between gap-2"><div><small className="font-mono text-[9px] text-accent">PRODUCT-PROD</small><h2 className="font-serif text-base">游戏制作</h2></div><button aria-label="刷新制作列表" onClick={() => void refresh()} className="rounded border border-border p-2 text-text-muted"><RefreshCw className="h-3.5 w-3.5" /></button></div>
-      {!props.managedCreation && <button onClick={() => { setSelectedProductionId(null); setDetails(null); setProductType(initialProduct); props.onProductSelected?.(initialProduct); setSuggestions([]); setSourceOptions(null); setSelectionDefaults({}); setSourceSelection(null); setDraft(null); setMessage(''); setError('') }} className="mt-4 flex w-full items-center justify-center gap-2 rounded border border-accent/40 bg-accent/10 px-3 py-2 text-xs text-accent"><Plus className="h-3.5 w-3.5" />新建 Production</button>}
-      <div className="mt-4 grid gap-2">{productions.map(row => <button key={row.id} onClick={() => void refresh(row.id)} className={`rounded border p-3 text-left ${selectedProductionId === row.id ? 'border-accent bg-accent/10' : 'border-border bg-bg-base'}`}><strong className="block truncate text-xs">{row.title}</strong><span className="mt-1 flex items-center justify-between text-[9px] text-text-muted"><code>{row.productionKey}</code><em className="not-italic text-accent">{statusLabel(row.status)}</em></span></button>)}{productions.length === 0 && <p className="rounded border border-dashed border-border p-4 text-[10px] leading-relaxed text-text-muted">还没有 Production。会谈只读取冻结 WorldRelease，不会在后台自动开始制作。</p>}</div>
-    </aside>
+  const productionDirectory = <>
+      <div className="flex items-center justify-between gap-2"><div><small className="font-mono text-[9px] text-accent">PRODUCT-PROD</small><h2 className="font-serif text-base">{props.embedded ? '角色聊天制作' : '游戏制作'}</h2></div><button aria-label="刷新制作列表" onClick={() => void refresh()} className="rounded border border-border p-2 text-text-muted"><RefreshCw className="h-3.5 w-3.5" /></button></div>
+      {!props.managedCreation && <button onClick={() => { setSelectedProductionId(null); setDetails(null); setProductType(initialProduct); props.onProductSelected?.(initialProduct); setSuggestions([]); setSourceOptions(null); setSelectionDefaults({}); setSourceSelection(null); setDraft(null); setMessage(''); setError('') }} className="mt-4 flex w-full items-center justify-center gap-2 rounded border border-accent/40 bg-accent/10 px-3 py-2 text-xs text-accent"><Plus className="h-3.5 w-3.5" />{props.embedded ? '新建制作版本' : '新建 Production'}</button>}
+      <div className="mt-4 grid gap-2">{productions.map(row => <button key={row.id} onClick={() => void refresh(row.id)} className={`rounded border p-3 text-left ${selectedProductionId === row.id ? 'border-accent bg-accent/10' : 'border-border bg-bg-base'}`}><strong className="block truncate text-xs">{row.title}</strong><span className="mt-1 flex items-center justify-between text-[9px] text-text-muted"><code>{row.productionKey}</code><em className="not-italic text-accent">{statusLabel(row.status)}</em></span></button>)}{productions.length === 0 && <p className="rounded border border-dashed border-border p-4 text-[10px] leading-relaxed text-text-muted">还没有 Production。会谈只读取冻结 WorldRelease，不会在后台自动开始制作。</p>}</div></>
+  return <div className={`grid min-h-[720px] grid-cols-1 bg-bg-base text-text-primary ${props.embedded ? 'content-start' : 'lg:grid-cols-[260px_minmax(0,1fr)]'}`} data-testid="product-production-studio">
+    {props.embedded ? <details className="border-b border-border p-5"><summary className="cursor-pointer text-sm">制作记录与新版本</summary><div className="mt-4">{productionDirectory}</div></details> : <aside className="border-b border-border bg-bg-surface p-4 lg:border-b-0 lg:border-r">{productionDirectory}</aside>}
     <main className="min-w-0 p-5 md:p-8">
       {(message || error) && <div role={error ? 'alert' : 'status'} aria-live={error ? 'assertive' : 'polite'} className={`mb-5 flex items-start gap-2 rounded border p-3 text-xs ${error ? 'border-error/30 bg-error/5 text-error' : 'border-success/30 bg-success/5 text-success'}`}>{error ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> : <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />}<span>{error || message}</span></div>}
       {commandActivity && <div role="status" aria-live="polite" data-testid="product-production-command-activity" className={`mb-5 rounded border p-3 text-[10px] ${commandActivity.status === 'succeeded' ? 'border-success/30 bg-success/5 text-success' : commandActivity.status === 'conflict' ? 'border-error/30 bg-error/5 text-error' : 'border-accent/30 bg-accent/5 text-accent'}`}><strong>{commandActivity.label} · {commandActivity.status === 'pending' ? 'pending' : commandActivity.status === 'succeeded' ? 'succeeded' : 'conflict / failed'}</strong><span className="mt-1 block">{commandActivity.detail}</span></div>}
@@ -803,8 +807,8 @@ export default function ProductProductionStudio(props: {
         <section className="grid gap-4 rounded border border-border bg-bg-elevated p-5 md:grid-cols-2">
           <label className="grid gap-2 text-[10px] text-text-muted">冻结 WorldRelease<select value={worldReleaseId ?? ''} onChange={event => { setWorldReleaseId(Number(event.target.value) || null); setSuggestions([]); setSourceOptions(null); setSelectionDefaults({}); setSourceSelection(null); setDraft(null) }} className="rounded border border-border bg-bg-base p-2 text-xs text-text-primary">{releases.map(release => <option key={release.reference.releaseUid} value={release.reference.localReleaseRecordId}>v{release.reference.releaseVersion} · {release.label}</option>)}</select></label>
           <label className="grid gap-2 text-[10px] text-text-muted">产品形态<select disabled={props.allowedProducts.length === 1} value={productType} onChange={event => { const next = event.target.value as SupportedProduct; if (!props.allowedProducts.includes(next)) return; setProductType(next); props.onProductSelected?.(next); setVisualLevel(next === 'avg' || next === 'ttrpg' || next === 'ai-town' ? 'key-scenes' : 'none'); setAudioLevel(next === 'avg' ? 'music-sfx' : 'none'); setConfirmTtrpgDefaultMappings(false); setTtrpgWizard(createDefaultTtrpgProductionWizardValueV2()); setDraft(null) }} className="rounded border border-border bg-bg-base p-2 text-xs text-text-primary disabled:opacity-70">{props.allowedProducts.map(kind => <option key={kind} value={kind}>{PRODUCT_LABELS[kind]}</option>)}</select><span>{productType === 'ttrpg' ? '跑团使用自己的需求适配器、规则、战役、媒资和运行协议；世界事实只从冻结 WorldRelease 渐进读取。' : '每种产品使用自己的需求适配器和生产图，共享中立世界协议但不共享业务表。'}</span></label>
-          <label className="grid gap-2 text-[10px] text-text-muted">制作质量<select value={qualityProfile} onChange={event => { setQualityProfile(event.target.value as ProductProductionBriefV3['qualityProfile']); setDraft(null) }} className="rounded border border-border bg-bg-base p-2 text-xs text-text-primary"><option value="prototype">原型 · 内置占位素材</option><option value="internal">内部评审 · Agnes 就绪则生成图片</option><option value="commercial-candidate">商业候选 · 生成正式图片并完成质量门</option></select><span>始终复用“设置”中的全局 AI 配置。Agnes 文字与图片共用同一个 API Key，图片自动切换到专用模型，不会要求你再次填写。</span></label>
-          <label className="grid gap-2 text-[10px] text-text-muted">游戏标题<input value={title} onChange={event => setTitle(event.target.value)} className="rounded border border-border bg-bg-base p-2 text-xs text-text-primary" placeholder="会谈后可修改" /></label>
+          <label className="grid gap-2 text-[10px] text-text-muted">制作质量<select value={qualityProfile} onChange={event => { setQualityProfile(event.target.value as ProductProductionBriefV3['qualityProfile']); setDraft(null) }} className="rounded border border-border bg-bg-base p-2 text-xs text-text-primary"><option value="prototype">{productType === 'character-interaction' ? '原型 · 纯文字' : '原型 · 内置占位素材'}</option><option value="internal">{productType === 'character-interaction' ? '内部评审' : '内部评审 · Agnes 就绪则生成图片'}</option><option value="commercial-candidate">{productType === 'character-interaction' ? '商业候选 · 完成质量门' : '商业候选 · 生成正式图片并完成质量门'}</option></select><span>始终复用“设置”中的全局 AI 配置。Agnes 文字与图片共用同一个 API Key，图片自动切换到专用模型，不会要求你再次填写。</span></label>
+          <label className="grid gap-2 text-[10px] text-text-muted">{productType === 'character-interaction' ? '作品名称' : '游戏标题'}<input value={title} onChange={event => setTitle(event.target.value)} className="rounded border border-border bg-bg-base p-2 text-xs text-text-primary" placeholder="会谈后可修改" /></label>
           <div className={`rounded border p-3 text-[10px] leading-5 md:col-span-2 ${capabilityReadiness.text.ready && requestedCommercialImageReady && requestedCommercialAudioReady ? 'border-success/30 bg-success/5 text-success' : 'border-error/30 bg-error/5 text-error'}`} data-testid="product-production-capability-readiness"><strong className="block text-xs">{capabilityReadiness.text.ready ? '文本生成能力已就绪' : '文本生成能力未就绪'}</strong><span>{capabilityReadiness.text.ready ? `将直接复用 ${capabilityReadiness.text.provider} / ${capabilityReadiness.text.model}，无需再次填写 API Key。` : capabilityReadiness.text.issue}</span>{['avg', 'ttrpg', 'ai-town'].includes(productType) && (productType === 'ttrpg' ? ttrpgWizard.maximumGeneratedAssets > 0 : visualLevel !== 'none') && <span className="block">{productType === 'ai-town' && qualityProfile === 'internal' && capabilityReadiness.authoredImagePackReady ? `原创媒资包已就绪：${capabilityReadiness.authoredImagePackManifestPath}；生产时逐文件校验 SHA-256、MIME 与尺寸。` : capabilityReadiness.image.ready ? `图片能力已就绪：复用同一 Agnes Key，自动调用 ${capabilityReadiness.image.model}。` : capabilityReadiness.mediaRelayReady ? `Agnes 图片不可用，将使用已绑定媒体中继${capabilityReadiness.mediaRelayOrigin ? `：${capabilityReadiness.mediaRelayOrigin}` : ''}。` : capabilityReadiness.image.issue}</span>}{(productType === 'avg' || productType === 'ai-town') && audioLevel !== 'none' && <span className="block">{capabilityReadiness.mediaRelayReady ? `音乐与音效能力已绑定${capabilityReadiness.mediaRelayOrigin ? `：${capabilityReadiness.mediaRelayOrigin}` : ''}。` : 'Agnes 当前公开接口未提供独立音乐/SFX 生成；选择商业音频时仍需绑定音频能力，或改为静音。'}</span>}</div>
           <label className="grid gap-2 text-[10px] text-text-muted">玩家身份 / 主角<input value={playerRole} maxLength={300} onChange={event => { setPlayerRole(event.target.value); setDraft(null) }} className="rounded border border-border bg-bg-base p-2 text-xs text-text-primary" placeholder="例如：扮演港口守灯人；或与某角色同行" /></label>
           <label className="grid gap-2 text-[10px] text-text-muted">游戏规模<select value={scale} onChange={event => { setScale(event.target.value as ProductProductionScaleV1['scope']); setDraft(null) }} className="rounded border border-border bg-bg-base p-2 text-xs text-text-primary"><option value="scene">单场景 · 约 20 分钟</option><option value="short-arc">短篇支线</option><option value="chapter">完整章节</option><option value="multi-chapter">多章节</option><option value="campaign">长线战役</option></select></label>

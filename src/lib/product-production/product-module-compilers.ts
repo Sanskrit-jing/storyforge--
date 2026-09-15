@@ -291,28 +291,30 @@ function choiceMap(input: ProductModuleCompilerInputV1) {
 }
 
 export function compileInteractionModulesV1(input: ProductModuleCompilerInputV1) {
-  const participantKeys = participants(input)
+  const chat = input.brief.characterChat
+  const participantKeys = chat?.mode === 'single' ? participants(input).slice(0,1) : participants(input)
   const sourceCharacters = selectedCharacters(input)
   const profiles: FrozenInteractionCharacterProfile[] = participantKeys.map((participantKey, index) => {
     const frozenCharacterKey = characterKey(input, index)
     const sourceCharacter = sourceCharacters[index]
+    const settings = chat?.characters.find(c=>c.sourceKey===sourceCharacter?.resourceKey)
     const spoken = input.narrative.beats.filter(beat => beat.speakerKey === frozenCharacterKey)
       .slice(0, 12).map(beat => beat.text)
     return {
       participantKey, characterKey: frozenCharacterKey,
       name: sourceCharacter?.name ?? `产品角色 ${index + 1}`,
       roleLabel: index === 0 ? '核心互动角色' : '相关角色',
-      voiceRules: `保持 ${sourceCharacter?.description || frozenCharacterKey} 的冻结事实和知识边界；遵守：${input.brief.intent.contentBoundaries.join('；')}`,
+      voiceRules: `保持 ${sourceCharacter?.description || frozenCharacterKey} 的冻结事实和知识边界；遵守：${input.brief.intent.contentBoundaries.join('；')}。${settings?.voiceRules ?? ''}`,
       initialKnowledge: [{
         key: `profile.${pad(index)}`,
         content: [sourceCharacter?.description, ...spoken].filter(Boolean).join('\n') || input.brief.intent.openingSituation,
         visibility: 'public', importance: index === 0 ? 100 : 70,
-      }],
+      }, ...(settings?.privateKnowledge ? [{key:`private.${pad(index)}`,content:settings.privateKnowledge,visibility:'private' as const,importance:100}] : [])],
       relationshipDimensions: [
-        { key: 'trust', label: '信任', minimum: -100, maximum: 100, initial: 0, largeChangeThreshold: 20 },
+        { key: 'trust', label: '信任', minimum: -100, maximum: 100, initial: settings?.initialTrust ?? 0, largeChangeThreshold: chat?.relationshipThreshold ?? 20 },
         { key: 'respect', label: '尊重', minimum: -100, maximum: 100, initial: 0, largeChangeThreshold: 20 },
       ],
-      maxMemoryEntries: Math.max(40, Math.min(240, input.brief.scale.targetPlayMinutes * 2)),
+      maxMemoryEntries: chat?.maxMemoryEntries ?? Math.max(40, Math.min(240, input.brief.scale.targetPlayMinutes * 2)),
     }
   })
   const endingNodes = endings(input)
@@ -353,8 +355,8 @@ export function compileInteractionModulesV1(input: ProductModuleCompilerInputV1)
         },
       ])), openingNodeKey: node.key,
       endingNodeKey: directEnding?.key ?? endingNodes[0].key,
-      maxTurns: Math.max(8, Math.min(80, Math.ceil(input.brief.scale.targetPlayMinutes / Math.max(1, sourceNodes.length)) * 4)),
-      directorBudget: Math.max(1, Math.min(activeParticipants.length * 2, 12)), order: index,
+      maxTurns: chat?.maxTurns ?? Math.max(8, Math.min(80, Math.ceil(input.brief.scale.targetPlayMinutes / Math.max(1, sourceNodes.length)) * 4)),
+      directorBudget: chat?.replyBudget ?? (input.brief.intent.productType === 'character-interaction' ? Math.max(60, input.brief.scale.targetPlayMinutes * activeParticipants.length * 4) : Math.max(1, Math.min(activeParticipants.length * 2, 12))), order: index,
     }
   })
   return { playerKey: 'player' as const, profiles, sceneTemplates }

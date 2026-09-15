@@ -7,6 +7,7 @@ import { PRODUCT_NAVIGATION } from './components/navigation/product-navigation'
 
 const AiTownPage = lazy(() => import('./pages/AiTownPage'))
 const TtrpgPage = lazy(() => import('./pages/TtrpgPage'))
+const CharacterChatPage = lazy(() => import('./pages/CharacterChatPage'))
 const AvgPage = lazy(() => import('./pages/AvgPage'))
 const HomePage = lazy(() => import('./pages/HomePage'))
 const WorldEnginePage = lazy(() => import('./pages/WorldEnginePage'))
@@ -32,6 +33,7 @@ function HomeRoute() {
   if (params.get('product') === 'avg') { const next = new URLSearchParams(params); next.delete('tab'); next.delete('product'); return <Navigate replace to={`/avg/production?${next}`}/> }
   if (params.get('tab') === 'ttrpg' && params.get('legacy') !== '1' && !params.has('onlineHandoff')) { const next = new URLSearchParams(params); next.delete('tab'); const page = next.has('worldHandoff') ? 'source' : next.has('session') ? 'play' : next.has('project') ? 'production' : 'library'; return <Navigate replace to={`/ttrpg/${page}?${next}`}/> }
   if (params.get('tab') === 'town' && params.get('legacy') !== '1') { const next = new URLSearchParams(params); next.delete('tab'); const page = next.has('worldHandoff') ? 'source' : next.has('session') ? 'play' : next.has('project') ? 'production' : 'library'; return <Navigate replace to={`/town/${page}?${next}`}/> }
+  if (params.get('tab') === 'chat' || params.get('product') === 'character-interaction') { const next=new URLSearchParams(params);next.delete('tab');next.delete('product');return <Navigate replace to={`/chat/${params.get('product') ? 'production' : 'library'}?${next}`}/> }
   // Preserve existing work/tool deep links while the remaining products are audited.
   return params.has('tab') && (params.get('tab') !== 'home' || params.get('legacy') === '1') ? <ProductHubPage /> : <HomePage />
 }
@@ -41,10 +43,11 @@ export default function App() {
     <>
     <ResumeTracker/>
     <Routes>
-      {[...PRODUCT_NAVIGATION.filter(item => !['home', 'long', 'short', 'script', 'world', 'avg', 'ttrpg', 'town', 'comic', 'motion'].includes(item.id)), { id: 'community' }].map(item => <Route key={item.id} path={`/${item.id}/:pageId?`} element={<Suspense fallback={<RouteFallback />}><PreviewRoutePage productId={item.id}/></Suspense>}/>)}
+      {[...PRODUCT_NAVIGATION.filter(item => !['home', 'long', 'short', 'script', 'world', 'avg', 'ttrpg', 'town', 'comic', 'motion', 'chat'].includes(item.id)), { id: 'community' }].map(item => <Route key={item.id} path={`/${item.id}/:pageId?`} element={<Suspense fallback={<RouteFallback />}><PreviewRoutePage productId={item.id}/></Suspense>}/>)}
       <Route path="/motion/:pageId?" element={<Suspense fallback={<RouteFallback />}><MotionMaterialsPage/></Suspense>}/>
       <Route path="/town/:pageId?" element={<Suspense fallback={<RouteFallback />}><AiTownPage /></Suspense>}/>
       <Route path="/ttrpg/:pageId?" element={<Suspense fallback={<RouteFallback />}><TtrpgPage /></Suspense>}/>
+      <Route path="/chat/:pageId?" element={<Suspense fallback={<RouteFallback />}><CharacterChatPage /></Suspense>}/>
       <Route path="/avg/:pageId?" element={<Suspense fallback={<RouteFallback />}><AvgPage /></Suspense>}/>
       <Route path="/home/:pageId?" element={<Suspense fallback={<RouteFallback />}><HomePage /></Suspense>}/>
       <Route path="/world/:pageId?" element={<Suspense fallback={<RouteFallback />}><WorldEnginePage /></Suspense>}/>

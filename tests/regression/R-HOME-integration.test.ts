@@ -20,3 +20,14 @@ it('aggregates Work-owned tasks without requiring worldId; rejects wrong owners 
  await db.agentRuns.bulkAdd([base,{...base,projectId:b.project.id!},{...base,workId:null,productRuntimeSessionId:42}])
  const data=await readHomeData();expect(data.runs).toHaveLength(1);expect(data.runs[0].workId).toBe(a.work.id)
 })
+
+
+it('integrated products resume their own editor and reject another work or product',async()=>{
+ await create('导航归属');const [original]=(await readHomeCatalog()).works;
+ for(const [kind,route] of [['comic','comic'],['motion-drama','motion'],['character-interaction','chat']] as const){
+  const row={...original,work:{...original.work,kind,novelProfile:null}};
+  const path=workPath(row);expect(path.startsWith(`/${route}/`)).toBe(true);expect(validWorkPath(row,path)).toBe(true);
+  const url=new URL(path,'https://storyforge.local');url.searchParams.set('work',String(row.work.id!+1));expect(validWorkPath(row,url.pathname+url.search)).toBe(false);
+  expect(validWorkPath(row,`/short/intent?project=${row.project.id}`)).toBe(false);
+ }
+})

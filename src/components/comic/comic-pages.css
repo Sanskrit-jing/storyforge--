@@ -33,3 +33,8 @@
 .comic-app .comic-inspector>fieldset>header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid #d3dfcf}.comic-app .comic-inspector>fieldset>header>div{display:grid;gap:5px}.comic-app .comic-inspector>fieldset>header small{color:#859881;font-size:11px}
 .comic-app .comic-visual-layout{grid-template-columns:170px minmax(0,1fr)}.comic-app .comic-visual-layout aside{background:#edf1e3;color:#355c50;border-color:#d3dfcf}.comic-app .comic-visual-layout aside>button.active{background:#dce4c9;color:#28584d;border-color:#cfddc8;box-shadow:none}.comic-app .comic-visual-layout aside>button em{background:#e1e9d6;color:#5d7b66}.comic-app .comic-subject-hero{grid-template-columns:minmax(0,1fr);border-radius:22px;background:#fffdf7;box-shadow:none}.comic-app .comic-subject-reference{background:#e4ecdb}.comic-app .comic-subject-reference>div{color:#5d7b66}.comic-app .comic-subject-reference svg{color:#6b9476}
 @media(max-width:900px){.comic-app .comic-visual-layout{grid-template-columns:minmax(0,1fr)}.comic-app .comic-visual-layout aside{border-right:0;border-bottom:1px solid #d3dfcf}}
+
+.cp-subnav>section{display:grid;gap:4px}.cp-subnav>section+section{margin-top:16px}.cp-subnav small{padding:8px 14px;color:#7e927b;font-size:12px;letter-spacing:.08em}
+
+.comic-app .lf-content>.cp-subnav{max-height:calc(100vh - 150px);overflow-y:auto;overscroll-behavior:contain}.cp-subnav small:empty{display:none}
+@media(max-width:700px){.comic-app .lf-content>.cp-subnav{max-height:260px}}

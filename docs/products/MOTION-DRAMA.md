@@ -90,3 +90,7 @@ V1 不要求、读取或生成 WorldRelease，不向世界引擎写入人物图�
 8. 完整 CI、隔离 UI E2E 和真实 Prompt 适配抽检通过；不得用编译成功代替内容质量验收。
 
 唯一专项方案：[MOTION-DRAMA-PREPRODUCTION-DEVELOPMENT-PLAN.md](../roadmap/MOTION-DRAMA-PREPRODUCTION-DEVELOPMENT-PLAN.md)。
+
+## 11. 新版页面导航
+
+`/motion/:pageId?` 的外侧导航为作品库、漫剧制作台、版本与交付、通用设置。制作台页内左侧包含小说来源、系列设定、分集规划、物料、单集节拍/剧本、分镜、参考帧、画面/运动提示词及质量审查；工具适配包与冻结交付版本归入版本与交付。全部页面可先浏览，实际制作绑定独立 Work 与冻结小说来源。

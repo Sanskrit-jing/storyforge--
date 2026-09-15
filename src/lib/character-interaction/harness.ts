@@ -74,6 +74,7 @@ export interface InteractionReplyCandidateV1 extends RuntimeCandidateBaseV1 {
 
 export interface InteractionDirectorCandidateV1 extends RuntimeCandidateBaseV1 {
   kind: 'scene-director-candidate'
+  replyToSequence?: number
   responders: Array<{ participantKey: string; intent: string }>
   shouldEnd: boolean
   endReason: string | null
@@ -450,7 +451,7 @@ export async function generateInteractionRuntimeCandidateV1(input: {
     } else if (draft.kind === 'memory-curator-candidate') {
       body = { ...common, ...draft, memoryId: `memory:harness:${snapshot.run.id}` }
     } else {
-      body = { ...common, ...draft }
+      body = { ...common, ...draft, ...(input.replyToSequence != null ? {replyToSequence: input.replyToSequence} : {}) }
     }
     const candidate = { ...body, candidateHash: await hashCanonicalValue(body) } as unknown as InteractionRuntimeCandidateV1
     snapshot = await append(input.scope, snapshot, 'candidate.persisted', {
@@ -692,4 +693,17 @@ export async function cancelInteractionRuntimeRunV1(input: {
   return append(input.scope, snapshot, 'run.cancelled', {
     reason: input.reason?.trim().slice(0, 1_000) || 'runtime-generation-cancelled',
   })
+}
+
+/** Resume the same verified director decision; never replay already committed replies. */
+export async function readInteractionDirectorPlanV1(scope:WorkspaceScope,sessionId:number,sceneId:string,replyToSequence:number){
+ const rows=await db.agentRuns.where('productRuntimeSessionId').equals(sessionId).toArray()
+ for(const row of rows.filter(r=>r.status==='completed').sort((a,b)=>b.id!-a.id!)){
+  const saved=await readLatestVerifiedAgentRunCheckpointV1(scope,row.id!,{owner:'instance'})
+  if(!saved||!isCandidate(saved.resumePayload))continue
+  const value=saved.resumePayload
+  if(value.kind!=='scene-director-candidate'||value.productRuntimeSessionId!==sessionId||value.sceneId!==sceneId||value.replyToSequence!==replyToSequence)continue
+  return (await readCandidate(scope,row.id!)).candidate as InteractionDirectorCandidateV1
+ }
+ return null
 }
