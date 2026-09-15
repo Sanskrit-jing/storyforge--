@@ -43,6 +43,7 @@ import "../components/ttrpg/author.css";
 const Studio = lazy(
   () => import("../components/product/ProductProductionStudio"),
 );
+const Session = lazy(() => import("./TtrpgSessionPage").then(module => ({ default: module.TtrpgSessionView })));
 const Player = lazy(() => import("../components/ttrpg/AuthorPlayer"));
 const Community = lazy(() => import("./TtrpgCommunityPage"));
 const Proposal = lazy(() => import("../components/ttrpg/AuthorProposal"));
@@ -114,11 +115,12 @@ export default function TtrpgPage() {
   }, [pageId]);
   useEffect(() => {
     const sub = liveQuery(async () => {
-      const [projects, works, drafts, productions] = await Promise.all([
+      const [projects, works, drafts, productions, releases] = await Promise.all([
         db.projects.toArray(),
         db.works.toArray(),
         db.ttrpgAuthoringDrafts.toArray(),
         db.productProductions.toArray(),
+        db.productReleases.where("productType").equals("ttrpg").toArray(),
       ]);
       return works
         .flatMap((work) => {
@@ -126,7 +128,7 @@ export default function TtrpgPage() {
             production = productions
               .filter((p) => p.workId === work.id && p.productType === "ttrpg")
               .sort((a, b) => b.updatedAt - a.updatedAt)[0];
-          return project && (work.kind === "ttrpg" || production)
+          return project && (work.kind === "ttrpg" || production || releases.some(release => release.workId === work.id && release.projectId === work.projectId))
             ? [
                 {
                   project,
@@ -933,6 +935,8 @@ export default function TtrpgPage() {
                       </section>
                     )}
                   </>
+                ) : page[0] === "play" && sessionId && !row?.draft && !row?.productionId ? (
+                  <Session key={sessionId} sessionId={sessionId} embedded />
                 ) : primary === "player" ? (
                   <Player
                     scope={scope}

@@ -13,10 +13,11 @@ const snapshotEntries = [
   'showcase/short-novel',
   'showcase/screenplay',
   'showcase/motion-drama',
-  'showcase/comic/before-rain-stops/art/final/community-preview-ui.jpg',
-  'showcase/comic/borrowed-flame/art/final/community-preview-ui.jpg',
-  'showcase/comic/before-the-gun/art/final/community-preview-ui.jpg',
-  'showcase/comic/moon-buys-bread/art/final/community-preview-ui.jpg',
+  // The example readers need source text, full comic pages and downloadable archives.
+  ...['before-rain-stops', 'borrowed-flame', 'before-the-gun', 'moon-buys-bread'].flatMap(slug => [
+    `showcase/comic/${slug}/source-novel.md`,
+    `showcase/comic/${slug}/art/final`,
+  ]),
   'index.html',
   'ui-preview',
   'package.json',

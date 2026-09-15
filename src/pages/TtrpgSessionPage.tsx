@@ -14,7 +14,7 @@ export default function TtrpgSessionPage() {
   return <TtrpgSessionView key={sessionId} sessionId={Number(sessionId)} />
 }
 
-function TtrpgSessionView({ sessionId }: { sessionId: number }) {
+export function TtrpgSessionView({ sessionId, embedded = false }: { sessionId: number; embedded?: boolean }) {
   const navigate = useNavigate()
   const [checkpoints, setCheckpoints] = useState<ProductRuntimeCheckpoint[]>([])
   const [restoring, setRestoring] = useState(false), [playing, setPlaying] = useState(false)
@@ -52,7 +52,7 @@ function TtrpgSessionView({ sessionId }: { sessionId: number }) {
       if (!mounted.current) return
       const child = await branchProductRuntimeSession({ parentSessionId: sessionId, throughSequence: checkpoint.throughSequence,
         title: `${loaded.session.title} · ${checkpoint.name}` })
-      if (mounted.current) navigate(`/play/session/${child.id}`)
+      if (mounted.current) navigate(embedded ? `/ttrpg/play?project=${child.projectId}&work=${child.workId}&session=${child.id}` : `/play/session/${child.id}`)
     } catch (cause) {
       if (mounted.current) setRestoreError(cause instanceof Error ? cause.message : String(cause))
     } finally {
@@ -60,8 +60,8 @@ function TtrpgSessionView({ sessionId }: { sessionId: number }) {
       if (mounted.current) setRestoring(false)
     }
   }
-  return <div className="sf-community sf-community-playing">
-    <header className="sf-community-nav"><Link to="/play"><ArrowLeft size={16} />我的冒险</Link><Link to={`/settings?returnTo=${encodeURIComponent(`/play/session/${sessionId}`)}`}><Settings size={16} />API 设置</Link></header>
+  return <div className={`sf-community sf-community-playing${embedded ? " sf-community-embedded" : ""}`}>
+    <header className="sf-community-nav"><Link to={embedded ? "/ttrpg/library" : "/play"}><ArrowLeft size={16} />我的冒险</Link><Link to={embedded ? "/home/settings" : `/settings?returnTo=${encodeURIComponent(`/play/session/${sessionId}`)}`}><Settings size={16} />API 设置</Link></header>
     <main className="sf-community-table">
       {loaded && checkpoints.length > 0 && <details className="sf-community-checkpoints"><summary>读取存档 · {checkpoints.length}</summary>
         <p>读取时会另建一条冒险记录，保留现在的进度。</p>

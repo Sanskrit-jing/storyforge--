@@ -33,7 +33,7 @@ export default function TtrpgCommunityPage({ embedded = false }: { embedded?: bo
   const start = async (game: CommunityTtrpgGameV1) => {
     if (busy) return
     setBusy(game.key); setError('')
-    try { const bundle = await readCommunityTtrpgBundleV1(game); const sessionId = await startCommunityTtrpgGameV1(game, bundle); navigate(`/play/session/${sessionId}`) }
+    try { const bundle = await readCommunityTtrpgBundleV1(game); const sessionId = await startCommunityTtrpgGameV1(game, bundle); const session = await db.productRuntimeSessions.get(sessionId); navigate(embedded && session ? `/ttrpg/play?project=${session.projectId}&work=${session.workId}&session=${sessionId}` : `/play/session/${sessionId}`) }
     catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)) }
     finally { setBusy('') }
   }
@@ -54,7 +54,7 @@ export default function TtrpgCommunityPage({ embedded = false }: { embedded?: bo
           <small>需要你在本机配置可用的模型 API。游戏进度自动保存在当前浏览器。</small>
         </div></article>)}</div>
       {savesError && <div className="sf-community-error" role="alert"><p>本地存档暂时无法读取：{savesError}</p><button onClick={() => setSavesAttempt(attempt => attempt + 1)}>重新读取本地存档</button></div>}
-      {sessions.length > 0 && <section className="sf-community-saves" aria-label="本地冒险存档"><h2>故事还在等你</h2>{sessions.map(session => <Link key={session.id} to={`/play/session/${session.id}`}><div><strong>{session.title}</strong><small>{session.parentSessionId != null ? '恢复的冒险 · ' : ''}{new Date(session.updatedAt).toLocaleString('zh-CN')}</small></div><ArrowRight size={18} /></Link>)}</section>}
+      {sessions.length > 0 && <section className="sf-community-saves" aria-label="本地冒险存档"><h2>故事还在等你</h2>{sessions.map(session => <Link key={session.id} to={embedded ? `/ttrpg/play?project=${session.projectId}&work=${session.workId}&session=${session.id}` : `/play/session/${session.id}`}><div><strong>{session.title}</strong><small>{session.parentSessionId != null ? '恢复的冒险 · ' : ''}{new Date(session.updatedAt).toLocaleString('zh-CN')}</small></div><ArrowRight size={18} /></Link>)}</section>}
       <footer>原创规则与模组 · 真实骰点与持久存档 · 随时暂停</footer>
     </Content>
   </div>

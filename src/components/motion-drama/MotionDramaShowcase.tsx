@@ -1,3 +1,5 @@
+import { useExampleReader } from '../examples/useExampleReader'
+import { useCallback } from 'react'
 import { useState } from 'react'
 import { ArrowUpRight, Clapperboard, Download, PackageCheck, Volume2, X } from 'lucide-react'
 import executionPack from '../../../showcase/motion-drama/last-train-echo/seedance-execution-pack.md?raw'
@@ -23,6 +25,8 @@ function downloadPack(): void {
 
 export default function MotionDramaShowcase() {
   const [open, setOpen] = useState(false)
+  const close = useCallback(() => setOpen(false), [])
+  useExampleReader(open, close)
 
   return <section className="motion-showcase" data-testid="motion-drama-showcase" aria-labelledby="motion-showcase-title">
     <header className="motion-showcase-heading">

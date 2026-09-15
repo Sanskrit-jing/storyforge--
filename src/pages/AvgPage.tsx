@@ -1,3 +1,4 @@
+import ExampleLibrary from '../components/examples/ExampleLibrary'
 import {
   lazy,
   Suspense,
@@ -424,6 +425,7 @@ export default function AvgPage() {
                         <p>这里尚无作品。可以新建，或先查看制作台各个页面。</p>
                       </section>
                     )}
+                    <ExampleLibrary kind="avg"/>
                   </>
                 ) : page[0] === "vision" || page[0] === "routes" ? (
                   <section className="lf-paper">

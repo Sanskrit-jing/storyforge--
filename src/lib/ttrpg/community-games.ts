@@ -51,7 +51,7 @@ export async function startCommunityTtrpgGameV1(game: CommunityTtrpgGameV1, bund
       .filter(row => row.distributionProvenance?.source === 'community-bundle').first()
     const scope = release ? await resolveScope({ scope: { projectId: release.projectId, workId: release.workId, worldId: release.worldId } })
       : (await createWorkspace({ name: `游玩 · ${game.title}`, description: '社区游戏的本地副本与独立存档。', genres: ['interactive-fiction'],
-        status: 'drafting', targetWordCount: 1 }, { purpose: 'independent-work' })).scope
+        status: 'drafting', targetWordCount: 1 }, { purpose: 'independent-work', kind: 'ttrpg' })).scope
     release ??= await importCommunityProductDistributionV1({ scope, bundle: verified, catalogKey: game.key,
       license: { licenseId: 'MIT', licenseVersion: '1', allowOfflineExport: true, allowRemix: true, commercialReuse: true,
         requiresAttribution: true, termsUrl: 'https://github.com/yuanbw2025/storyforge/blob/main/LICENSE' }, attribution: ['StoryForge 社区原创游戏'] })

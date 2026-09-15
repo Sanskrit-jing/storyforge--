@@ -523,7 +523,7 @@ export default function AiTownPage() {
                         </p>
                       </section>
                     )}
-                    {scope ? <Community scope={scope} productType="ai-town" /> : <p>选择或保存一份小镇作品后，可浏览并安装社区原型包。</p>}
+                    <Community productType="ai-town" onImported={release => navigate(`/town/play?project=${release.projectId}&work=${release.workId}`)} />
                   </>
                 ) : step >= 0 ? (
                   <>
@@ -874,7 +874,7 @@ export default function AiTownPage() {
                         我的发布与版本
                       </button>
                     </section>
-                    {scope ? <Community scope={scope} productType="ai-town" /> : <p>选择或保存一份小镇作品后，可浏览并安装社区原型包。</p>}
+                    <Community productType="ai-town" onImported={release => navigate(`/town/play?project=${release.projectId}&work=${release.workId}`)} />
                   </>
                 ) : (
                   <Inspector
