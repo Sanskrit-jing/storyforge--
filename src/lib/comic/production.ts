@@ -1,3 +1,4 @@
+import { markUnreferencedMediaBlobForDeletionV1, finalizePendingMediaBlobDeletionV1 } from '../media/blob-store'
 import { db } from '../db/schema'
 import { inspectAdaptationFreshness, startAdaptationProduction } from '../adaptation/source-manifest'
 import type {
@@ -64,11 +65,32 @@ export async function listComicProductionV1(scopeInput: WorkspaceScope): Promise
   return { scriptBeats, pagePlans, reviewIssues }
 }
 
+async function clearReplacedPanels(scope: WorkspaceScope, pages: ComicPage[], garbage: Set<number>): Promise<void> {
+  if (pages.some(p => p.status === 'locked')) throw new Error('[comic-production] 请先解锁要重新规划的页面')
+  const ids = pages.map(p => p.id!); if (!ids.length) return
+  const panels = await db.comicPanels.where('pageId').anyOf(ids).toArray()
+  if (panels.some(p => p.status === 'locked')) throw new Error('[comic-production] 请先解锁要重新规划的页格')
+  const assets = panels.length ? await db.comicMediaAssets.where('panelId').anyOf(panels.map(p => p.id!)).toArray() : []
+  const keys = new Set(assets.map(a => a.stableKey))
+  const refs = await db.comicMediaAssets.where('workId').equals(scope.workId).filter(a => a.referenceAssetKeys.some(k => keys.has(k))).toArray()
+  await db.comicMediaAssets.bulkPut(refs.map(a => ({...a, referenceAssetKeys:a.referenceAssetKeys.filter(k => !keys.has(k)),updatedAt:Date.now()})))
+  for (const asset of assets) garbage.add(asset.blobObjectId)
+  await db.comicMediaAssets.bulkDelete(assets.map(a => a.id!))
+  await db.comicPanels.bulkDelete(panels.map(p => p.id!))
+}
+async function sweepReplacedBlobs(scope: WorkspaceScope, garbage: Set<number>): Promise<void> {
+  for (const blobObjectId of garbage) {
+    const pending = await markUnreferencedMediaBlobForDeletionV1({scope,blobObjectId})
+    if (pending?.deleteReceiptHash) await finalizePendingMediaBlobDeletionV1({scope,blobObjectId,receiptHash:pending.deleteReceiptHash})
+  }
+}
+
 export async function adoptComicScriptBeatsV1(input: { scope: WorkspaceScope; expectedAdaptationRevision: number; sourceManifestVersion: number; candidates: ComicScriptBeatCandidateV1[]; allowReplaceDownstream?: boolean }): Promise<ComicScriptBeatV1[]> {
   assertComicCandidateBatchV1(input.candidates, assertComicScriptBeatCandidateV1, 'script beat', 1_000)
   const { scope, root } = await requireRoot(input.scope, input.expectedAdaptationRevision); await requireFresh(root)
   if (root.briefSourceManifestVersion !== input.sourceManifestVersion || root.activeSourceManifestVersion !== input.sourceManifestVersion) throw new Error('[comic-production] 当前来源版本的 Brief 尚未确认')
-  return db.transaction('rw', scopeTransactionTables(db.adaptationProjects, db.adaptationSourceUnits, db.adaptationSourceFacts, db.adaptationDecisions, db.comicScriptBeats, db.comicPagePlans, db.comicPages, db.comicPanels, db.comicReviewIssues), async () => {
+  const garbage = new Set<number>()
+  const result = await db.transaction('rw', scopeTransactionTables(db.comicMediaAssets, db.adaptationProjects, db.adaptationSourceUnits, db.adaptationSourceFacts, db.adaptationDecisions, db.comicScriptBeats, db.comicPagePlans, db.comicPages, db.comicPanels, db.comicReviewIssues), async () => {
     assertRootCas(await db.adaptationProjects.get(root.id), root)
     const key = [root.id, input.sourceManifestVersion] as [number, number]
     const [units, facts, decisions, plans, pages] = await Promise.all([
@@ -85,12 +107,13 @@ export async function adoptComicScriptBeatsV1(input: { scope: WorkspaceScope; ex
       if (candidate.chapterNumber > root.targetSpec.chapterCount || candidate.sourceUnitKeys.some(key => !unitKeys.has(key)) || candidate.causalFactKeys.some(key => !factKeys.has(key)) || candidate.decisionKeys.some(key => !decisionKeys.has(key))) throw new Error(`[comic-production] script beat ${candidate.stableKey} 引用越界`)
       return stampNewRecord(scope, 'comicScriptBeats', { ...structuredClone(candidate), projectId: scope.projectId, workId: scope.workId, adaptationProjectId: root.id, manifestVersion: input.sourceManifestVersion, authorStatus: 'confirmed' as const, revision: 1, createdAt: now, updatedAt: now }, { owner: 'work' }) as ComicScriptBeatV1
     })
-    const pageIds = pages.flatMap(page => page.id == null ? [] : [page.id])
-    if (pageIds.length) await db.comicPanels.where('pageId').anyOf(pageIds).delete()
+    await clearReplacedPanels(scope, pages, garbage)
     await Promise.all([db.comicReviewIssues.where('[adaptationProjectId+manifestVersion]').equals(key).delete(), db.comicPages.where('adaptationProjectId').equals(root.id).delete(), db.comicPagePlans.where('[adaptationProjectId+manifestVersion]').equals(key).delete(), db.comicScriptBeats.where('[adaptationProjectId+manifestVersion]').equals(key).delete()])
     await db.comicScriptBeats.bulkAdd(rows); await db.adaptationProjects.update(root.id, { plan: null, planSourceManifestVersion: null, status: 'planning', revision: root.revision + 1, updatedAt: now })
     return db.comicScriptBeats.where('[adaptationProjectId+manifestVersion]').equals(key).sortBy('order')
   })
+  await sweepReplacedBlobs(scope, garbage)
+  return result
 }
 
 export async function adoptComicPagePlansV1(input: { scope: WorkspaceScope; expectedAdaptationRevision: number; sourceManifestVersion: number; candidates: ComicPagePlanCandidateV1[]; allowReplaceDownstream?: boolean }): Promise<ComicPagePlanV1[]> {
@@ -98,7 +121,8 @@ export async function adoptComicPagePlansV1(input: { scope: WorkspaceScope; expe
   const { scope, root } = await requireRoot(input.scope, input.expectedAdaptationRevision); await requireFresh(root)
   const expectedPages = root.targetSpec.chapterCount * root.targetSpec.targetPagesPerChapter
   if (input.candidates.length !== expectedPages) throw new Error(`[comic-production] 分页必须覆盖目标 ${expectedPages} 页`)
-  return db.transaction('rw', scopeTransactionTables(db.adaptationProjects, db.comicScriptBeats, db.comicPagePlans, db.comicPages, db.comicPanels, db.comicReviewIssues), async () => {
+  const garbage = new Set<number>()
+  const result = await db.transaction('rw', scopeTransactionTables(db.comicMediaAssets, db.adaptationProjects, db.comicScriptBeats, db.comicPagePlans, db.comicPages, db.comicPanels, db.comicReviewIssues), async () => {
     assertRootCas(await db.adaptationProjects.get(root.id), root)
     const key = [root.id, input.sourceManifestVersion] as [number, number]
     const [beats, pages] = await Promise.all([db.comicScriptBeats.where('[adaptationProjectId+manifestVersion]').equals(key).toArray(), db.comicPages.where('adaptationProjectId').equals(root.id).toArray()])
@@ -110,13 +134,15 @@ export async function adoptComicPagePlansV1(input: { scope: WorkspaceScope; expe
       pageNumbers.add(candidate.pageNumber)
       return stampNewRecord(scope, 'comicPagePlans', { ...structuredClone(candidate), projectId: scope.projectId, workId: scope.workId, adaptationProjectId: root.id, manifestVersion: input.sourceManifestVersion, authorStatus: 'confirmed' as const, revision: 1, createdAt: now, updatedAt: now }, { owner: 'work' }) as ComicPagePlanV1
     })
-    const pageIds = pages.flatMap(page => page.id == null ? [] : [page.id]); if (pageIds.length) await db.comicPanels.where('pageId').anyOf(pageIds).delete()
+    await clearReplacedPanels(scope, pages, garbage)
     await Promise.all([db.comicReviewIssues.where('[adaptationProjectId+manifestVersion]').equals(key).delete(), db.comicPages.where('adaptationProjectId').equals(root.id).delete(), db.comicPagePlans.where('[adaptationProjectId+manifestVersion]').equals(key).delete()])
     await db.comicPagePlans.bulkAdd(rows)
     const plan = { version: 1 as const, premise: root.brief?.coreTheme ?? '漫画改编', sections: rows.map(row => ({ stableKey: row.stableKey, title: `第 ${row.pageNumber} 页`, summary: row.goal, order: row.order, episodeNumber: row.chapterNumber, sourceUnitKeys: [...new Set(beats.filter(beat => row.beatKeys.includes(beat.stableKey)).flatMap(beat => beat.sourceUnitKeys))] })), globalAssumptions: root.plan?.globalAssumptions ?? [] }
     await db.adaptationProjects.update(root.id, { plan, planSourceManifestVersion: input.sourceManifestVersion, status: 'planning', revision: root.revision + 1, updatedAt: now })
     return db.comicPagePlans.where('[adaptationProjectId+manifestVersion]').equals(key).sortBy('order')
   })
+  await sweepReplacedBlobs(scope, garbage)
+  return result
 }
 
 /**
@@ -159,7 +185,8 @@ export async function createComicPanelScaffoldFromConfirmedPlanV1(input: { scope
 export async function adoptComicPanelPlansV1(input: { scope: WorkspaceScope; expectedAdaptationRevision: number; sourceManifestVersion: number; candidates: ComicPanelPlanCandidateV1[]; allowReplaceExisting?: boolean }): Promise<Array<{ page: ComicPage; panels: ComicPanel[] }>> {
   assertComicCandidateBatchV1(input.candidates, assertComicPanelPlanCandidateV1, 'panel plan', 20_000)
   const { scope, root } = await requireRoot(input.scope, input.expectedAdaptationRevision); await requireFresh(root)
-  return db.transaction('rw', scopeTransactionTables(db.adaptationProjects, db.adaptationSourceUnits, db.comicPagePlans, db.comicPages, db.comicPanels, db.comicMediaAssets, db.comicReviewIssues), async () => {
+  const garbage = new Set<number>()
+  const result = await db.transaction('rw', scopeTransactionTables(db.comicMediaAssets, db.adaptationProjects, db.adaptationSourceUnits, db.comicPagePlans, db.comicPages, db.comicPanels, db.comicReviewIssues), async () => {
     assertRootCas(await db.adaptationProjects.get(root.id), root)
     const key = [root.id, input.sourceManifestVersion] as [number, number]
     const [units, plans, existingPages] = await Promise.all([db.adaptationSourceUnits.where('[adaptationProjectId+manifestVersion]').equals(key).toArray(), db.comicPagePlans.where('[adaptationProjectId+manifestVersion]').equals(key).sortBy('order'), db.comicPages.where('adaptationProjectId').equals(root.id).toArray()])
@@ -168,9 +195,7 @@ export async function adoptComicPanelPlansV1(input: { scope: WorkspaceScope; exp
     const planByKey = new Map(plans.map(row => [row.stableKey, row])); const unitByKey = new Map(units.flatMap(unit => unit.id == null ? [] : [[unit.sourceUnitKey, unit.id] as const]))
     const grouped = new Map<string, ComicPanelPlanCandidateV1[]>(); for (const item of input.candidates) grouped.set(item.pagePlanKey, [...(grouped.get(item.pagePlanKey) ?? []), item])
     if (grouped.size !== plans.length || [...grouped.keys()].some(value => !planByKey.has(value))) throw new Error('[comic-production] panel plan 必须覆盖每个页面')
-    const now = Date.now(); const pageIds = existingPages.flatMap(page => page.id == null ? [] : [page.id]); const existingAssets = pageIds.length ? await db.comicPanels.where('pageId').anyOf(pageIds).toArray().then(rows => rows.flatMap(row => row.id == null ? [] : [row.id])) : []
-    if (existingAssets.length && await db.comicMediaAssets.where('panelId').anyOf(existingAssets).count()) throw new Error('[comic-production] 已有图片候选时不能批量替换 panel plan，请先清理媒资')
-    if (pageIds.length) await db.comicPanels.where('pageId').anyOf(pageIds).delete()
+    const now = Date.now(); await clearReplacedPanels(scope, existingPages, garbage)
     await Promise.all([db.comicReviewIssues.where('[adaptationProjectId+manifestVersion]').equals(key).delete(), db.comicPages.where('adaptationProjectId').equals(root.id).delete()])
     const saved: Array<{ page: ComicPage; panels: ComicPanel[] }> = []
     for (const plan of plans) {
@@ -188,6 +213,8 @@ export async function adoptComicPanelPlansV1(input: { scope: WorkspaceScope; exp
     await db.adaptationProjects.update(root.id, { revision: root.revision + 1, updatedAt: now })
     return saved
   })
+  await sweepReplacedBlobs(scope, garbage)
+  return result
 }
 
 export async function adoptComicVisualBibleV1(input: { scope: WorkspaceScope; expectedAdaptationRevision: number; sourceManifestVersion: number; candidate: ComicVisualBibleCandidateV1; allowReplaceExisting?: boolean }): Promise<void> {
@@ -197,15 +224,22 @@ export async function adoptComicVisualBibleV1(input: { scope: WorkspaceScope; ex
     assertRootCas(await db.adaptationProjects.get(root.id), root)
     const key = [root.id, input.sourceManifestVersion] as [number, number]; const [units, existing] = await Promise.all([db.adaptationSourceUnits.where('[adaptationProjectId+manifestVersion]').equals(key).toArray(), db.comicVisualSubjects.where('adaptationProjectId').equals(root.id).toArray()])
     if (existing.length && !input.allowReplaceExisting) throw new Error('[comic-production] 重做视觉圣经会清除视觉条目，必须显式确认')
-    const assetCount = await db.comicMediaAssets.where('adaptationProjectId').equals(root.id).count(); if (assetCount) throw new Error('[comic-production] 已有媒体候选时不能替换视觉圣经')
+    const existingAssets = await db.comicMediaAssets.where('adaptationProjectId').equals(root.id).toArray()
+    const nextKeys = new Set(input.candidate.subjects.map(s => s.stableKey))
+    if (existingAssets.some(a => a.subjectKey && !nextKeys.has(a.subjectKey))) throw new Error('[comic-production] 移除视觉主体前请先在参考图页面清理其媒资')
+    if (existing.some(s => s.status === 'locked')) throw new Error('[comic-production] 请先解锁视觉主体')
     const unitByKey = new Map(units.flatMap(unit => unit.id == null ? [] : [[unit.sourceUnitKey, unit.id] as const])); const now = Date.now()
     const subjects: ComicVisualSubject[] = input.candidate.subjects.map(candidate => {
       const row = stampNewRecord(scope, 'comicVisualSubjects', { projectId: scope.projectId, workId: scope.workId, adaptationProjectId: root.id, stableKey: candidate.stableKey, kind: candidate.kind, characterId: null, locationRefKey: null, label: candidate.label, design: structuredClone(candidate.design), sourceUnitIds: candidate.sourceUnitKeys.map(key => { const id = unitByKey.get(key); if (!id) throw new Error(`[comic-production] visual subject ${candidate.stableKey} 来源越界`); return id }), sourceReviewManifestVersion: input.sourceManifestVersion, selectedMediaAssetKey: null, status: 'reviewed', revision: 1, createdAt: now, updatedAt: now }, { owner: 'work' }) as ComicVisualSubject
+      const previous = existing.find(s => s.stableKey === row.stableKey)
+      if(previous && previous.kind !== row.kind && existingAssets.some(a=>a.subjectKey===row.stableKey)) throw new Error('[comic-production] 修改主体类型前请先清理其参考图')
+      if (previous) Object.assign(row, {id:previous.id, characterId:row.kind==='character'?previous.characterId:null,locationRefKey:row.kind==='location'?previous.locationRefKey:null, selectedMediaAssetKey:previous.selectedMediaAssetKey, revision:previous.revision+1, createdAt:previous.createdAt})
       assertComicVisualSubjectV1({ subject: row, adaptation: root, sourceUnitIds: new Set(unitByKey.values()), bindings: [], allowMissingExternalRef: true }); return row
     })
     const panelRefs = await db.comicPanels.where('workId').equals(scope.workId).toArray(); const subjectKeys = new Set(subjects.map(row => row.stableKey))
     if (panelRefs.some(panel => [...(panel.continuityRefs ?? []), ...(panel.subjectStates ?? [])].some(ref => !subjectKeys.has(ref.subjectKey)))) throw new Error('[comic-production] 视觉圣经没有覆盖 panel 引用的 subject key')
     await db.comicVisualSubjects.where('adaptationProjectId').equals(root.id).delete(); await db.comicVisualSubjects.bulkAdd(subjects)
+    await db.comicPanels.where('workId').equals(scope.workId).modify({visualReviewRevision:null,visualReviewBasis:null,visualReviewedAt:null})
     await db.adaptationProjects.update(root.id, { visualBible: structuredClone(input.candidate.global), visualBibleSourceManifestVersion: input.sourceManifestVersion, revision: root.revision + 1, updatedAt: now })
   })
 }

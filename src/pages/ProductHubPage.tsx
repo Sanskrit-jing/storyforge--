@@ -95,7 +95,6 @@ const MarketplacePanel = lazy(() => import('../components/community/MarketplaceP
 const CommunityPrototypeGallery = lazy(() => import('../components/community/CommunityPrototypeGallery'))
 const OutlinePanel = lazy(() => import('../components/outline/OutlinePanel'))
 const ChaptersListPanel = lazy(() => import('../components/editor/ChaptersListPanel'))
-const ComicStudio = lazy(() => import('../components/comic/ComicStudio'))
 const MotionDramaStudio = lazy(() => import('../components/motion-drama/MotionDramaStudio'))
 
 type TabId = 'home' | 'worlds' | 'novel' | 'nodes' | 'ttrpg' | 'chat' | 'town' | 'text-games' | 'market'
@@ -480,8 +479,9 @@ function NovelPage({ project, onCreate, onDerived }: { project?: Project; onCrea
     const scope = scopeForProject(project)
     const kind = effectiveWorkKind(activeWork)
     if(kind === 'screenplay')return <Navigate replace to={`/script/source?work=${activeWork.id}`}/>
-    const title = kind === 'comic' ? '漫画工作台' : '漫剧工坊'
-    return <><PageHeading eyebrow="AUTHORING / WORKS" title={title} description={kind === 'motion-drama' ? '从冻结小说到可交付 AI 视频工具的逐镜生产包；不在本产品内生成视频成片。' : '派生作品拥有独立结构、来源证据和导出链；不会修改源小说。'} action={<WorkKindBadge work={activeWork} />} />{scope ? <Suspense fallback={<FeaturePanelFallback />}>{kind === 'comic' ? <ComicStudio scope={scope} /> : <MotionDramaStudio scope={scope} project={project} />}</Suspense> : <section className="sf-product-empty"><BookOpenText className="h-8 w-8" /><h2>作品工作区归属尚未就绪</h2><p>请先完成目标 Work 初始化。</p></section>}</>
+    if(kind === 'comic')return <Navigate replace to={`/comic/source?work=${activeWork.id}`}/>
+    const title = '漫剧工坊'
+    return <><PageHeading eyebrow="AUTHORING / WORKS" title={title} description={kind === 'motion-drama' ? '从冻结小说到可交付 AI 视频工具的逐镜生产包；不在本产品内生成视频成片。' : '派生作品拥有独立结构、来源证据和导出链；不会修改源小说。'} action={<WorkKindBadge work={activeWork} />} />{scope ? <Suspense fallback={<FeaturePanelFallback />}><MotionDramaStudio scope={scope} project={project} /></Suspense> : <section className="sf-product-empty"><BookOpenText className="h-8 w-8" /><h2>作品工作区归属尚未就绪</h2><p>请先完成目标 Work 初始化。</p></section>}</>
   }
   if (profile === 'short') return <Navigate replace to={`/short/intent?project=${project.id}`}/>
   return <><PageHeading eyebrow="AUTHORING / STEP BY STEP" title="长篇小说创作" description="独立运行完整的分步骤长篇创作流程；世界引擎不是前置条件。" action={<div className="flex flex-wrap items-center justify-end gap-2">{activeWork && <WorkKindBadge work={activeWork} />}<MaturityBadge productId={activeProductId} /><WorldDerivationActions project={project} onDerived={onDerived} /><Button variant="primary" icon={ArrowRight} onClick={() => navigate(`/workspace/${project.id}?module=info`)}>进入完整长篇工作台</Button><Button icon={ArrowRight} onClick={() => setView('chapters')}>打开正文</Button></div>} /><div className="sf-subnav"><button className={view === 'outline' ? 'active' : ''} onClick={() => setView('outline')}><BookOpenText className="h-4 w-4" />卷纲与章纲</button><button className={view === 'chapters' ? 'active' : ''} onClick={() => setView('chapters')}><BookOpenText className="h-4 w-4" />章节与正文</button><span className="sf-subnav-spacer" /><span className="sf-subnav-note">{activeWork?.title ?? '当前作品'}</span></div><section className="sf-product-panel sf-novel-panel"><Suspense fallback={<FeaturePanelFallback />}>{view === 'outline' ? <OutlinePanel project={project} onOpenChapter={id => { setNodeId(id); setView('chapters') }} /> : <ChaptersListPanel project={project} initialNodeId={nodeId} />}</Suspense></section></>

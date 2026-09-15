@@ -1,10 +1,11 @@
+import {readComicReleaseBookV1} from '../../src/lib/comic/release-book'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { db } from '../../src/lib/db/schema'
 import { createWorkspace } from '../../src/lib/workspace/create-workspace'
 import { createAdaptation, listActiveSourceUnits, saveAdaptationBriefDraft, confirmAdaptationBrief } from '../../src/lib/adaptation/source-manifest'
 import { adoptAdaptationCausalEdgesV1, adoptAdaptationDecisionsV1 } from '../../src/lib/adaptation/analysis'
 import type { AdaptationBriefV1, ComicTargetSpecV1, MediaRightsV1, ScreenplayTargetSpecV1 } from '../../src/lib/types'
-import { adoptComicProfessionalCandidateV1, comicProfessionalInstructionV1, generateComicProfessionalCandidateV1, parseComicProfessionalPayloadV1, rejectComicProfessionalCandidateV1 } from '../../src/lib/comic/durable-production'
+import { adoptComicProfessionalCandidateV1, readPendingComicProfessionalCandidateV1, comicProfessionalInstructionV1, generateComicProfessionalCandidateV1, parseComicProfessionalPayloadV1, rejectComicProfessionalCandidateV1 } from '../../src/lib/comic/durable-production'
 import { adoptComicImageRequestV1, adoptComicPagePlansV1, adoptComicReviewIssuesV1, adoptComicScriptBeatsV1, adoptComicVisualBibleV1, createComicPanelScaffoldFromConfirmedPlanV1, startComicProductionV1 } from '../../src/lib/comic/production'
 import { commitUploadedComicAssetV1, removeComicMediaAssetV1, selectComicMediaAssetV1 } from '../../src/lib/comic/media-service'
 import { inspectComicQualityV1 } from '../../src/lib/comic/qa'
@@ -47,6 +48,7 @@ describe('COMIC-2 · professional novel-to-comic pipeline', () => {
     expect(await db.adaptationSourceFacts.count()).toBe(0)
     await expect(adoptComicProfessionalCandidateV1({ scope: item.scope, runId: generated.snapshot.run.id, onDurableBoundary: boundary => { if (boundary === 'formal.written') throw new Error('simulated comic crash') } })).rejects.toThrow('simulated comic crash')
     expect(await db.adaptationSourceFacts.count()).toBe(2)
+    expect((await readPendingComicProfessionalCandidateV1(item.scope))?.recovering).toBe(true)
     const resumed = await adoptComicProfessionalCandidateV1({ scope: item.scope, runId: generated.snapshot.run.id })
     expect(resumed.snapshot.projection.state).toBe('completed'); expect(await db.adaptationSourceFacts.count()).toBe(2)
     let causalCalls = 0
@@ -116,6 +118,25 @@ describe('COMIC-2 · professional novel-to-comic pipeline', () => {
     quality = await inspectComicQualityV1(item.scope); expect(quality.canVisualRelease).toBe(true)
     root = (await db.adaptationProjects.get(root.id!))!; const visual = await publishComicReleaseV1({ scope: item.scope, expectedAdaptationRevision: root.revision, tier: 'visual' }); const visualManifest = await readComicReleaseManifestV1(item.scope, visual.id); expect(visualManifest.assets).toHaveLength(1); expect(await db.creationReleaseAssets.count()).toBe(1); expect((await listComicReleasesV1(item.scope)).map(row => row.version)).toEqual([1, 2])
     await reopenAdaptationProductionV1({ scope: item.scope, expectedRevision: (await db.adaptationProjects.get(root.id!))!.revision }); await removeComicMediaAssetV1({ scope: item.scope, assetKey: asset.stableKey, clearReferences: true }); expect(await db.comicMediaAssets.get(asset.id!)).toBeUndefined(); expect(await db.mediaBlobObjects.count()).toBe(1); expect((await readComicReleaseManifestV1(item.scope, visual.id)).assets[0].contentHash).toBe(visualManifest.assets[0].contentHash)
+    const frozenBook = await readComicReleaseBookV1(item.scope, visual.id)
+    expect(frozenBook.book.pages[0].panels[0].stableKey).toBe(panel.stableKey)
+    expect(Object.keys(frozenBook.book.pages[0].assetDataUrls)).toContain(asset.stableKey)
+    await expect(readComicReleaseBookV1(wrongMedium.scope, visual.id)).rejects.toThrow('越界')
+    // Replanning removes live candidates atomically but cannot delete release-pinned blobs.
+    const bytes = new Uint8Array(pngBytes()); bytes[31]=1
+    const disposable=await commitUploadedComicAssetV1({scope:item.scope,panelId:panel.id!,data:bytes.buffer,rights:rights()})
+    root=(await db.adaptationProjects.get(root.id!))!
+    const replacement=[{stableKey:'replacement_plan',chapterNumber:1,pageNumber:1,order:0,goal:'新的分页',beatKeys:['beat_choice'],endReveal:'新的揭示',pageTurn:'none' as const,expectedPanelCount:1,textBudget:30}]
+    await expect(adoptComicPagePlansV1({scope:item.scope,expectedAdaptationRevision:root.revision,sourceManifestVersion:1,candidates:replacement})).rejects.toThrow('显式确认')
+    expect(await db.comicMediaAssets.get(disposable.id!)).toBeDefined()
+    await expect(adoptComicPagePlansV1({scope:item.scope,expectedAdaptationRevision:root.revision,sourceManifestVersion:1,candidates:[{...replacement[0],beatKeys:['wrong']}],allowReplaceDownstream:true})).rejects.toThrow('引用非法')
+    expect(await db.comicPanels.get(panel.id!)).toBeDefined()
+    expect(await db.comicMediaAssets.get(disposable.id!)).toBeDefined()
+    await adoptComicPagePlansV1({scope:item.scope,expectedAdaptationRevision:root.revision,sourceManifestVersion:1,candidates:replacement,allowReplaceDownstream:true})
+    expect(await db.comicPanels.get(panel.id!)).toBeUndefined()
+    expect(await db.comicMediaAssets.get(disposable.id!)).toBeUndefined()
+    expect(await db.mediaBlobObjects.get(disposable.blobObjectId)).toBeUndefined()
+    expect((await readComicReleaseBookV1(item.scope,visual.id)).book.pages).toHaveLength(1)
     const backup = await exportProjectJSON(item.scope.projectId); expect(backup.version).toBe(14); expect(backup.creationReleaseAssets).toHaveLength(1); const imported = await importProjectJSON(structuredClone(backup)); expect(await db.creationReleaseAssets.where('projectId').equals(imported).count()).toBe(1); expect(await db.mediaBlobObjects.where('projectId').equals(imported).count()).toBe(1)
   })
 })

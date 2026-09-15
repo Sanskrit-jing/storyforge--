@@ -11,6 +11,7 @@ import { useDialog } from '../shared/Dialog'
 import {
   EMPTY_COMIC_SUBJECT_DESIGN,
   type ComicStudioAction,
+  type ComicRightsState,
   type ComicSubjectDraft,
   type RemoveComicAsset,
   type SelectComicAsset,
@@ -18,6 +19,8 @@ import {
 } from './studio-model'
 
 interface Props {
+  readOnly?: boolean
+  rights: ComicRightsState
   scope: WorkspaceScope
   units: AdaptationSourceUnit[]
   subjects: ComicVisualSubject[]
@@ -44,6 +47,8 @@ function lines(value: string): string[] {
 }
 
 export default function ComicVisualPanel({
+  readOnly=false,
+  rights,
   scope,
   units,
   subjects,
@@ -88,7 +93,7 @@ export default function ComicVisualPanel({
   }
 
   return (
-    <div className="comic-visual-layout">
+    <fieldset disabled={readOnly} className="comic-visual-layout">
       <aside>
         <header>
           <div><span>VISUAL BIBLE</span><strong>视觉锚点</strong></div>
@@ -196,11 +201,15 @@ export default function ComicVisualPanel({
             ))}
           </fieldset>
         </div>
-        <div className="comic-inline-actions">
+        <div className="comic-rights">
+          <label>图片来源与权利<textarea value={rights.declaration} onChange={e=>rights.setDeclaration(e.target.value)}/></label>
+          <label>商业使用<select value={rights.commercialUse} onChange={e=>rights.setCommercialUse(e.target.value as ComicRightsState['commercialUse'])}><option value="unknown">尚未确认</option><option value="allowed">允许商用</option><option value="restricted">限制商用</option></select></label>
+          <label>再分发<select value={rights.redistribution} onChange={e=>rights.setRedistribution(e.target.value as ComicRightsState['redistribution'])}><option value="unknown">尚未确认</option><option value="allowed">允许再分发</option><option value="restricted">限制再分发</option></select></label>
+        </div><div className="comic-inline-actions">
           <button className="primary" onClick={saveSubject}><Save />保存视觉条目</button>
           {selectedSubject && (
             <>
-              <button onClick={() => void generateMedia(false, true)} disabled={busy}><Sparkles />生成设定图</button>
+              <button onClick={() => void generateMedia(false, true)} disabled={busy}><Sparkles />生成设定图</button><button disabled={busy} onClick={()=>void generateMedia(true,true)}>明确再生成</button>
               <label className="comic-upload">
                 <ImagePlus />上传设定图
                 <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file, true) }} />
@@ -240,6 +249,6 @@ export default function ComicVisualPanel({
           </div>
         )}
       </main>
-    </div>
+    </fieldset>
   )
 }

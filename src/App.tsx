@@ -13,6 +13,7 @@ const WorldEnginePage = lazy(() => import('./pages/WorldEnginePage'))
 const PreviewRoutePage = lazy(() => import('./pages/PreviewRoutePage'))
 const MistHarborPage = lazy(() => import('./pages/MistHarborPage'))
 const ProductHubPage = lazy(() => import('./pages/ProductHubPage'))
+const ComicPage = lazy(() => import('./pages/ComicPage'))
 const ScreenplayPage = lazy(() => import('./pages/ScreenplayPage'))
 const ShortformPage = lazy(() => import('./pages/ShortformPage'))
 const LongformLibraryPage = lazy(() => import('./pages/LongformLibraryPage'))
@@ -39,12 +40,13 @@ export default function App() {
     <>
     <ResumeTracker/>
     <Routes>
-      {[...PRODUCT_NAVIGATION.filter(item => !['home', 'long', 'short', 'script', 'world', 'avg', 'ttrpg', 'town'].includes(item.id)), { id: 'community' }].map(item => <Route key={item.id} path={`/${item.id}/:pageId?`} element={<Suspense fallback={<RouteFallback />}><PreviewRoutePage productId={item.id}/></Suspense>}/>)}
+      {[...PRODUCT_NAVIGATION.filter(item => !['home', 'long', 'short', 'script', 'world', 'avg', 'ttrpg', 'town', 'comic'].includes(item.id)), { id: 'community' }].map(item => <Route key={item.id} path={`/${item.id}/:pageId?`} element={<Suspense fallback={<RouteFallback />}><PreviewRoutePage productId={item.id}/></Suspense>}/>)}
       <Route path="/town/:pageId?" element={<Suspense fallback={<RouteFallback />}><AiTownPage /></Suspense>}/>
       <Route path="/ttrpg/:pageId?" element={<Suspense fallback={<RouteFallback />}><TtrpgPage /></Suspense>}/>
       <Route path="/avg/:pageId?" element={<Suspense fallback={<RouteFallback />}><AvgPage /></Suspense>}/>
       <Route path="/home/:pageId?" element={<Suspense fallback={<RouteFallback />}><HomePage /></Suspense>}/>
       <Route path="/world/:pageId?" element={<Suspense fallback={<RouteFallback />}><WorldEnginePage /></Suspense>}/>
+      <Route path="/comic/:pageId?" element={<Suspense fallback={<RouteFallback />}><ComicPage /></Suspense>}/>
       <Route path="/script/:pageId?" element={<Suspense fallback={<RouteFallback />}><ScreenplayPage /></Suspense>}/>
       <Route path="/" element={<Suspense fallback={<RouteFallback />}><HomeRoute /></Suspense>} />
       <Route path="/play" element={<Suspense fallback={<RouteFallback />}><TtrpgCommunityPage /></Suspense>} />
