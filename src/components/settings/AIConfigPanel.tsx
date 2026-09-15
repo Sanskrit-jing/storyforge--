@@ -155,8 +155,9 @@ export default function AIConfigPanel() {
   }, [config.baseUrl, config.provider])
 
   return (
-    <div className="max-w-2xl">
+    <div className="w-full min-w-0">
       <h2 className="text-xl font-bold text-text-primary mb-6">设置</h2>
+      <div className="mb-8"><ThemeSelector /></div>
 
       {/* AI 配置 */}
       <div className="bg-bg-surface border border-border rounded-xl p-5 mb-6">
@@ -489,8 +490,6 @@ export default function AIConfigPanel() {
       {/* 日志面板 */}
       {showLogs && <AIConnectionLogPanel logs={logs} onClear={clearLogs} />}
 
-      {/* 主题切换 */}
-      <ThemeSelector />
     </div>
   )
 }

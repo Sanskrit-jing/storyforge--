@@ -6,6 +6,7 @@ import AITaskRoutingSection from '../../src/components/settings/AITaskRoutingSec
 import AIConnectionLogPanel from '../../src/components/settings/AIConnectionLogPanel'
 import AIConnectionTestSection from '../../src/components/settings/AIConnectionTestSection'
 import ThemeSelector from '../../src/components/settings/ThemeSelector'
+import { applyStoryForgeTheme, THEME_OPTIONS } from '../../src/lib/theme'
 import { DEFAULT_AGENT_CONTEXT_PROFILES } from '../../src/lib/agent/context-policy'
 import type { AIConfig, AIConfigPreset } from '../../src/lib/types'
 
@@ -138,10 +139,19 @@ describe('AUDIT-6 / HEALTH-4 · AI 设置分区', () => {
     expect(onClear).toHaveBeenCalledOnce()
   })
 
-  it('外观区说明当前统一主题，不能恢复旧主题', async () => {
+  it('外观区切换当前 UI 皮肤并保存偏好，不能恢复旧主题', async () => {
+    applyStoryForgeTheme('storyforge')
     const host = await mount(ThemeSelector as ComponentType<never>, {})
     expect(host.textContent).toContain('青绿山水')
-    expect(host.querySelectorAll('button')).toHaveLength(0)
+    expect(host.querySelectorAll('.theme-option')).toHaveLength(THEME_OPTIONS.length)
+    const inkwash = host.querySelector<HTMLButtonElement>('[aria-label=水墨远山]')!
+    await act(async () => inkwash.click())
+    expect(inkwash.getAttribute('aria-pressed')).toBe('true')
+    expect(document.documentElement.getAttribute('data-theme')).toBe('inkwash')
+    expect(localStorage.getItem('storyforge-theme')).toBe('inkwash')
+    await act(async () => applyStoryForgeTheme('storyforge'))
+    expect(inkwash.getAttribute('aria-pressed')).toBe('false')
+    expect(host.querySelector('[role=status]')?.textContent).toContain('青绿山水')
     expect(host.textContent).not.toContain('暖白编辑室')
   })
   it('连接测试区准确展示忙碌、结果、日志计数和代理提示', async () => {

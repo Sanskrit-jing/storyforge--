@@ -98,7 +98,7 @@ export default function CreativeReliabilityCommunityPanel() {
 
   return (
     <section
-      className="mt-6 max-w-2xl rounded-xl border border-border bg-bg-surface p-4"
+      className="mt-6 w-full min-w-0 rounded-xl border border-border bg-bg-surface p-4"
       data-testid="creative-reliability-community"
     >
       <div className="flex items-start gap-2">

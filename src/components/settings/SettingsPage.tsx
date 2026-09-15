@@ -35,7 +35,7 @@ export default function SettingsPage({ project, onOpenDataManagement }: Props) {
       )}
 
       {/* 其他设置 */}
-      <div className="max-w-2xl mt-6 p-4 bg-bg-surface border border-border rounded-xl">
+      <div className="w-full min-w-0 mt-6 p-4 bg-bg-surface border border-border rounded-xl">
         <h3 className="text-sm font-semibold text-text-primary mb-3">其他</h3>
         <div className="flex items-center justify-between">
           <div>

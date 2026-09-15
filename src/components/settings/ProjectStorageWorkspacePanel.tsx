@@ -107,7 +107,7 @@ export default function ProjectStorageWorkspacePanel({ project, onOpenDataManage
   }
 
   return (
-    <section className="max-w-2xl rounded-xl border border-border bg-bg-surface p-4" data-testid="project-storage-workspace-settings">
+    <section className="w-full min-w-0 rounded-xl border border-border bg-bg-surface p-4" data-testid="project-storage-workspace-settings">
       <div className="mb-4 flex items-start gap-3">
         <div className="rounded-lg bg-orange-500/10 p-2 text-orange-400"><HardDrive className="h-5 w-5" /></div>
         <div>

@@ -883,7 +883,7 @@ export default function HarnessEvalPanel() {
   }
 
   return (
-    <div data-testid="harness-eval-panel" className="mt-6 max-w-2xl rounded-lg border border-border bg-bg-surface p-4">
+    <div data-testid="harness-eval-panel" className="mt-6 w-full min-w-0 rounded-lg border border-border bg-bg-surface p-4">
       <div className="mb-2 flex items-center gap-2">
         <ShieldCheck className="h-4 w-4 text-accent" />
         <h3 className="text-sm font-semibold text-text-primary">Harness 长篇一致性评测</h3>

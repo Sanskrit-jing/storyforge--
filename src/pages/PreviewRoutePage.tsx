@@ -13,7 +13,7 @@ const styles = previewStyles.replace(/:root/g, ':host').replace(/body\{/g, ':hos
 @media(max-width:650px){
   .app{grid-template-columns:minmax(0,1fr);position:relative}
   .sidebar{display:none}
-  .preview-navigation-open .sidebar{display:flex;position:absolute;top:0;bottom:0;left:0;width:220px;z-index:40;background:#153e37}
+  .preview-navigation-open .sidebar{display:flex;position:absolute;top:0;bottom:0;left:0;width:220px;z-index:40;background:var(--shell-base)}
   .main{grid-column:1;padding-left:18px;padding-right:18px}
   .topbar{gap:10px;padding:0 12px}
   .brand{width:auto}.brand strong{font-size:19px}.brand>svg{width:20px}

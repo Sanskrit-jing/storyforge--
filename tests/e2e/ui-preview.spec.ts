@@ -30,12 +30,14 @@ test('预览所有页面可直接加载与刷新，示例操作不会访问浏�
     if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method())) businessRequests.push(request.url())
   })
   await page.addInitScript(() => {
+    localStorage.setItem('storyforge-theme', 'inkwash')
     indexedDB.open = () => { throw new Error('UI preview must not open IndexedDB') }
     Storage.prototype.setItem = () => { throw new Error('UI preview must not persist data') }
   })
   for (const route of allPages) {
     await page.goto(`./ui-preview/index.html#${route.product}/${route.id}`)
     await expect(page.locator('.breadcrumb')).toContainText(route.label)
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'inkwash')
     await expect(page.getByRole('note')).toBeVisible()
     await page.evaluate(async () => Promise.all([...document.images].map(image => image.decode())))
   }
