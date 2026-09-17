@@ -1,0 +1,180 @@
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { buildCultivationContext } from '../../src/lib/ai/cultivation-context'
+import { db } from '../../src/lib/db/schema'
+import { exportProjectJSON, importProjectJSON } from '../../src/lib/export/json-export'
+import {
+  fingerprintSettingSource,
+  listSettingAssertionSources,
+} from '../../src/lib/fact-ledger/setting-assertions'
+import {
+  cultivationStageTiers,
+  stringifyCultivationStages,
+  validateCultivationStages,
+  type CultivationStage,
+} from '../../src/lib/types/cultivation'
+import { useCultivationStore } from '../../src/stores/cultivation'
+
+const stages: CultivationStage[] = [
+  { id: 'root', name: '炼体', parentStageIds: [] },
+  { id: 'sword', name: '剑胎', branchLabel: '剑修', parentStageIds: ['root'] },
+  { id: 'body', name: '金身', branchLabel: '体修', parentStageIds: ['root'] },
+  { id: 'unity', name: '归一', parentStageIds: ['sword', 'body'] },
+]
+
+describe('WORLD-1 · 修炼体系 DAG', () => {
+  beforeEach(async () => {
+    await db.delete()
+    await db.open()
+  })
+  afterEach(async () => { db.close() })
+
+  it('接受分叉/合流并拒绝环与悬空父节点', () => {
+    expect(validateCultivationStages(stages)).toEqual({ valid: true, errors: [] })
+    expect(cultivationStageTiers(stages).get('unity')).toBe(2)
+    expect(validateCultivationStages([
+      { id: 'a', name: 'A', parentStageIds: ['b'] },
+      { id: 'b', name: 'B', parentStageIds: ['a'] },
+    ]).valid).toBe(false)
+    expect(validateCultivationStages([
+      { id: 'a', name: 'A', parentStageIds: ['missing'] },
+    ]).valid).toBe(false)
+  })
+
+  it('删除阶段和体系时清理角色/异兽结构化关联', async () => {
+    const now = Date.now()
+    const projectId = await db.projects.add({
+      name: 'cultivation', genre: '', description: '', targetWordCount: 0,
+      enableMultiWorld: true, createdAt: now, updatedAt: now,
+    } as any) as number
+    const systemId = await db.cultivationSystems.add({
+      projectId, worldGroupId: 7, name: '分支体系', description: '',
+      stages: stringifyCultivationStages(stages), createdAt: now, updatedAt: now,
+    }) as number
+    const characterId = await db.characters.add({
+      projectId, name: '林舟', role: 'protagonist',
+      cultivationSystemId: systemId, cultivationStageId: 'unity',
+      createdAt: now, updatedAt: now,
+    } as any) as number
+    const categoryId = await db.codexCategories.add({
+      projectId, domain: 'natural', name: '灵兽', parentId: null, fieldSchema: '[]',
+      order: 0, createdAt: now, updatedAt: now,
+    } as any) as number
+    const beastId = await db.codexEntries.add({
+      projectId, categoryId, worldGroupId: 7, name: '青麟',
+      cultivationSystemId: systemId, cultivationStageId: 'unity',
+      createdAt: now, updatedAt: now,
+    } as any) as number
+    const factId = await db.temporalFacts.add({
+      projectId, worldGroupId: 7, subjectName: '世界', predicate: 'powerCeiling',
+      factKind: 'rule', value: '归一', sourceType: 'setting',
+      sourceRecordTable: 'cultivationSystems', sourceRecordId: systemId,
+      sourceCultivationSystemId: systemId, sourceField: 'stages',
+      sourceFingerprint: fingerprintSettingSource(stringifyCultivationStages(stages)),
+      status: 'confirmed', locked: false, createdAt: now, updatedAt: now,
+    } as any) as number
+    await useCultivationStore.getState().loadAll(projectId)
+
+    await useCultivationStore.getState().updateSystem(systemId, {
+      stages: stringifyCultivationStages(stages.filter(stage => stage.id !== 'unity')),
+    })
+    expect((await db.characters.get(characterId))?.cultivationStageId ?? null).toBeNull()
+    expect((await db.codexEntries.get(beastId))?.cultivationStageId ?? null).toBeNull()
+    expect((await db.characters.get(characterId))?.cultivationSystemId).toBe(systemId)
+
+    await useCultivationStore.getState().deleteSystem(systemId)
+    expect((await db.characters.get(characterId))?.cultivationSystemId ?? null).toBeNull()
+    expect((await db.codexEntries.get(beastId))?.cultivationSystemId ?? null).toBeNull()
+    expect((await db.temporalFacts.get(factId))?.sourceCultivationSystemId ?? null).toBeNull()
+    expect((await db.temporalFacts.get(factId))?.status).toBe('source-missing')
+  })
+
+  it('AI 上下文严格按世界注入 DAG 与角色当前境界', async () => {
+    const now = Date.now()
+    const projectId = await db.projects.add({
+      name: 'ctx', genre: '', description: '', targetWordCount: 0,
+      enableMultiWorld: true, createdAt: now, updatedAt: now,
+    } as any) as number
+    const systemA = await db.cultivationSystems.add({
+      projectId, worldGroupId: 7, name: '镜界剑修', description: '镜光为刃',
+      stages: stringifyCultivationStages(stages), createdAt: now, updatedAt: now,
+    }) as number
+    await db.cultivationSystems.add({
+      projectId, worldGroupId: 8, name: '雾界巫术', description: '',
+      stages: '[]', createdAt: now, updatedAt: now,
+    })
+    await db.characters.add({
+      projectId, name: '林舟', role: 'protagonist',
+      cultivationSystemId: systemA, cultivationStageId: 'sword',
+      createdAt: now, updatedAt: now,
+    } as any)
+
+    const context = await buildCultivationContext(projectId, 7)
+    expect(context).toContain('镜界剑修')
+    expect(context).toContain('前置:剑胎 + 金身')
+    expect(context).toContain('林舟@剑胎')
+    expect(context).not.toContain('雾界巫术')
+  })
+
+  it('进入世界宪法来源并在修改后把旧断言标记为 stale', async () => {
+    const now = Date.now()
+    const projectId = await db.projects.add({
+      name: 'canon', genre: '', description: '', targetWordCount: 0,
+      enableMultiWorld: true, createdAt: now, updatedAt: now,
+    } as any) as number
+    const systemId = await db.cultivationSystems.add({
+      projectId, worldGroupId: 7, name: '剑修', description: '最高只能斩断山岳',
+      stages: stringifyCultivationStages(stages), createdAt: now, updatedAt: now,
+    }) as number
+    const sources = await listSettingAssertionSources(projectId, 7)
+    const source = sources.find(item =>
+      item.table === 'cultivationSystems' && item.recordId === systemId && item.field === 'description')!
+    expect(source.text).toContain('最高只能斩断山岳')
+    const factId = await db.temporalFacts.add({
+      projectId, worldGroupId: 7, subjectName: '镜界', predicate: 'powerCeiling',
+      factKind: 'rule', value: '斩断山岳', sourceType: 'setting',
+      sourceRecordTable: source.table, sourceRecordId: source.recordId,
+      sourceCultivationSystemId: source.recordId, sourceField: source.field,
+      sourceFingerprint: source.fingerprint, status: 'confirmed', locked: true,
+      createdAt: now, updatedAt: now,
+    } as any) as number
+    await useCultivationStore.getState().loadAll(projectId)
+    await useCultivationStore.getState().updateSystem(systemId, { description: '最高只能劈开巨石' })
+    expect((await db.temporalFacts.get(factId))?.status).toBe('stale')
+  })
+
+  it('导出导入重映射角色和世界宪法中的修炼体系 FK', async () => {
+    const now = Date.now()
+    const projectId = await db.projects.add({
+      name: 'roundtrip', genre: '', description: '', targetWordCount: 0,
+      enableMultiWorld: true, createdAt: now, updatedAt: now,
+    } as any) as number
+    const worldGroupId = await db.worldGroups.add({
+      projectId, name: '主世界', type: 'primary', order: 0, createdAt: now, updatedAt: now,
+    } as any) as number
+    const systemId = await db.cultivationSystems.add({
+      projectId, worldGroupId, name: '剑修', description: '剑意',
+      stages: stringifyCultivationStages(stages), createdAt: now, updatedAt: now,
+    }) as number
+    await db.characters.add({
+      projectId, homeWorldGroupId: worldGroupId, name: '林舟', role: 'protagonist',
+      cultivationSystemId: systemId, cultivationStageId: 'sword',
+      createdAt: now, updatedAt: now,
+    } as any)
+    await db.temporalFacts.add({
+      projectId, worldGroupId, subjectName: '主世界', predicate: 'powerCeiling',
+      factKind: 'rule', value: '归一', sourceType: 'setting',
+      sourceRecordTable: 'cultivationSystems', sourceRecordId: systemId,
+      sourceCultivationSystemId: systemId, sourceField: 'stages',
+      sourceFingerprint: fingerprintSettingSource(stringifyCultivationStages(stages)),
+      status: 'confirmed', locked: true, createdAt: now, updatedAt: now,
+    } as any)
+
+    const importedProjectId = await importProjectJSON(await exportProjectJSON(projectId))
+    const importedSystem = await db.cultivationSystems.where('projectId').equals(importedProjectId).first()
+    const importedCharacter = await db.characters.where('projectId').equals(importedProjectId).first()
+    const importedFact = await db.temporalFacts.where('projectId').equals(importedProjectId).first()
+    expect(importedSystem?.id).not.toBe(systemId)
+    expect(importedCharacter?.cultivationSystemId).toBe(importedSystem?.id)
+    expect(importedFact?.sourceCultivationSystemId).toBe(importedSystem?.id)
+  })
+})

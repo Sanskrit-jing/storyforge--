@@ -1,0 +1,131 @@
+{
+  "name": "storyforge",
+  "private": true,
+  "version": "3.9.1",
+  "license": "MIT",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yuanbw2025/storyforge.git"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "desktop:start": "npm run build && electron .",
+    "desktop:build": "npm run build && electron-builder --win nsis --publish never",
+    "android:build": "tsc -b && vite build --mode android",
+    "android:sync": "npm run android:build && npx cap sync android",
+    "android:apk": "npm run android:sync && cd android && gradlew.bat assembleDebug",
+    "android:apk:release": "npm run android:sync && cd android && gradlew.bat assembleRelease",
+    "harmony:sync": "node scripts/sync-harmony-assets.mjs",
+    "harmony:assets": "npm run android:build && npm run harmony:sync",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "check:required-tables": "node scripts/check-required-tables.mjs",
+    "check:source-reachability": "node scripts/check-source-reachability.mjs",
+    "check:bundle-size": "node scripts/check-bundle-size.mjs",
+    "check:dependencies": "npm audit --omit=dev --audit-level=moderate",
+    "check:release-metadata": "node scripts/check-release-metadata.mjs",
+    "check:roadmap": "node scripts/check-roadmap.mjs",
+    "check:agent-context": "node scripts/check-agent-context.mjs",
+    "check:canon-coverage": "node scripts/check-canon-coverage.mjs",
+    "gen:project-metrics": "node scripts/generate-project-metrics.mjs",
+    "check:project-metrics": "node scripts/generate-project-metrics.mjs --check",
+    "gen:ai-manual": "node scripts/generate-ai-manual.mjs",
+    "check:ai-manual": "node scripts/generate-ai-manual.mjs --check",
+    "check:architecture": "node scripts/check-architecture.mjs",
+    "lint": "eslint . --max-warnings=0",
+    "lint:fix": "eslint . --fix",
+    "ci": "npm run check:required-tables && npm run check:ai-manual && npm run check:architecture && npm run check:source-reachability && npm run check:roadmap && npm run check:agent-context && npm run check:canon-coverage && npm run check:project-metrics && npm run check:dependencies && npm run lint && npx tsc --noEmit && npm run test:coverage && npm run build && npm run check:bundle-size",
+    "ci:e2e": "npm run test:e2e"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/filesystem": "^8.1.3",
+    "@capacitor/keyboard": "^8.0.5",
+    "@capacitor/share": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.3",
+    "@tiptap/extension-placeholder": "^3.28.0",
+    "@tiptap/extension-text-style": "^3.28.0",
+    "@tiptap/pm": "^3.28.0",
+    "@tiptap/react": "^3.28.0",
+    "@tiptap/starter-kit": "^3.28.0",
+    "@types/d3-hierarchy": "^3.1.7",
+    "d3-hierarchy": "^3.1.2",
+    "delaunator": "^5.1.0",
+    "dexie": "^4.0.11",
+    "json5": "^2.2.3",
+    "jszip": "^3.10.1",
+    "lucide-react": "^0.468.0",
+    "mammoth": "^1.12.0",
+    "nanoid": "^5.1.11",
+    "pdfjs-dist": "^4.10.38",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-force-graph-2d": "^1.29.1",
+    "react-router": "^8.3.0",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.2",
+    "@playwright/test": "^1.61.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "@vitest/coverage-v8": "^2.1.9",
+    "autoprefixer": "^10.4.20",
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8",
+    "eslint": "^9.39.4",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "fake-indexeddb": "^6.2.5",
+    "happy-dom": "^20.10.2",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.61.1",
+    "vite": "^6.0.0",
+    "vite-plugin-pwa": "^1.2.0",
+    "vitest": "^2.1.9"
+  },
+  "build": {
+    "appId": "com.storyforge.desktop",
+    "productName": "StoryForge",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron/**/*",
+      "dist/**/*",
+      "package.json",
+      "!node_modules/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "public/icon-512.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "故事熔炉 StoryForge",
+      "artifactName": "StoryForge-Setup-${version}.${ext}"
+    }
+  }
+}

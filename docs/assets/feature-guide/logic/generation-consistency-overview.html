@@ -1,0 +1,677 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>StoryForge 生成逻辑与长期一致性总览图</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172033;
+      --muted: #667085;
+      --line: #c9d1df;
+      --bg: #f7f8fb;
+      --panel: #ffffff;
+      --soft-bg: #eaf2ff;
+      --soft: #2467d6;
+      --hard-bg: #ffeceb;
+      --hard: #c4372f;
+      --mixed-bg: #fff4d6;
+      --mixed: #b76b00;
+      --heart-bg: #eaf7e8;
+      --heart: #3b8a42;
+      --memory-bg: #f0ecff;
+      --memory: #6f4fd8;
+      --guard-bg: #e8f6f3;
+      --guard: #147d70;
+      --shadow: 0 14px 38px rgba(24, 32, 51, 0.10);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .page {
+      max-width: 1800px;
+      margin: 0 auto;
+      padding: 28px 28px 36px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 24px;
+      align-items: end;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      line-height: 1.18;
+      font-weight: 750;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 980px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+      max-width: 560px;
+    }
+
+    .legend span,
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      height: 26px;
+      border: 1px solid currentColor;
+      border-radius: 999px;
+      padding: 0 10px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .legend .soft,
+    .badge.soft {
+      background: var(--soft-bg);
+      color: var(--soft);
+    }
+
+    .legend .hard,
+    .badge.hard {
+      background: var(--hard-bg);
+      color: var(--hard);
+    }
+
+    .legend .mixed,
+    .badge.mixed {
+      background: var(--mixed-bg);
+      color: var(--mixed);
+    }
+
+    .legend .memory,
+    .badge.memory {
+      background: var(--memory-bg);
+      color: var(--memory);
+    }
+
+    .legend .guard,
+    .badge.guard {
+      background: var(--guard-bg);
+      color: var(--guard);
+    }
+
+    .overview {
+      position: relative;
+      overflow-x: auto;
+      padding: 18px;
+      background: var(--panel);
+      border: 1px solid #e3e7ef;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .canvas {
+      position: relative;
+      min-width: 1540px;
+      height: 920px;
+      padding: 18px 20px;
+    }
+
+    @media (max-width: 1400px) {
+      .canvas {
+        zoom: 0.76;
+      }
+    }
+
+    @media (max-width: 1100px) {
+      .canvas {
+        zoom: 0.64;
+      }
+    }
+
+    .connectors {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .connectors path,
+    .connectors line {
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .memory-line {
+      stroke: var(--memory);
+      stroke-width: 2.4;
+      stroke-dasharray: 8 7;
+    }
+
+    .main-line {
+      stroke: #62708a;
+      stroke-width: 3;
+    }
+
+    .guard-line {
+      stroke: var(--guard);
+      stroke-width: 2.2;
+      stroke-dasharray: 5 6;
+    }
+
+    .impact-line {
+      stroke: var(--hard);
+      stroke-width: 2.5;
+      stroke-dasharray: 10 7;
+    }
+
+    .lane-title {
+      position: absolute;
+      left: 22px;
+      width: 120px;
+      color: #344054;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+    }
+
+    .lane-title.memory {
+      top: 54px;
+    }
+
+    .lane-title.main {
+      top: 352px;
+    }
+
+    .lane-title.guard {
+      top: 642px;
+    }
+
+    .memory-row,
+    .main-row,
+    .guard-row {
+      position: absolute;
+      left: 150px;
+      right: 20px;
+      display: grid;
+      z-index: 2;
+    }
+
+    .memory-row {
+      top: 28px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .main-row {
+      top: 278px;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 12px;
+    }
+
+    .guard-row {
+      top: 596px;
+      grid-template-columns: repeat(9, 1fr);
+      gap: 10px;
+    }
+
+    .node {
+      position: relative;
+      min-height: 120px;
+      padding: 14px;
+      border: 1px solid #d7deea;
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 6px 18px rgba(24, 32, 51, 0.06);
+    }
+
+    .node h2,
+    .node h3 {
+      margin: 9px 0 8px;
+      font-size: 15px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    .node p {
+      margin: 0;
+      color: #475467;
+      font-size: 12px;
+    }
+
+    .node strong {
+      color: var(--ink);
+    }
+
+    .node .mini {
+      display: block;
+      margin-top: 8px;
+      color: #667085;
+      font-size: 11px;
+    }
+
+    .step {
+      min-height: 204px;
+    }
+
+    .step::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: -13px;
+      width: 12px;
+      height: 2px;
+      background: #98a2b3;
+      transform: translateY(-50%);
+    }
+
+    .step:last-child::after {
+      display: none;
+    }
+
+    .step-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      color: #fff;
+      background: #46546b;
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .step.heart {
+      background: var(--heart-bg);
+      border-color: #9ed4a3;
+    }
+
+    .step.heart .step-number {
+      background: var(--heart);
+    }
+
+    .step.soft {
+      background: var(--soft-bg);
+      border-color: #9fc2ff;
+    }
+
+    .step.soft .step-number {
+      background: var(--soft);
+    }
+
+    .step.hard {
+      background: var(--hard-bg);
+      border-color: #f4aaa6;
+    }
+
+    .step.hard .step-number {
+      background: var(--hard);
+    }
+
+    .step.mixed {
+      background: var(--mixed-bg);
+      border-color: #f5ce78;
+    }
+
+    .step.mixed .step-number {
+      background: var(--mixed);
+    }
+
+    .mem {
+      min-height: 178px;
+      background: var(--memory-bg);
+      border-color: #c5b8ff;
+    }
+
+    .mem h3 {
+      color: #422aa0;
+    }
+
+    .guard-node {
+      min-height: 156px;
+      background: var(--guard-bg);
+      border-color: #9ad6cf;
+      padding: 12px;
+    }
+
+    .guard-node h3 {
+      color: #0f675c;
+      font-size: 13px;
+    }
+
+    .guard-node p {
+      font-size: 11px;
+    }
+
+    .axis-note {
+      position: absolute;
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      border: 1px solid #d0d5dd;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.92);
+      padding: 7px 10px;
+      color: #344054;
+      font-size: 12px;
+      box-shadow: 0 6px 18px rgba(24, 32, 51, 0.06);
+    }
+
+    .note-read {
+      top: 230px;
+      left: 420px;
+    }
+
+    .note-write {
+      top: 230px;
+      left: 1010px;
+    }
+
+    .note-loop {
+      right: 42px;
+      top: 498px;
+    }
+
+    .note-guard {
+      left: 600px;
+      top: 542px;
+    }
+
+    .takeaway {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .takeaway article {
+      min-height: 108px;
+      padding: 15px;
+      border: 1px solid #d7deea;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .takeaway h2 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+
+    .takeaway p {
+      margin: 0;
+      color: #475467;
+    }
+
+    @media (max-width: 900px) {
+      .page {
+        padding: 18px;
+      }
+
+      header {
+        grid-template-columns: 1fr;
+      }
+
+      .legend {
+        justify-content: flex-start;
+      }
+
+      .overview {
+        padding: 12px;
+      }
+
+      .takeaway {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div>
+        <h1>StoryForge 生成逻辑与长期一致性总览图</h1>
+        <p class="subtitle">
+          中间是正文生成主线；上方是四层记忆闭环，分别在第 ② 步读入、第 ⑥ 步写回；
+          下方是生成护栏，贯穿上下文装配、生成、采纳、校验、修改传播。颜色直接标出软 / 硬 / 混合边界。
+        </p>
+      </div>
+      <div class="legend" aria-label="图例">
+        <span class="soft">软：AI 生成 / 抽取</span>
+        <span class="hard">硬：代码校验 / 失效</span>
+        <span class="mixed">混合：AI 审校 + 硬规则</span>
+        <span class="memory">四层记忆</span>
+        <span class="guard">生成护栏</span>
+      </div>
+    </header>
+
+    <section class="overview" aria-label="生成逻辑与长期一致性总览图">
+      <div class="canvas">
+        <svg class="connectors" viewBox="0 0 1540 920" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <marker id="arrow-main" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#62708a"></path>
+            </marker>
+            <marker id="arrow-memory" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#6f4fd8"></path>
+            </marker>
+            <marker id="arrow-guard" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#147d70"></path>
+            </marker>
+            <marker id="arrow-impact" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#c4372f"></path>
+            </marker>
+          </defs>
+
+          <path class="memory-line" marker-end="url(#arrow-memory)" d="M 325 214 C 325 238, 325 252, 325 278"></path>
+          <path class="memory-line" marker-end="url(#arrow-memory)" d="M 675 214 C 590 242, 430 245, 325 278"></path>
+          <path class="memory-line" marker-end="url(#arrow-memory)" d="M 1025 214 C 820 242, 520 245, 325 278"></path>
+          <path class="memory-line" marker-end="url(#arrow-memory)" d="M 1374 214 C 1090 242, 640 245, 325 278"></path>
+
+          <path class="memory-line" marker-end="url(#arrow-memory)" d="M 1088 482 C 1088 528, 810 536, 325 506 C 240 500, 230 310, 325 278"></path>
+          <path class="main-line" marker-end="url(#arrow-main)" d="M 1458 382 C 1516 382, 1516 518, 350 518 C 305 518, 305 482, 315 482"></path>
+          <path class="impact-line" marker-end="url(#arrow-impact)" d="M 1280 482 C 1280 545, 1265 570, 1265 596"></path>
+
+          <path class="guard-line" marker-end="url(#arrow-guard)" d="M 238 596 C 238 548, 238 525, 238 482"></path>
+          <path class="guard-line" marker-end="url(#arrow-guard)" d="M 386 596 C 386 548, 386 525, 386 482"></path>
+          <path class="guard-line" marker-end="url(#arrow-guard)" d="M 534 596 C 534 548, 534 525, 534 482"></path>
+          <path class="guard-line" marker-end="url(#arrow-guard)" d="M 682 596 C 682 548, 682 525, 682 482"></path>
+          <path class="guard-line" marker-end="url(#arrow-guard)" d="M 830 596 C 830 548, 830 525, 830 482"></path>
+          <path class="guard-line" marker-end="url(#arrow-guard)" d="M 978 596 C 978 548, 978 525, 978 482"></path>
+          <path class="guard-line" marker-end="url(#arrow-guard)" d="M 1126 596 C 1126 548, 1126 525, 1126 482"></path>
+          <path class="guard-line" marker-end="url(#arrow-guard)" d="M 1274 596 C 1274 548, 1274 525, 1274 482"></path>
+          <path class="guard-line" marker-end="url(#arrow-guard)" d="M 1422 596 C 1422 548, 1422 525, 1422 482"></path>
+        </svg>
+
+        <div class="lane-title memory">记忆闭环</div>
+        <div class="lane-title main">主线生成</div>
+        <div class="lane-title guard">护栏轨道</div>
+
+        <div class="axis-note note-read">
+          <span class="badge memory">读入点</span>
+          第 ② 步把 A/B/C/D 选择性装进 prompt
+        </div>
+        <div class="axis-note note-write">
+          <span class="badge memory">写回点</span>
+          第 ⑥ 步把新正文沉淀回四层记忆
+        </div>
+        <div class="axis-note note-loop">
+          <span class="badge hard">闭环</span>
+          修改传播后回到下一轮上下文装配
+        </div>
+        <div class="axis-note note-guard">
+          <span class="badge guard">护栏</span>
+          不是单点模块，而是沿生成线分布
+        </div>
+
+        <section class="memory-row" aria-label="四层记忆">
+          <article class="node mem">
+            <span class="badge memory">A 章节交接</span>
+            <h3>下一章必须接住什么</h3>
+            <p><strong>写：</strong>chapter.memory 抽取 continuityHandoff，带正文 hash。</p>
+            <p><strong>读：</strong>chapterContinuityHandoff / previousChapterEnding。</p>
+            <span class="mini">抽取软，溯源硬</span>
+          </article>
+          <article class="node mem">
+            <span class="badge memory">B 层级摘要</span>
+            <h3>章 → 卷 → 全书滚动摘要</h3>
+            <p><strong>写：</strong>narrativeSummaryNodes roll-up。</p>
+            <p><strong>读：</strong>recentChapterSummaries / 检索源内。</p>
+            <span class="mini">确定性 roll-up，半硬</span>
+          </article>
+          <article class="node mem">
+            <span class="badge memory">C 双层事实账本</span>
+            <h3>权威状态骨架</h3>
+            <p><strong>写：</strong>fact-extract → temporalFacts；作者确认 → canon。</p>
+            <p><strong>读：</strong>currentFacts + heldItems。</p>
+            <span class="mini">抽取软，投影 / 守卫硬</span>
+          </article>
+          <article class="node mem">
+            <span class="badge memory">D 原文检索</span>
+            <h3>远距离细节与伏笔召回</h3>
+            <p><strong>写：</strong>retrievalChunks + 可选 embedding。</p>
+            <p><strong>读：</strong>retrievedPassages 混合检索。</p>
+            <span class="mini">召回软，过滤硬</span>
+          </article>
+        </section>
+
+        <section class="main-row" aria-label="正文生成主线">
+          <article class="node step">
+            <span class="step-number">1</span>
+            <h2>触发</h2>
+            <p>用户点“生成正文 / 续写”。</p>
+            <span class="mini">入口：ChapterEditor</span>
+          </article>
+          <article class="node step heart">
+            <span class="step-number">2</span>
+            <h2>上下文装配</h2>
+            <p><strong>assembleContext(need)</strong> 从 CONTEXT_SOURCES 按需拉取、分层、预算裁剪。</p>
+            <span class="mini">一致性的读入口</span>
+          </article>
+          <article class="node step">
+            <span class="step-number">3</span>
+            <h2>Prompt 渲染</h2>
+            <p>renderPrompt(模板) + chapter-adapter 连续性保护块。</p>
+          </article>
+          <article class="node step soft">
+            <span class="step-number">4</span>
+            <h2>生成</h2>
+            <p>streamChat 调 LLM，流式产出正文。</p>
+            <span class="mini">软：AI 创造文本</span>
+          </article>
+          <article class="node step hard">
+            <span class="step-number">5</span>
+            <h2>采纳落库</h2>
+            <p>adopt() 结构化写回，类型 / 枚举 / FK / 去重校验。</p>
+            <span class="mini">硬：FIELD_REGISTRY + ADOPTION_SCHEMAS</span>
+          </article>
+          <article class="node step heart">
+            <span class="step-number">6</span>
+            <h2>反写记忆</h2>
+            <p>从刚落库正文抽出结构，沉淀进四层记忆。</p>
+            <span class="mini">一致性的写入口</span>
+          </article>
+          <article class="node step mixed">
+            <span class="step-number">7</span>
+            <h2>校验</h2>
+            <p>LLM 一致性审校 + 确定性硬校验，ReviewPanel 提示作者。</p>
+            <span class="mini">软 + 硬混合</span>
+          </article>
+          <article class="node step hard">
+            <span class="step-number">8</span>
+            <h2>修改传播</h2>
+            <p>正文变更触发 hash 失效 + 影响分析，派生记忆 stale。</p>
+            <span class="mini">硬：后续章待复核</span>
+          </article>
+        </section>
+
+        <section class="guard-row" aria-label="生成护栏">
+          <article class="node guard-node">
+            <h3>上下文预算</h3>
+            <p>分层裁剪，保护块不删。</p>
+            <p><strong>防：</strong>超窗乱截</p>
+          </article>
+          <article class="node guard-node">
+            <h3>未来章过滤</h3>
+            <p>只召回当前章之前内容。</p>
+            <p><strong>防：</strong>剧透</p>
+          </article>
+          <article class="node guard-node">
+            <h3>世界隔离</h3>
+            <p>worldGroupId 只读同世界。</p>
+            <p><strong>防：</strong>多世界串台</p>
+          </article>
+          <article class="node guard-node">
+            <h3>当前事实投影</h3>
+            <p>currentFacts + heldItems。</p>
+            <p><strong>防：</strong>状态漂移</p>
+          </article>
+          <article class="node guard-node">
+            <h3>写回校验</h3>
+            <p>受控谓词 + adopt 校验。</p>
+            <p><strong>防：</strong>自由造字段</p>
+          </article>
+          <article class="node guard-node">
+            <h3>引文回查</h3>
+            <p>证据必须逐字在原文。</p>
+            <p><strong>防：</strong>幻觉证据</p>
+          </article>
+          <article class="node guard-node">
+            <h3>物品硬判</h3>
+            <p>held-items 判重复首次获得。</p>
+            <p><strong>防：</strong>重复获得</p>
+          </article>
+          <article class="node guard-node">
+            <h3>hash / CAS</h3>
+            <p>来源正文变更即 stale。</p>
+            <p><strong>防：</strong>旧记忆污染</p>
+          </article>
+          <article class="node guard-node">
+            <h3>影响传播</h3>
+            <p>改 canon 后列受影响章。</p>
+            <p><strong>防：</strong>改动无声扩散</p>
+          </article>
+        </section>
+      </div>
+    </section>
+
+    <section class="takeaway" aria-label="读图提示">
+      <article>
+        <h2>读图顺序</h2>
+        <p>先看中间 1 到 8：它是正文生成主线。再看上方四层记忆如何在 ② 读入、⑥ 写回，最后看下方护栏如何贴着各阶段工作。</p>
+      </article>
+      <article>
+        <h2>关键判断</h2>
+        <p>一致性不是一个孤立功能，而是“读上下文 → 生成 → 写回记忆 → 校验 → 失效传播 → 再读”的闭环。</p>
+      </article>
+      <article>
+        <h2>软硬边界</h2>
+        <p>AI 负责生成和抽取，代码负责过滤、投影、校验、溯源和传播；作者确认把候选事实推成 canon。</p>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "故事熔炉主模块"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "AI 驱动的小说创作工坊"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "故事熔炉"
+    }
+  ]
+}

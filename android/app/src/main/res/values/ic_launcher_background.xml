@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 与 public/icon.svg 品牌底色一致，也是应用主背景色，避免启动白闪 -->
+    <color name="ic_launcher_background">#0a0a0f</color>
+</resources>

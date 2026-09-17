@@ -1,0 +1,51 @@
+node_modules
+dist/
+.DS_Store
+*.local
+*.tsbuildinfo
+
+# Azgaar Fantasy Map Generator（构建产物，运行 setup 脚本生成）
+public/fmg/
+
+# 临时文件
+tree.txt
+*.bak
+coverage/
+test-results/
+playwright-report/
+
+# Release packaging outputs
+release/
+packaging/desktop-server/web/*
+!packaging/desktop-server/web/placeholder.txt
+
+# Android 打包工具链（JDK + Android SDK，本机构建用，体积大不入库）
+.toolchain/
+
+# Capacitor Android 工程构建产物
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+android/app/src/main/assets/public/
+
+# Android release signing (machine-local secrets, NEVER commit)
+android/*.jks
+android/*.keystore
+android/app/*.jks
+android/app/*.keystore
+android/keystore.properties
+
+# 鸿蒙（HarmonyOS NEXT）壳工程构建产物
+harmony/entry/build/
+harmony/build/
+harmony/.hvigor/
+harmony/oh_modules/
+harmony/.cxx/
+harmony/local.properties
+# rawfile 里是 vite build 的产物（由 npm run harmony:sync 生成），只留目录占位
+harmony/entry/src/main/resources/rawfile/*
+!harmony/entry/src/main/resources/rawfile/.gitkeep
+# 图标由 sync 脚本从 public/ 复制，入 .gitignore 保证只有一处图标事实源
+harmony/AppScope/resources/base/media/app_icon.png
+harmony/entry/src/main/resources/base/media/app_icon.png

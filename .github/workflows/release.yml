@@ -1,0 +1,119 @@
+name: Release Source Package
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag, for example v3.7.5'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark as prerelease'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify release version and changelog
+        run: npm run check:release-metadata -- "${RELEASE_TAG}"
+
+      - name: Run production release gates
+        run: npm run ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser release smoke tests
+        run: npm run ci:e2e
+
+      - name: Prepare release notes
+        run: |
+          mkdir -p release
+          cat > release/RELEASE-NOTES.md <<'EOF'
+          ## StoryForge 故事熔炉
+
+          本版本为源码版发布，不再提供 `.bat`、`.exe` 或 Windows Portable 启动器。
+
+          ### 如何启动
+
+          1. 在本页面下载 GitHub 自动生成的 `Source code (zip)`。
+          2. 解压压缩包。
+          3. 安装 Node.js LTS：https://nodejs.org/
+          4. 进入包含 `package.json` 的项目目录。
+          5. 执行：
+
+             ```powershell
+             npm install
+             npm run dev
+             ```
+
+          6. 浏览器打开：
+
+             ```text
+             http://localhost:1111/storyforge/
+             ```
+
+          更详细的零基础步骤见仓库内文档：
+
+          `使用npm指令启动项目.md`
+
+          使用前建议先在旧版本「数据管理」中导出 JSON 备份。
+          EOF
+
+      - name: Ensure tag exists for manual dispatch
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if git rev-parse -q --verify "refs/tags/${RELEASE_TAG}" >/dev/null; then
+            if [ "$(git rev-list -n 1 "${RELEASE_TAG}")" != "$(git rev-parse HEAD)" ]; then
+              echo "Tag ${RELEASE_TAG} does not point to the current release commit." >&2
+              exit 1
+            fi
+          else
+            git tag "${RELEASE_TAG}"
+            git push origin "${RELEASE_TAG}"
+          fi
+
+      - name: Publish source release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRERELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
+        run: |
+          args=()
+          if [ "${PRERELEASE}" = "true" ]; then
+            args+=(--prerelease)
+          fi
+          if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            gh release edit "${RELEASE_TAG}" \
+              --title "StoryForge ${RELEASE_TAG}" \
+              --notes-file release/RELEASE-NOTES.md \
+              "${args[@]}"
+          else
+            gh release create "${RELEASE_TAG}" \
+              --title "StoryForge ${RELEASE_TAG}" \
+              --notes-file release/RELEASE-NOTES.md \
+              "${args[@]}"
+          fi

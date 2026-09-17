@@ -1,0 +1,58 @@
+import { act, createElement } from 'react'
+import { createRoot } from 'react-dom/client'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import KnowledgeLedgerPanel from '../../src/components/facts/KnowledgeLedgerPanel'
+import { db } from '../../src/lib/db/schema'
+
+globalThis.IS_REACT_ACT_ENVIRONMENT = true
+
+describe('CONSISTENCY-2 · 角色认知用户出口', () => {
+  let host: HTMLDivElement
+  let root: ReturnType<typeof createRoot>
+
+  beforeEach(async () => {
+    await db.delete()
+    await db.open()
+    host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+  })
+
+  afterEach(async () => {
+    await act(async () => root.unmount())
+    host.remove()
+    db.close()
+  })
+
+  it('事实库角色认知视图展示候选及人工确认/否决出口', async () => {
+    const now = Date.now()
+    const projectId = await db.projects.add({
+      name: 'UI', genre: '', description: '', targetWordCount: 0,
+      enableMultiWorld: false, createdAt: now, updatedAt: now,
+    } as any) as number
+    const characterId = await db.characters.add({
+      projectId, name: '林飞', roleWeight: 'main', moralAxis: 'neutral',
+      orderAxis: 'neutral', createdAt: now, updatedAt: now,
+    } as any) as number
+    await db.knowledgeLedger.add({
+      projectId, characterId, characterName: '林飞',
+      knowledgeKey: 'enemy.true_identity', statement: '黑衣人是城主',
+      action: 'learn', sourceType: 'manual', sourceChapterId: null,
+      status: 'candidate', createdAt: now, updatedAt: now,
+    })
+
+    await act(async () => {
+      root.render(createElement(KnowledgeLedgerPanel, {
+        project: { id: projectId, name: 'UI' } as any,
+        onShowFacts: () => undefined,
+      }))
+      await new Promise(resolve => setTimeout(resolve, 0))
+    })
+
+    expect(host.textContent).toContain('角色认知账本')
+    expect(host.textContent).toContain('黑衣人是城主')
+    expect(host.textContent).toContain('enemy.true_identity')
+    expect(host.querySelector('button[title="确认事件"]')).not.toBeNull()
+    expect(host.querySelector('button[title="否决事件"]')).not.toBeNull()
+  })
+})
