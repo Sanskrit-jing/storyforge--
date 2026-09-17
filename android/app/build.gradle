@@ -33,6 +33,19 @@ android {
             }
         }
     }
+    // 手机/平板共用同一份 Web 产物，布局由 Web 层按宽度自适应（与鸿蒙壳工程同策略）。
+    // 平板包只改应用标识与显示名，好与手机版并存、也能一眼认出装的是哪一份。
+    flavorDimensions += "device"
+    productFlavors {
+        phone {
+            dimension "device"
+        }
+        tablet {
+            dimension "device"
+            applicationIdSuffix ".tablet"
+            versionNameSuffix "-tablet"
+        }
+    }
     buildTypes {
         release {
             signingConfig signingConfigs.release

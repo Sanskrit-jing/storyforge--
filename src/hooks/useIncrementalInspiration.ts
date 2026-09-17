@@ -24,6 +24,15 @@ import type {
   InspirationVersion,
 } from '../lib/types/inspiration-workspace'
 
+/**
+ * 生成中／生成完成待解析的标记，写在共享 AI 会话的 operation 上。
+ *
+ * 面板被切走（一级标签切换、平板分屏来回操作）时组件会卸载，本地 state 全部丢失；
+ * 而流式输出与控制器活在共享会话里、生成会继续。没有这个标记的话，回来后只会恢复
+ * AI 原文，永远不再触发解析——表现为「有 AI 文字，但反推结果整块消失、也没有报错」。
+ */
+const PENDING_RESULT_OPERATION = 'inspiration.reverse.pending'
+
 export function useIncrementalInspiration(
   project: Project,
   onGenerationStarted: () => void,
@@ -48,7 +57,6 @@ export function useIncrementalInspiration(
   const [pendingFragmentIds, setPendingFragmentIds] = useState<string[]>([])
   const [pendingParent, setPendingParent] = useState<InspirationVersion | null>(null)
   const [confirmingFusion, setConfirmingFusion] = useState(false)
-  const [awaitingResult, setAwaitingResult] = useState(false)
   const [fusionError, setFusionError] = useState('')
 
   const applyResult = (parsed: ReverseResult | ReverseMultiWorldResult, targetMode = mode) => {
@@ -71,10 +79,12 @@ export function useIncrementalInspiration(
     setPendingDiff(null)
     setPendingFragmentIds([])
     setPendingParent(null)
-    setAwaitingResult(false)
     setFusionError('')
     void workspace.load(project.id!).then(() => {
       if (!active) return
+      // 有生成完成但尚未解析的输出时，结果由解析流程给出（含与上一版的差异），
+      // 不能被这里回填的历史版本覆盖。
+      if (ai.operation === PENDING_RESULT_OPERATION && ai.output) return
       const state = useInspirationWorkspaceStore.getState()
       setSelectedFragmentIds(new Set(state.fragments.map(fragment => fragment.id)))
       const latest = latestInspirationVersion(state.versions, mode)
@@ -122,7 +132,8 @@ export function useIncrementalInspiration(
   }, [draftKey, inspiration, userHint, result, mwResult, mwAdopted])
 
   const acceptGeneratedResult = (output: string) => {
-    setAwaitingResult(false)
+    // 标记在成功与失败两条出口都消费掉：错误由 fusionError 呈现，AI 原文留在输出框可复查。
+    ai.setOperation(null)
     const latest = latestInspirationVersion(
       useInspirationWorkspaceStore.getState().versions,
       mode,
@@ -144,13 +155,15 @@ export function useIncrementalInspiration(
     setPendingParent(latest)
   }
 
+  // 完成条件读的是共享会话上的标记，而不是组件本地 state——面板在生成中途被切走时组件会
+  // 卸载，本地 state 全部丢失，但流式输出与标记都留在共享会话里，重新挂载后据此补上解析。
+  // 依赖必须包含 ai.output / ai.isStreaming：流在共享会话里跑完时只有它们变化能再次唤醒。
   useEffect(() => {
-    if (!awaitingResult || ai.isStreaming || !ai.output) return
+    if (ai.operation !== PENDING_RESULT_OPERATION || ai.isStreaming || !ai.output) return
     acceptGeneratedResult(ai.output)
-    setAwaitingResult(false)
   // Completion intentionally reads the latest store snapshot.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ai.isStreaming, ai.output, awaitingResult, isMultiWorld])
+  }, [ai.operation, ai.isStreaming, ai.output, isMultiWorld])
 
   const addCurrentFragment = async () => {
     if (inspiration.trim().length > MAX_INSPIRATION_FRAGMENT_CHARS) {
@@ -208,7 +221,8 @@ export function useIncrementalInspiration(
     const messages = isMultiWorld
       ? buildInspirationReverseMultiWorldPrompt(project.name, genres, fusionInput, userHint || undefined)
       : buildInspirationReversePrompt(project.name, genres, fusionInput, userHint || undefined)
-    setAwaitingResult(true)
+    // 先落标记再开流：面板在生成中途被切走、组件卸载后，重新挂载靠这个标记补上解析。
+    ai.setOperation(PENDING_RESULT_OPERATION)
     await ai.start(messages, undefined, {
       category: 'inspiration.reverse',
       projectId: project.id!,

@@ -6,8 +6,11 @@
 
 | 设备 | 系统 | 安装包 | 怎么出包 |
 | --- | --- | --- | --- |
-| 华为平板、老款华为手机 | HarmonyOS 4.x 及以下（兼容 Android） | `.apk` | 仓库根 `npm run android:apk` |
+| 华为平板、老款华为手机 | HarmonyOS 4.x 及以下（兼容 Android） | `.apk` | 仓库根 `npm run android:apk`（手机包）/ `npm run android:apk:tablet`（平板包，应用名“故事熔炉 平板版”） |
 | 新款华为手机、平板 | HarmonyOS NEXT 5.0+（不再兼容 Android） | `.hap` | 本工程 |
+
+两个 Android flavor（`phone` / `tablet`）共用同一份 Web 产物与同一套横竖屏自适应布局，
+平板包只改应用标识（`com.storyforge.app.tablet`）与显示名，因此可与手机包并存安装。
 
 HarmonyOS NEXT 无法安装 APK，所以这里是一个 WebView 壳：**不重写任何业务代码**，把
 `vite build --mode android` 的同一份产物放进 `rawfile` 里跑，因此两端功能与数据模型完全一致。

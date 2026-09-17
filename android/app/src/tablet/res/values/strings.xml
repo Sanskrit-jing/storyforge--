@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <!-- 平板 flavor 覆盖显示名，其余字符串继承 main（见 src/main/res/values/strings.xml）。 -->
+    <string name="app_name">故事熔炉 平板版</string>
+    <string name="title_activity_main">故事熔炉 平板版</string>
+</resources>

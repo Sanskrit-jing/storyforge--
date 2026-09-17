@@ -214,7 +214,7 @@ AI 输出经 `adopt({ target, data })` 写回,只有这里登记的字段可写(
 | `geography.world-map` | `src/components/geography/WorldMapPanel.tsx:107` |
 | `history.consult` | `src/components/history/useHistoryAI.ts:118` |
 | `history.storm` | `src/components/history/useHistoryAI.ts:120` |
-| `inspiration.reverse` | `src/hooks/useIncrementalInspiration.ts:212` |
+| `inspiration.reverse` | `src/hooks/useIncrementalInspiration.ts:226` |
 | `inventory.extract` | `src/components/items/InventoryPanel.tsx:150` |
 | `location.extract` | `src/components/location/LocationPanel.tsx:106` |
 | `node.creation` | `src/lib/node-flow/executor.ts:203` |
@@ -262,4 +262,4 @@ AI 输出经 `adopt({ target, data })` 写回,只有这里登记的字段可写(
 
 ---
 
-生成时间基准:commit `unknown`
+生成时间基准:commit `fbe54b5`
