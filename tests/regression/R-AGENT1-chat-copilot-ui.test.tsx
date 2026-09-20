@@ -10,6 +10,14 @@ const mocks = vi.hoisted(() => ({
   updateCandidate: vi.fn(),
   adoptCandidate: vi.fn(),
   rejectCandidate: vi.fn(),
+  startNewConversation: vi.fn(),
+  deleteMessage: vi.fn(),
+  undoLastRound: vi.fn(),
+  rewriteLast: vi.fn(),
+  openHistory: vi.fn(),
+  viewHistoryConversation: vi.fn(),
+  exitHistoryView: vi.fn(),
+  restoreHistoryConversation: vi.fn(),
 }))
 
 vi.mock('../../src/components/agent/useMasterCopilot', () => ({
@@ -58,10 +66,22 @@ vi.mock('../../src/components/agent/useMasterCopilot', () => ({
     updateCandidate: mocks.updateCandidate,
     adoptCandidate: mocks.adoptCandidate,
     rejectCandidate: mocks.rejectCandidate,
+    startNewConversation: mocks.startNewConversation,
+    deleteMessage: mocks.deleteMessage,
+    undoLastRound: mocks.undoLastRound,
+    rewriteLast: mocks.rewriteLast,
+    historyConversations: [],
+    viewingHistoryId: null,
+    historyEvents: [],
+    openHistory: mocks.openHistory,
+    viewHistoryConversation: mocks.viewHistoryConversation,
+    exitHistoryView: mocks.exitHistoryView,
+    restoreHistoryConversation: mocks.restoreHistoryConversation,
   }),
 }))
 
 import ChatCopilotPanel from '../../src/components/agent/ChatCopilotPanel'
+import { DialogProvider } from '../../src/components/shared/Dialog'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -89,12 +109,12 @@ describe('AGENT-2 · 单一主 Agent 对话入口', () => {
       genres: ['fantasy'],
     } as Project
 
-    await act(async () => root.render(createElement(ChatCopilotPanel, {
+    await act(async () => root.render(createElement(DialogProvider, null, createElement(ChatCopilotPanel, {
       project,
       worldGroupId: 3,
       worldName: '盐海世界',
       onClose: vi.fn(),
-    })))
+    }))))
 
     expect(host.querySelector('aside')?.getAttribute('aria-label')).toBe('主 Agent 创作副驾')
     expect(host.textContent).toContain('主 Agent')

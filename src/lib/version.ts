@@ -9,3 +9,12 @@ export const APP_BUILD_ID = `${APP_VERSION}+${
     ? __STORYFORGE_BUILD_SHA__
     : 'local'
 }`
+
+/**
+ * 界面展示用的「平台版」版本号（如 v3.9.2+鸿蒙版），由 vite 按打包目标在构建时注入。
+ * 精确到提交的构建号仍走 APP_BUILD_ID，供诊断报告事后定位产物来源。
+ */
+const PLATFORM_LABEL =
+  typeof __STORYFORGE_PLATFORM__ === 'string' && __STORYFORGE_PLATFORM__ ? __STORYFORGE_PLATFORM__ : ''
+
+export const APP_PLATFORM_BUILD_ID = PLATFORM_LABEL ? `${APP_VERSION}+${PLATFORM_LABEL}` : APP_BUILD_ID

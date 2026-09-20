@@ -5,6 +5,7 @@ import {
   ChevronRight,
   GitCompareArrows,
   Loader2,
+  Maximize2,
   RotateCcw,
   Sparkles,
   Square,
@@ -53,6 +54,7 @@ import type {
 } from '../../lib/types'
 import type { AssembleContextResult } from '../../lib/registry/types'
 import PromptPreviewGate from '../shared/PromptPreviewGate'
+import FullScreenViewer from '../shared/FullScreenViewer'
 
 interface Props {
   project: Project
@@ -99,6 +101,7 @@ export default function ChapterOutlineWorkshop({
   const [lastInputTokens, setLastInputTokens] = useState(0)
   const [quality, setQuality] = useState<WorkshopQualityEvaluation | null>(null)
   const [adopting, setAdopting] = useState(false)
+  const [draftFullscreen, setDraftFullscreen] = useState(false)
 
   const worldGroupId = useMemo(() => (
     walkOutlineChaptersInCanonicalOrder(nodes).chapters
@@ -320,8 +323,15 @@ export default function ChapterOutlineWorkshop({
   const stageAttempts = attempts[activeStage] ?? []
   const displayedOutput = running ? ai.output : draft
 
+  const updateDraft = (value: string) => {
+    setDraft(value)
+    if (activeStage === 'quality') setQuality(evaluate(value))
+    else if (activeStage === 'scenes') setQuality(null)
+  }
+
   return (
-    <div className="mb-4 rounded-xl border border-accent/30 bg-bg-surface p-4 shadow-theme-sm" data-testid="chapter-outline-workshop">
+    <>
+      <div className="mb-4 rounded-xl border border-accent/30 bg-bg-surface p-4 shadow-theme-sm" data-testid="chapter-outline-workshop">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="flex items-center gap-2 text-sm font-semibold text-text-primary">
@@ -413,16 +423,21 @@ export default function ChapterOutlineWorkshop({
             <>
               {(displayedOutput || running) ? (
                 <div className="space-y-2">
+                  <div className="flex items-center justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setDraftFullscreen(true)}
+                      disabled={running}
+                      className="inline-flex items-center gap-1 text-xs text-accent disabled:opacity-40"
+                    >
+                      <Maximize2 className="h-3.5 w-3.5" />全屏查看
+                    </button>
+                  </div>
                   <textarea
                     aria-label={`${OUTLINE_WORKSHOP_STAGE_META[activeStage].title}产物`}
                     value={displayedOutput}
                     disabled={running}
-                    onChange={event => {
-                      const next = event.target.value
-                      setDraft(next)
-                      if (activeStage === 'quality') setQuality(evaluate(next))
-                      else if (activeStage === 'scenes') setQuality(null)
-                    }}
+                    onChange={event => updateDraft(event.target.value)}
                     rows={activeStage === 'quality' || activeStage === 'scenes' ? 16 : 12}
                     className="w-full resize-y rounded border border-border bg-bg-base px-3 py-2 text-xs leading-6 text-text-primary focus:border-accent focus:outline-none disabled:opacity-80"
                   />
@@ -536,6 +551,47 @@ export default function ChapterOutlineWorkshop({
           )}
         </div>
       ) : null}
-    </div>
+      </div>
+
+      {draftFullscreen && (
+        <FullScreenViewer
+          open
+          title={`章纲工坊 · ${chapter.title}`}
+          subtitle={`${OUTLINE_WORKSHOP_STAGE_META[activeStage].title} · 产物可直接编辑`}
+          onClose={() => setDraftFullscreen(false)}
+          footer={
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {activeStage === 'scenes' ? (
+                <button
+                  type="button"
+                  disabled={!draft.trim() || running || adopting}
+                  onClick={() => { void adoptScenes() }}
+                  className="rounded bg-success px-3 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-40"
+                >
+                  {adopting ? '正在采纳...' : '确认采纳场景卡'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={!draft.trim() || running || quality?.gate.status === 'blocked'}
+                  onClick={confirmCurrent}
+                  className="rounded bg-accent px-3 py-1.5 text-xs text-white hover:bg-accent-hover disabled:opacity-40"
+                >
+                  确认本步并进入下一步
+                </button>
+              )}
+            </div>
+          }
+        >
+          <textarea
+            value={displayedOutput}
+            disabled={running}
+            onChange={event => updateDraft(event.target.value)}
+            rows={26}
+            className="w-full resize-y rounded border border-border bg-bg-base px-3 py-2 text-sm leading-7 text-text-primary focus:border-accent focus:outline-none disabled:opacity-80"
+          />
+        </FullScreenViewer>
+      )}
+    </>
   )
 }

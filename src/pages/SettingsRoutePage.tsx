@@ -8,7 +8,7 @@ export default function SettingsRoutePage() {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen bg-bg-base">
+    <div className="min-h-screen safe-area-pad bg-bg-base">
       <header className="border-b border-border px-6 py-3 flex items-center gap-3">
         <button
           onClick={() => navigate('/')}

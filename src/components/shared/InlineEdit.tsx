@@ -72,12 +72,14 @@ export function InlineInput({
 /* ── InlineTextarea（多行） ──────────────────────────────────── */
 
 export function InlineTextarea({
-  value, onChange, placeholder, className, minRows = 2, maxRows = 16,
+  value, onChange, placeholder, className, displayClassName, minRows = 2, maxRows = 16,
 }: {
   value: string
   onChange: (v: string) => void
   placeholder?: string
   className?: string
+  /** 展示态附加类（编辑态不生效）：用于强调色/字号等微调 */
+  displayClassName?: string
   minRows?: number
   maxRows?: number
 }) {
@@ -132,14 +134,14 @@ export function InlineTextarea({
 
   if (!value) {
     return (
-      <div onClick={() => setEditing(true)} className="text-sm text-text-muted/40 cursor-text py-0.5">
+      <div onClick={() => setEditing(true)} className={`text-sm text-text-muted/40 cursor-text py-0.5 ${displayClassName || ''}`}>
         {placeholder || '点击编辑…'}
       </div>
     )
   }
 
   return (
-    <div onClick={() => setEditing(true)} className="text-sm text-text-primary leading-relaxed whitespace-pre-wrap cursor-text py-0.5">
+    <div onClick={() => setEditing(true)} className={`text-sm text-text-primary leading-relaxed whitespace-pre-wrap cursor-text py-0.5 ${displayClassName || ''}`}>
       {value}
     </div>
   )

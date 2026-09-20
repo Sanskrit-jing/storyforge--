@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   appendAgentEvent,
+  deleteAgentConversation,
+  deleteAgentEvent,
+  deleteAgentEventsFromSequence,
   getOrCreateAgentConversation,
+  listArchivedAgentConversations,
   readAgentEvents,
+  reopenAgentConversation,
+  startNewAgentConversation,
   updateAgentEventCandidate,
 } from '../../lib/agent/conversations'
 import {
@@ -12,7 +18,7 @@ import {
   type ExecutedMasterCandidate,
   type MasterCandidatePayload,
 } from '../../lib/agent/orchestrator'
-import type { AgentEvent, Project } from '../../lib/types'
+import type { AgentConversation, AgentEvent, Project } from '../../lib/types'
 import { parseAgentEventPayload } from '../../lib/types'
 import { AgentTeamBudgetTracker } from '../../lib/agent/team-budget'
 import { useAIConfigStore } from '../../stores/ai-config'
@@ -37,6 +43,11 @@ export function useMasterCopilot(input: {
   const [authorRequest, setAuthorRequest] = useState('')
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [historyConversations, setHistoryConversations] = useState<
+    Array<AgentConversation & { messageCount: number }>
+  >([])
+  const [viewingHistoryId, setViewingHistoryId] = useState<number | null>(null)
+  const [historyEvents, setHistoryEvents] = useState<AgentEvent[]>([])
   const abortRef = useRef<AbortController | null>(null)
   const runtimeCandidates = useRef(new Map<number, ExecutedMasterCandidate>())
   const scopeKey = `${project.id}:${worldGroupId ?? 'global'}`
@@ -106,15 +117,13 @@ export function useMasterCopilot(input: {
       }))
   }, [events])
 
-  const submit = useCallback(async () => {
-    const request = authorRequest.trim()
+  const runRequest = useCallback(async (request: string) => {
     if (!request || busy || conversationId == null) return
     if (pendingCandidates.length) return
     const controller = new AbortController()
     abortRef.current?.abort()
     abortRef.current = controller
     setBusy(true)
-    setAuthorRequest('')
     try {
       await appendAgentEvent({
         projectId: project.id!,
@@ -216,7 +225,6 @@ export function useMasterCopilot(input: {
       await reload(conversationId)
     }
   }, [
-    authorRequest,
     busy,
     conversationId,
     pendingCandidates.length,
@@ -224,6 +232,152 @@ export function useMasterCopilot(input: {
     reload,
     worldGroupId,
   ])
+
+  const submit = useCallback(async () => {
+    const request = authorRequest.trim()
+    if (!request || busy || conversationId == null) return
+    if (pendingCandidates.length) return
+    setAuthorRequest('')
+    await runRequest(request)
+  }, [authorRequest, busy, conversationId, pendingCandidates.length, runRequest])
+
+  /** 新建对话：归档当前对话，打开一条空对话。 */
+  const startNewConversation = useCallback(async () => {
+    if (busy || loading || conversationId == null) return
+    abortRef.current?.abort()
+    runtimeCandidates.current.clear()
+    setBusy(false)
+    try {
+      const conversation = await startNewAgentConversation({
+        projectId: project.id!,
+        worldGroupId,
+        currentConversationId: conversationId,
+      })
+      setConversationId(conversation.id!)
+      setAuthorRequest('')
+      await appendAgentEvent({
+        projectId: project.id!,
+        conversationId: conversation.id!,
+        kind: 'message',
+        role: 'assistant',
+        content: '已开始新对话。直接告诉我你想完成什么。我会理解目标、调用需要的领域 Agent，并把结果统一交给你确认。',
+      })
+      setEvents(await readAgentEvents(conversation.id!))
+    } catch (error) {
+      console.error('[master-copilot] start new conversation failed', error)
+    }
+  }, [busy, conversationId, loading, project.id, worldGroupId])
+
+  /** 删除单条消息（仅对话消息，审计事件不开放删除；同时作用于当前对话与历史浏览）。 */
+  const deleteMessage = useCallback(async (eventId: number) => {
+    if (busy || eventId == null) return
+    try {
+      await deleteAgentEvent(eventId, project.id!)
+      setEvents(current => current.filter(event => event.id !== eventId))
+      setHistoryEvents(current => current.filter(event => event.id !== eventId))
+    } catch (error) {
+      console.error('[master-copilot] delete message failed', error)
+    }
+  }, [busy, project.id])
+
+  /** 撤销：找到最后一条用户消息，删除它及其之后的全部事件。 */
+  const undoLastRound = useCallback(async () => {
+    if (busy || conversationId == null || pendingCandidates.length) return
+    const lastUser = [...events].reverse()
+      .find(event => event.kind === 'message' && event.role === 'user')
+    if (!lastUser) return
+    try {
+      await deleteAgentEventsFromSequence({
+        projectId: project.id!,
+        conversationId,
+        fromSequence: lastUser.sequence,
+      })
+      setEvents(await readAgentEvents(conversationId))
+    } catch (error) {
+      console.error('[master-copilot] undo failed', error)
+    }
+  }, [busy, conversationId, events, pendingCandidates.length, project.id])
+
+  /** 重写：删除最后一轮（含用户消息），用同样的请求重新执行完整流程。 */
+  const rewriteLast = useCallback(async () => {
+    if (busy || conversationId == null || pendingCandidates.length) return
+    const lastUser = [...events].reverse()
+      .find(event => event.kind === 'message' && event.role === 'user')
+    if (!lastUser) return
+    try {
+      await deleteAgentEventsFromSequence({
+        projectId: project.id!,
+        conversationId,
+        fromSequence: lastUser.sequence,
+      })
+      setEvents(await readAgentEvents(conversationId))
+      await runRequest(lastUser.content)
+    } catch (error) {
+      console.error('[master-copilot] rewrite failed', error)
+    }
+  }, [busy, conversationId, events, pendingCandidates.length, project.id, runRequest])
+
+  /** 打开历史列表：拉取归档对话。 */
+  const openHistory = useCallback(async () => {
+    try {
+      setHistoryConversations(await listArchivedAgentConversations({
+        projectId: project.id!,
+        worldGroupId,
+      }))
+    } catch (error) {
+      console.error('[master-copilot] list history failed', error)
+    }
+  }, [project.id, worldGroupId])
+
+  /** 只读浏览一条历史对话。 */
+  const viewHistoryConversation = useCallback(async (targetId: number) => {
+    if (busy || targetId == null) return
+    try {
+      setHistoryEvents(await readAgentEvents(targetId))
+      setViewingHistoryId(targetId)
+    } catch (error) {
+      console.error('[master-copilot] view history failed', error)
+    }
+  }, [busy])
+
+  /** 退出历史浏览，回到当前对话。 */
+  const exitHistoryView = useCallback(() => {
+    setViewingHistoryId(null)
+    setHistoryEvents([])
+  }, [])
+
+  /** 删除一条历史对话及其全部事件；若正浏览该对话则同时退出浏览。 */
+  const deleteHistoryConversation = useCallback(async (targetId: number) => {
+    if (busy || targetId == null) return
+    try {
+      await deleteAgentConversation({ projectId: project.id!, conversationId: targetId })
+      if (viewingHistoryId === targetId) {
+        setViewingHistoryId(null)
+        setHistoryEvents([])
+      }
+      await openHistory()
+    } catch (error) {
+      console.error('[master-copilot] delete history failed', error)
+    }
+  }, [busy, openHistory, project.id, viewingHistoryId])
+
+  /** 恢复历史对话为当前对话（当前 active 对话自动归档）。 */
+  const restoreHistoryConversation = useCallback(async (targetId: number) => {
+    if (busy || targetId == null || loading) return
+    try {
+      const conversation = await reopenAgentConversation({
+        projectId: project.id!,
+        conversationId: targetId,
+      })
+      setConversationId(conversation.id!)
+      setViewingHistoryId(null)
+      setHistoryEvents([])
+      setEvents(await readAgentEvents(conversation.id!))
+      await openHistory()
+    } catch (error) {
+      console.error('[master-copilot] restore history failed', error)
+    }
+  }, [busy, loading, openHistory, project.id])
 
   const updateCandidate = useCallback(async (eventId: number, draft: string) => {
     await updateAgentEventCandidate(eventId, project.id!, draft)
@@ -291,5 +445,17 @@ export function useMasterCopilot(input: {
     updateCandidate,
     adoptCandidate: (candidate: PendingMasterCandidate) => resolveCandidate(candidate, 'adopted'),
     rejectCandidate: (candidate: PendingMasterCandidate) => resolveCandidate(candidate, 'rejected'),
+    startNewConversation,
+    deleteMessage,
+    undoLastRound,
+    rewriteLast,
+    historyConversations,
+    openHistory,
+    viewingHistoryId,
+    historyEvents,
+    viewHistoryConversation,
+    exitHistoryView,
+    restoreHistoryConversation,
+    deleteHistoryConversation,
   }
 }

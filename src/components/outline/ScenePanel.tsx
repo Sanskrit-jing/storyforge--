@@ -244,17 +244,17 @@ export default function ScenePanel({ project, outlineNodeId, chapterTitle, chapt
             scenes.map((s, idx) => (
               <div key={s.sceneId} className="bg-bg-base border border-border rounded-lg p-2.5 space-y-1.5">
                 <div className="flex items-center gap-2">
-                  <span className="text-text-muted text-xs">#{idx + 1}</span>
+                  <span className="text-text-muted text-xs shrink-0">#{idx + 1}</span>
                   <input
                     value={s.title}
                     onChange={e => updateScene(s.sceneId, { title: e.target.value })}
                     placeholder="场景标题..."
-                    className="flex-1 px-2 py-1 bg-transparent border border-border rounded text-xs font-medium text-text-primary focus:outline-none focus:border-accent"
+                    className="flex-1 min-w-0 px-2 py-1 bg-transparent border border-border rounded text-xs font-medium text-text-primary focus:outline-none focus:border-accent"
                   />
                   <select
                     value={s.pace}
                     onChange={e => updateScene(s.sceneId, { pace: e.target.value as ScenePace })}
-                    className={`px-1.5 py-0.5 text-[10px] rounded border-0 ${PACE_COLORS[s.pace]}`}
+                    className={`shrink-0 px-1.5 py-0.5 text-[10px] rounded border-0 ${PACE_COLORS[s.pace]}`}
                   >
                     {Object.entries(PACE_LABELS).map(([k, v]) => (
                       <option key={k} value={k}>{v}</option>
@@ -265,9 +265,9 @@ export default function ScenePanel({ project, outlineNodeId, chapterTitle, chapt
                     value={s.estimatedWords || ''}
                     onChange={e => updateScene(s.sceneId, { estimatedWords: parseInt(e.target.value) || 0 })}
                     placeholder="字数"
-                    className="w-16 px-1.5 py-0.5 bg-transparent border border-border rounded text-[10px] text-text-primary focus:outline-none focus:border-accent"
+                    className="shrink-0 w-16 px-1.5 py-0.5 bg-transparent border border-border rounded text-[10px] text-text-primary focus:outline-none focus:border-accent"
                   />
-                  <button onClick={() => deleteScene(s.sceneId)} className="p-0.5 text-text-muted hover:text-error">
+                  <button onClick={() => deleteScene(s.sceneId)} className="shrink-0 p-0.5 text-text-muted hover:text-error">
                     <Trash2 className="w-3 h-3" />
                   </button>
                 </div>

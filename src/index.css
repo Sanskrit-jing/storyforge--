@@ -793,6 +793,34 @@ html {
   text-size-adjust: 100%;
 }
 
+/*
+ * 移动端安全区（safe area）适配。
+ * index.html 启用 viewport-fit=cover 后，Android APK（Capacitor SystemBars，
+ * WebView ≥ 140）会把系统栏 inset 注入为 :root 上的 --safe-area-inset-*（px，
+ * 内联样式优先级高于下面的 :root 声明）；浏览器 / PWA 环境回退到标准 env()；
+ * 桌面端所有值均为 0，不影响现有布局。
+ */
+:root {
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+}
+
+/* 页面外壳：背景铺满全屏，内容避开状态栏 / 手势条。 */
+.safe-area-pad {
+  padding-top: var(--safe-area-inset-top);
+  padding-right: var(--safe-area-inset-right);
+  padding-bottom: var(--safe-area-inset-bottom);
+  padding-left: var(--safe-area-inset-left);
+}
+
+/* 固定定位的侧滑 / 全高面板：自身背景铺满全屏，内容避开上下系统栏。 */
+.safe-area-pad-y {
+  padding-top: var(--safe-area-inset-top);
+  padding-bottom: var(--safe-area-inset-bottom);
+}
+
 @media (hover: none) {
   /*
    * 触摸设备没有 hover 语义。项目里大量「平时透明、悬停才显形」的操作按钮

@@ -245,6 +245,44 @@ export default function RagLibraryPanel({ project }: { project: Project }) {
                   ?? group.fields.find(entry => entry.vectorState === 'partial')?.vectorState
                   ?? group.fields.find(entry => entry.vectorState === 'keyword')?.vectorState
                   ?? 'none'
+                // 权重配置控件：HD/PC 显示在 summary 行尾，窄屏移到展开区首行（见下方两处引用）
+                const weightControls = (
+                  <>
+                    <label className="text-[10px] text-text-muted" onClick={event => event.stopPropagation()}>
+                      默认权重
+                      <input
+                        type="number"
+                        min={0.1}
+                        max={5}
+                        step={0.1}
+                        value={first.documentWeight}
+                        onChange={event => void mutate(() => updateRagDocumentPolicy({
+                          projectId,
+                          tableName: group.tableName,
+                          recordId: group.recordId,
+                          patch: { weight: Number(event.target.value) },
+                        }))}
+                        className="ml-1 w-16 rounded border border-border bg-bg-base px-1.5 py-1 text-[10px] text-text-primary"
+                      />
+                    </label>
+                    <label className="text-[10px] text-text-muted" onClick={event => event.stopPropagation()}>
+                      字段上限
+                      <input
+                        type="number"
+                        min={100}
+                        step={100}
+                        value={first.documentTokenCap}
+                        onChange={event => void mutate(() => updateRagDocumentPolicy({
+                          projectId,
+                          tableName: group.tableName,
+                          recordId: group.recordId,
+                          patch: { tokenCap: Number(event.target.value) },
+                        }))}
+                        className="ml-1 w-20 rounded border border-border bg-bg-base px-1.5 py-1 text-[10px] text-text-primary"
+                      />
+                    </label>
+                  </>
+                )
                 return (
                   <details key={group.id} className="group">
                     <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 hover:bg-bg-hover">
@@ -266,47 +304,22 @@ export default function RagLibraryPanel({ project }: { project: Project }) {
                         <p className="truncate text-xs font-medium text-text-primary">
                           <span className="mr-2 text-text-muted">{group.sourceLabel}</span>{group.title}
                         </p>
-                        <p className="mt-0.5 text-[10px] text-text-muted">
+                        <p className="mt-0.5 truncate text-[10px] text-text-muted">
                           {group.fields.length} 字段 · {totalTokens.toLocaleString()} tokens ·
                           {' '}{chunkCount ? `${chunkCount} 块 · ` : ''}{VECTOR_LABELS[vectorState]} ·
                           {' '}更新 {group.updatedAt ? new Date(group.updatedAt).toLocaleString() : '未知'}
                         </p>
                       </div>
-                      <label className="text-[10px] text-text-muted" onClick={event => event.stopPropagation()}>
-                        默认权重
-                        <input
-                          type="number"
-                          min={0.1}
-                          max={5}
-                          step={0.1}
-                          value={first.documentWeight}
-                          onChange={event => void mutate(() => updateRagDocumentPolicy({
-                            projectId,
-                            tableName: group.tableName,
-                            recordId: group.recordId,
-                            patch: { weight: Number(event.target.value) },
-                          }))}
-                          className="ml-1 w-16 rounded border border-border bg-bg-base px-1.5 py-1 text-[10px] text-text-primary"
-                        />
-                      </label>
-                      <label className="text-[10px] text-text-muted" onClick={event => event.stopPropagation()}>
-                        字段上限
-                        <input
-                          type="number"
-                          min={100}
-                          step={100}
-                          value={first.documentTokenCap}
-                          onChange={event => void mutate(() => updateRagDocumentPolicy({
-                            projectId,
-                            tableName: group.tableName,
-                            recordId: group.recordId,
-                            patch: { tokenCap: Number(event.target.value) },
-                          }))}
-                          className="ml-1 w-20 rounded border border-border bg-bg-base px-1.5 py-1 text-[10px] text-text-primary"
-                        />
-                      </label>
+                      {/* HD/PC：权重配置显示在 summary 行尾；窄屏隐藏，改在展开区首行显示，避免挤压元信息竖排 */}
+                      <div className="hidden shrink-0 items-center gap-3 md:flex">
+                        {weightControls}
+                      </div>
                     </summary>
                     <div className="grid gap-2 bg-bg-base/50 px-10 pb-4 pt-1 lg:grid-cols-2">
+                        {/* 窄屏：summary 行放不下权重配置，改在此处展示（与 HD/PC 行尾控件同源） */}
+                        <div className="col-span-full flex flex-wrap items-center gap-x-4 gap-y-2 md:hidden">
+                          {weightControls}
+                        </div>
                       {group.fields.map(entry => (
                         <div key={entry.key} className="rounded border border-border bg-bg-surface p-2.5">
                           <div className="flex items-center gap-2">

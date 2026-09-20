@@ -166,9 +166,9 @@ export default function ReviewPanel(props: Props) {
 
   return (
     <div className="bg-bg-surface border border-border rounded-xl overflow-hidden shadow-lg">
-      {/* 头部 */}
-      <div className="flex items-center justify-between px-4 py-2 bg-bg-elevated border-b border-border">
-        <div className="flex items-center gap-1">
+      {/* 头部：手机竖屏下 tab 组与操作按钮分两行，md 及以上保持单行两端对齐 */}
+      <div className="flex flex-col gap-2 px-4 py-2 bg-bg-elevated border-b border-border md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-1 overflow-x-auto">
           {TABS.map(tab => (
             <button
               key={tab.key}

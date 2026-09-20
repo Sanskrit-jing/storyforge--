@@ -7,7 +7,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import {
   Sparkles, Trash2, Check, ChevronDown, ChevronRight,
-  Users, BookOpen, Loader2, ArrowRight, Copy, Plus, Pencil, Power,
+  Users, BookOpen, Loader2, ArrowRight, Copy, Plus, Pencil, Power, Maximize2,
 } from 'lucide-react'
 import { useCharacterStore } from '../../stores/character'
 import { useOutlineStore } from '../../stores/outline'
@@ -31,6 +31,9 @@ import {
 import { characterAxesLabel } from '../../lib/character/character-axes'
 import { adoptCharacterDrivenVolumes } from '../../lib/story-planning/character-driven-adoption'
 import CharacterRevisionPanel from './CharacterRevisionPanel'
+import { InlineInput, InlineTextarea } from '../shared/InlineEdit'
+import EditableFieldRow from '../shared/EditableFieldRow'
+import FullScreenViewer from '../shared/FullScreenViewer'
 
 interface Props {
   project: Project
@@ -78,6 +81,7 @@ export default function CharacterDrivenPlotPanel({ project }: Props) {
   const [expandedVolumes, setExpandedVolumes] = useState<Set<number>>(new Set())
   const [importing, setImporting] = useState(false)
   const [importDone, setImportDone] = useState(false)
+  const [volumesFullscreen, setVolumesFullscreen] = useState(false)
 
   useEffect(() => { loadChars(project.id!) }, [project.id, loadChars])
   useEffect(() => { loadOutline(project.id!) }, [project.id, loadOutline])
@@ -241,6 +245,16 @@ export default function CharacterDrivenPlotPanel({ project }: Props) {
     })
   }
 
+  // ── 采纳前手动编辑：直接修改解析后的卷/章预览（导入时以编辑后内容写入） ──
+  const updateParsedVolume = (vi: number, field: 'volumeTitle' | 'volumeSummary' | 'characterArcs', value: string) => {
+    setParsedVolumes(prev => (prev ? prev.map((vol, i) => (i === vi ? { ...vol, [field]: value } : vol)) : prev))
+  }
+  const updateParsedChapter = (vi: number, ci: number, field: 'title' | 'summary', value: string) => {
+    setParsedVolumes(prev => (prev ? prev.map((vol, i) => (
+      i === vi ? { ...vol, chapters: vol.chapters.map((ch, j) => (j === ci ? { ...ch, [field]: value } : ch)) } : vol
+    )) : prev))
+  }
+
   // 切换卷选中
   const toggleSelect = (idx: number) => {
     setSelectedVolumes(prev => {
@@ -249,6 +263,66 @@ export default function CharacterDrivenPlotPanel({ project }: Props) {
       else next.add(idx)
       return next
     })
+  }
+
+  // 卷卡片渲染：内嵌与全屏共用（卷标题/摘要/弧光、章节标题/简介全部可编辑）
+  const renderVolumeCard = (vol: PlotVolume, vi: number, full: boolean) => {
+    const expanded = full || expandedVolumes.has(vi)
+    return (
+      <div key={vi}>
+        {/* 卷标题行 */}
+        <div
+          className={`flex items-center gap-2 px-4 py-2 ${full ? '' : 'cursor-pointer hover:bg-bg-hover transition-colors'}`}
+          onClick={full ? undefined : () => toggleExpand(vi)}
+        >
+          <input
+            type="checkbox"
+            checked={selectedVolumes.has(vi)}
+            onChange={() => toggleSelect(vi)}
+            onClick={e => e.stopPropagation()}
+            className="accent-accent shrink-0"
+          />
+          {!full && (expanded
+            ? <ChevronDown className="w-3.5 h-3.5 text-text-muted shrink-0" />
+            : <ChevronRight className="w-3.5 h-3.5 text-text-muted shrink-0" />)}
+          <span onClick={e => e.stopPropagation()} className="min-w-0 flex-1">
+            <InlineInput value={vol.volumeTitle} onChange={v => updateParsedVolume(vi, 'volumeTitle', v)} placeholder="卷标题"
+              className="min-w-0 w-full text-sm font-medium text-text-primary" />
+          </span>
+          <span className="text-xs text-text-muted shrink-0">（{vol.chapters.length} 章）</span>
+        </div>
+
+        {/* 卷摘要 + 角色弧光 + 章节列表 */}
+        {expanded && (
+          <div className="px-4 pb-2 space-y-1">
+            <div className="pl-8 space-y-0.5">
+              <EditableFieldRow label="卷摘要" value={vol.volumeSummary} placeholder="点击编辑卷摘要…"
+                onChange={v => updateParsedVolume(vi, 'volumeSummary', v)} compact maxRows={full ? 10 : 4} />
+              <EditableFieldRow label="弧光" value={vol.characterArcs} placeholder="点击编辑角色弧光…"
+                onChange={v => updateParsedVolume(vi, 'characterArcs', v)} compact
+                displayClassName="!text-xs !text-text-muted italic" maxRows={full ? 10 : 4} />
+            </div>
+            <div className="pl-8 space-y-1.5">
+              {vol.chapters.map((ch, ci) => (
+                <div key={ci} className="flex items-start gap-2 text-xs">
+                  <span className="text-text-muted w-6 text-right flex-shrink-0 pt-[2px]">{ci + 1}.</span>
+                  <div className="flex-1 min-w-0">
+                    <InlineInput value={ch.title} onChange={v => updateParsedChapter(vi, ci, 'title', v)} placeholder="章节标题"
+                      className="min-w-0 w-full text-xs font-medium text-text-primary" />
+                    <InlineTextarea value={ch.summary} onChange={v => updateParsedChapter(vi, ci, 'summary', v)} placeholder="点击编辑章节简介…"
+                      className="w-full rounded border border-accent/30 bg-bg-base px-2 py-1 text-xs text-text-primary outline-none resize-none"
+                      displayClassName={full ? '!text-xs !text-text-muted leading-relaxed' : '!text-xs !text-text-muted'} maxRows={full ? 8 : 3} />
+                    {ch.keyCharacters.length > 0 && (
+                      <span className="text-accent text-xs">[{ch.keyCharacters.join(', ')}]</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    )
   }
 
   const canGenerate = currentPlan != null
@@ -584,10 +658,16 @@ export default function CharacterDrivenPlotPanel({ project }: Props) {
                 <BookOpen className="w-4 h-4 text-accent" />
                 <span className="text-sm font-medium text-text-primary">
                   生成结果：{parsedVolumes.length} 卷，
-                  {parsedVolumes.reduce((s, v) => s + v.chapters.length, 0)} 章
+                  {parsedVolumes.reduce((s, v) => s + v.chapters.length, 0)} 章 · 点击文字可直接编辑
                 </span>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setVolumesFullscreen(true)}
+                  className="inline-flex items-center gap-1 text-xs text-text-muted hover:text-accent"
+                >
+                  <Maximize2 className="w-3.5 h-3.5" /> 全屏查看
+                </button>
                 <button
                   onClick={() => setSelectedVolumes(
                     selectedVolumes.size === parsedVolumes.length
@@ -602,61 +682,7 @@ export default function CharacterDrivenPlotPanel({ project }: Props) {
             </div>
 
             <div className="divide-y divide-border max-h-[400px] overflow-y-auto">
-              {parsedVolumes.map((vol, vi) => (
-                <div key={vi}>
-                  {/* 卷标题行 */}
-                  <div
-                    className="flex items-center gap-2 px-4 py-2 cursor-pointer hover:bg-bg-hover transition-colors"
-                    onClick={() => toggleExpand(vi)}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedVolumes.has(vi)}
-                      onChange={() => toggleSelect(vi)}
-                      onClick={e => e.stopPropagation()}
-                      className="accent-accent"
-                    />
-                    {expandedVolumes.has(vi) ? (
-                      <ChevronDown className="w-3.5 h-3.5 text-text-muted" />
-                    ) : (
-                      <ChevronRight className="w-3.5 h-3.5 text-text-muted" />
-                    )}
-                    <span className="text-sm font-medium text-text-primary">{vol.volumeTitle}</span>
-                    <span className="text-xs text-text-muted">（{vol.chapters.length} 章）</span>
-                  </div>
-
-                  {/* 卷摘要 + 角色弧光 */}
-                  {expandedVolumes.has(vi) && (
-                    <div className="px-4 pb-2">
-                      {vol.volumeSummary && (
-                        <p className="text-xs text-text-muted mb-1 pl-8">{vol.volumeSummary}</p>
-                      )}
-                      {vol.characterArcs && (
-                        <p className="text-xs text-text-muted mb-2 pl-8 italic">弧光：{vol.characterArcs}</p>
-                      )}
-                      {/* 章节列表 */}
-                      <div className="pl-8 space-y-1">
-                        {vol.chapters.map((ch, ci) => (
-                          <div key={ci} className="flex items-start gap-2 text-xs">
-                            <span className="text-text-muted w-6 text-right flex-shrink-0">{ci + 1}.</span>
-                            <div className="flex-1 min-w-0">
-                              <span className="text-text-primary font-medium">{ch.title}</span>
-                              {ch.summary && (
-                                <span className="text-text-muted ml-1">— {ch.summary}</span>
-                              )}
-                              {ch.keyCharacters.length > 0 && (
-                                <span className="text-accent ml-1">
-                                  [{ch.keyCharacters.join(', ')}]
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
+              {parsedVolumes.map((vol, vi) => renderVolumeCard(vol, vi, false))}
             </div>
 
             {/* 导入按钮 */}
@@ -685,6 +711,34 @@ export default function CharacterDrivenPlotPanel({ project }: Props) {
               </span>
             </div>
           </section>
+        )}
+        {volumesFullscreen && parsedVolumes && (
+          <FullScreenViewer open title="角色驱动剧情大纲" subtitle="点击文字可直接编辑，勾选后导入"
+            onClose={() => setVolumesFullscreen(false)}
+            footer={
+              <div className="flex items-center justify-between">
+                {importDone ? (
+                  <div className="flex items-center gap-1.5 text-green-600 text-sm">
+                    <Check className="w-4 h-4" />
+                    已成功导入到大纲
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleAcceptToOutline}
+                    disabled={selectedVolumes.size === 0 || importing}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    导入选中卷到大纲（{selectedVolumes.size} 卷）
+                  </button>
+                )}
+                <button onClick={() => setVolumesFullscreen(false)} className="text-xs text-text-muted hover:text-text-primary">收起</button>
+              </div>
+            }>
+            <div className="divide-y divide-border border border-border rounded-lg overflow-hidden bg-bg-surface">
+              {parsedVolumes.map((vol, vi) => renderVolumeCard(vol, vi, true))}
+            </div>
+          </FullScreenViewer>
         )}
       </div>
     </div>

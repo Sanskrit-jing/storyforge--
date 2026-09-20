@@ -27,6 +27,17 @@ const config: CapacitorConfig = {
     // 允许 chrome://inspect 连接渲染进程做实证排查（发布前需复核是否关闭）。
     webContentsDebuggingEnabled: true,
   },
+  plugins: {
+    SystemBars: {
+      /**
+       * 关闭 Capacitor SystemBars 的 insets 处理，由 MainActivity.setupEdgeToEdge()
+       * 完全接管：不设 WebView 版本门槛，一律 edge-to-edge + 注入
+       * `--safe-area-inset-*` CSS 变量。若不关闭，SystemBars 会按 WebView 版本
+       * 走 padding/透传两条路径，与自管逻辑叠加导致双重避让或黑边。
+       */
+      insetsHandling: 'disable',
+    },
+  },
 }
 
 export default config

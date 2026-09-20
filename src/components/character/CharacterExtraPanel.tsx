@@ -44,16 +44,18 @@ export default function CharacterExtraPanel({ project }: Props) {
 
   const update = (id: number, patch: Partial<Character>) => updateCharacter(id, patch)
 
+  // 窄屏（手机竖屏）收紧内边距，md 起恢复
   return (
-    <div className="max-w-6xl p-6">
-      <div className="flex items-center justify-between mb-4">
+    <div className="max-w-6xl p-4 md:p-6">
+      {/* 窄屏（手机竖屏）标题与按钮纵向堆叠，md 起恢复左右分布 */}
+      <div className="flex flex-col items-start gap-3 mb-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-xl font-bold text-text-primary mb-1">🚶 路人</h2>
           <p className="text-sm text-text-muted">一笔带过的角色 — 表格视图，记录最少必要信息；需要时可展开补全完整设定。</p>
         </div>
         <button
           onClick={handleAdd}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white text-sm rounded hover:bg-accent-hover"
+          className="flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-1.5 bg-accent text-white text-sm rounded hover:bg-accent-hover"
         >
           <Plus className="w-4 h-4" /> 新增
         </button>
@@ -65,7 +67,8 @@ export default function CharacterExtraPanel({ project }: Props) {
         </div>
       ) : (
         <div className="overflow-x-auto bg-bg-surface border border-border rounded-xl">
-          <table className="w-full text-sm">
+          {/* 窄屏（手机竖屏）给表格最小宽度，超出部分横向滚动，避免列被压扁 */}
+          <table className="w-full min-w-[680px] text-sm">
             <thead>
               <tr className="border-b border-border text-xs text-text-secondary">
                 <th className="w-8"></th>

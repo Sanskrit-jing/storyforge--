@@ -7,7 +7,7 @@ import {
   isFolderBackupSupported, pickFolder, ensureFolderPermission, readStoryforgeBackups,
 } from '../lib/storage/folder-backup'
 import { importProjectJSON } from '../lib/export/json-export'
-import { APP_BUILD_ID } from '../lib/version'
+import { APP_PLATFORM_BUILD_ID } from '../lib/version'
 import {
   GENRE_OPTIONS, PROJECT_STATUS_LABELS,
   type ProjectStatus, type CreateProjectInput,
@@ -132,7 +132,7 @@ export default function HomePage() {
   const totalWords = projects.reduce((sum, p) => sum + (p.currentWordCount ?? 0), 0)
 
   return (
-    <div className="min-h-screen bg-bg-base" onClick={() => setDeleteConfirm(null)}>
+    <div className="min-h-screen safe-area-pad bg-bg-base" onClick={() => setDeleteConfirm(null)}>
       {/* 新手引导 */}
       <WelcomeGuide onGoSettings={() => navigate('/settings')} />
 
@@ -162,7 +162,7 @@ export default function HomePage() {
               style={{ fontSize: 10, fontFamily: 'var(--font-mono, monospace)' }}
               title="当前版本号（与 GitHub Releases / 更新日志对照即可知是否最新）"
             >
-              {APP_BUILD_ID}
+              {APP_PLATFORM_BUILD_ID}
             </span>
           </div>
         </div>

@@ -21,6 +21,9 @@ interface Props {
   onConfirmVolumes: () => void
   onConfirmChapters: () => void
   onCancelPreview: () => void
+  /** 采纳前手动编辑：修改卷/章预览项的标题/简介 */
+  onUpdateVolume: (index: number, field: 'title' | 'summary', value: string) => void
+  onUpdateChapter: (index: number, field: 'title' | 'summary', value: string) => void
 }
 
 export default function OutlineGenerationResultPanel({
@@ -40,6 +43,8 @@ export default function OutlineGenerationResultPanel({
   onConfirmVolumes,
   onConfirmChapters,
   onCancelPreview,
+  onUpdateVolume,
+  onUpdateChapter,
 }: Props) {
   return (
     <>
@@ -68,6 +73,7 @@ export default function OutlineGenerationResultPanel({
           items={previewVolumes}
           onConfirm={onConfirmVolumes}
           onCancel={onCancelPreview}
+          onUpdateItem={onUpdateVolume}
         />
       )}
 
@@ -79,6 +85,7 @@ export default function OutlineGenerationResultPanel({
           items={previewChapters}
           onConfirm={onConfirmChapters}
           onCancel={onCancelPreview}
+          onUpdateItem={onUpdateChapter}
         />
       )}
     </>

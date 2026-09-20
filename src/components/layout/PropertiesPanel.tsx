@@ -248,7 +248,7 @@ export default function PropertiesPanel({ activeModule, onClose }: Props) {
   }
 
   return (
-    <aside className="fixed inset-y-0 right-0 z-30 flex h-full w-[min(15rem,calc(100vw-2rem))] shrink-0 flex-col border-l border-border bg-bg-surface shadow-xl lg:static lg:z-auto lg:w-60 lg:shadow-none">
+    <aside className="fixed inset-y-0 right-0 safe-area-pad-y z-30 flex h-full w-[min(15rem,calc(100vw-2rem))] shrink-0 flex-col border-l border-border bg-bg-surface shadow-xl lg:static lg:z-auto lg:w-60 lg:shadow-none">
       {/* 标题栏 */}
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
         <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">属性</span>

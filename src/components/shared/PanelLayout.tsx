@@ -87,7 +87,7 @@ export default function PanelLayout({
             aria-hidden="true"
           />
           <div
-            className="fixed inset-y-0 left-0 z-40 flex flex-col overflow-hidden border-r border-border bg-bg-surface w-[78vw] md:static md:z-auto md:w-[var(--panel-w)] md:shrink-0"
+            className="fixed inset-y-0 left-0 safe-area-pad-y z-40 flex flex-col overflow-hidden border-r border-border bg-bg-surface w-[78vw] md:static md:z-auto md:w-[var(--panel-w)] md:shrink-0"
             style={{ '--panel-w': `${sidebarWidth}px` } as CSSProperties}
           >
             {/* 侧栏头 */}

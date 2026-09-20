@@ -3,12 +3,13 @@
 /**
  * 把 Web 产物同步进鸿蒙壳工程的 rawfile。
  *
- * 与 Android 侧同源：rawfile 里放的就是 `vite build --mode android` 的产物
- * （base 取 '/'、不注入 PWA），因此两个平台跑的是同一份代码，不存在「两套实现」。
+ * 产物来自 `npm run harmony:sync` 的前半段 `vite build --mode harmony`：
+ * 与 Android 侧同构（base 取 '/'、不注入 PWA），仅 __STORYFORGE_PLATFORM__
+ * 标签不同（鸿蒙版 / 安卓版），业务代码同源，不存在「两套实现」。
  *
  * 图标统一从 public/ 取（唯一事实源），避免出现「App 图标和产品图标不是同一张」。
  *
- * 用法：npm run harmony:assets
+ * 用法：npm run harmony:sync
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -47,7 +48,7 @@ function walk(dir) {
 }
 
 if (!fs.existsSync(path.join(DIST, 'index.html'))) {
-  fail('缺少 dist/index.html，请先运行 `npm run android:build`（或直接 `npm run harmony:assets`）')
+  fail('缺少 dist/index.html，请先运行 `npm run harmony:sync`（会先构建再同步）')
 }
 
 fs.rmSync(RAWFILE, { recursive: true, force: true })

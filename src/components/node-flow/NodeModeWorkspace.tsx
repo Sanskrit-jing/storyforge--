@@ -329,14 +329,18 @@ export default function NodeModeWorkspace(props: {
             setDraft({ ...draft, name: event.target.value })
             setDirty(true)
           }}
-          className="w-56 rounded border border-transparent bg-transparent px-2 py-1 text-sm font-medium text-text-primary hover:border-border focus:border-accent focus:outline-none"
+          className="w-32 min-w-24 rounded border border-transparent bg-transparent px-2 py-1 text-sm font-medium text-text-primary hover:border-border focus:border-accent focus:outline-none md:w-56"
         />
-        <span className="text-[10px] text-text-muted">
+        {/* 窄屏下状态文字移至三栏切换行展示（见下方 isNarrow 块），
+            避免头部行溢出时被压成一字一行竖排并被 h-12 裁剪；HD/PC 仍在头部显示 */}
+        <span className="hidden shrink-0 whitespace-nowrap text-[10px] text-text-muted md:inline">
           {saving ? '保存中…' : dirty ? '待保存' : '已保存到本地'}
         </span>
-        <div className="ml-auto flex items-center gap-1">
+        {/* 按钮组同样禁止收缩，空间不足时由头部横向滚动兜底 */}
+        <div className="ml-auto flex shrink-0 items-center gap-1">
           <button type="button" title="缩小" onClick={() => changeGraph({ ...graph, viewport: { ...graph.viewport, zoom: Math.max(0.5, graph.viewport.zoom - 0.1) } })} className="rounded p-1.5 text-text-muted hover:bg-bg-hover"><ZoomOut className="h-4 w-4" /></button>
-          <span className="w-10 text-center text-[10px] text-text-muted">{Math.round(graph.viewport.zoom * 100)}%</span>
+          {/* 窄屏隐藏缩放百分比，为名称输入与主操作按钮腾出空间 */}
+          <span className="hidden w-10 text-center text-[10px] text-text-muted md:inline">{Math.round(graph.viewport.zoom * 100)}%</span>
           <button type="button" title="放大" onClick={() => changeGraph({ ...graph, viewport: { ...graph.viewport, zoom: Math.min(1.5, graph.viewport.zoom + 0.1) } })} className="rounded p-1.5 text-text-muted hover:bg-bg-hover"><ZoomIn className="h-4 w-4" /></button>
           <button type="button" onClick={() => void save(true)} className="flex items-center gap-1 rounded px-2 py-1.5 text-xs text-text-secondary hover:bg-bg-hover"><Save className="h-3.5 w-3.5" />保存</button>
           {abortRef.current ? (
@@ -361,6 +365,10 @@ export default function NodeModeWorkspace(props: {
               {label}
             </button>
           ))}
+          {/* 窄屏头部放不下的保存状态在此行尾部展示（此行仅窄屏渲染，空间充裕） */}
+          <span className="ml-auto shrink-0 whitespace-nowrap text-[10px] text-text-muted">
+            {saving ? '保存中…' : dirty ? '待保存' : '已保存到本地'}
+          </span>
         </div>
       )}
 
@@ -407,7 +415,9 @@ export default function NodeModeWorkspace(props: {
           </div>
         </aside>
 
-        <section className={`${hideOnNarrow('canvas')} min-h-[50dvh] w-full min-w-0 flex-1 overflow-y-auto md:min-h-[auto] md:w-auto md:overflow-visible`}>
+        {/* 窄屏靠 overflow-y-auto 自裁剪；HD 三栏锁高后画布可能溢出行框，必须裁剪，
+            否则 relative 的画布会绘制在下方执行记录之上形成遮挡（同 WorkflowEditor 案例） */}
+        <section className={`${hideOnNarrow('canvas')} min-h-[50dvh] w-full min-w-0 flex-1 overflow-y-auto md:min-h-[auto] md:w-auto md:overflow-hidden`}>
           <NodeFlowCanvas
             graph={graph}
             selectedNodeId={selectedNodeId}
@@ -440,11 +450,13 @@ export default function NodeModeWorkspace(props: {
         </div>
       </div>
 
-      <section className="shrink-0 border-t border-border bg-bg-surface">
+      {/* relative 防御：与画布同为定位绘制层时靠 DOM 顺序保证执行记录在上（阶段九范式） */}
+      <section className="relative shrink-0 border-t border-border bg-bg-surface">
         <button type="button" onClick={() => setShowRunDetails(value => !value)} className="flex h-9 w-full items-center gap-2 px-4 text-left text-[11px] text-text-secondary hover:bg-bg-hover">
           <History className="h-3.5 w-3.5" />
           执行记录
-          <span className="text-text-muted">{run ? `${run.status} · ${new Date(run.startedAt).toLocaleString()}` : '尚未运行'}</span>
+          {/* 同头部状态文字：窄屏禁止收缩，避免长日期被压竖后受 h-9 裁剪 */}
+          <span className="shrink-0 whitespace-nowrap text-text-muted">{run ? `${run.status} · ${new Date(run.startedAt).toLocaleString()}` : '尚未运行'}</span>
           <span className="ml-auto">{showRunDetails ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}</span>
         </button>
         {showRunDetails && (

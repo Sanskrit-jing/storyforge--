@@ -73,59 +73,59 @@ export default function WorkflowEditor({
   }
 
   const addStep = () => {
-    setDraft(current => {
-      const currentGraph = workflowGraphFor(current)
-      const stepId = `s-${nanoid(8)}`
-      const rightmost = currentGraph.nodes.reduce(
-        (max, node) => Math.max(max, node.x + WORKFLOW_NODE_WIDTH),
-        0,
-      )
-      const row = currentGraph.nodes.length % 3
-      const step: PromptWorkflowStep = {
-        stepId,
-        label: `节点 ${current.steps.length + 1}`,
-        promptModuleKey: 'chapter.content',
-        userConfirmRequired: true,
-      }
-      setSelectedStepId(stepId)
-      return {
-        ...current,
-        steps: [...current.steps, step],
-        graph: {
-          ...currentGraph,
-          nodes: [
-            ...currentGraph.nodes,
-            {
-              stepId,
-              x: Math.max(48, rightmost + 96),
-              y: 48 + row * (WORKFLOW_NODE_HEIGHT + 72),
-            },
-          ],
-        },
-      }
+    // 注意：不能在 setDraft 的 updater 内嵌套调用 setSelectedStepId（StrictMode 下
+    // updater 会重复执行，导致选中状态丢失）。这里改为在 updater 外先派生所有数据，
+    // 再依次独立提交两次 setState。
+    const currentGraph = workflowGraphFor(draft)
+    const stepId = `s-${nanoid(8)}`
+    const rightmost = currentGraph.nodes.reduce(
+      (max, node) => Math.max(max, node.x + WORKFLOW_NODE_WIDTH),
+      0,
+    )
+    const row = currentGraph.nodes.length % 3
+    const step: PromptWorkflowStep = {
+      stepId,
+      label: `节点 ${draft.steps.length + 1}`,
+      promptModuleKey: 'chapter.content',
+      userConfirmRequired: true,
+    }
+    setDraft({
+      ...draft,
+      steps: [...draft.steps, step],
+      graph: {
+        ...currentGraph,
+        nodes: [
+          ...currentGraph.nodes,
+          {
+            stepId,
+            x: Math.max(48, rightmost + 96),
+            y: 48 + row * (WORKFLOW_NODE_HEIGHT + 72),
+          },
+        ],
+      },
     })
+    setSelectedStepId(stepId)
     setDirty(true)
   }
 
   const removeStepById = (stepId: string) => {
-    setDraft(current => {
-      const currentGraph = workflowGraphFor(current)
-      const nextSteps = current.steps.filter(step => step.stepId !== stepId)
-      if (selectedStepId === stepId) {
-        setSelectedStepId(nextSteps[0]?.stepId ?? null)
-      }
-      return {
-        ...current,
-        steps: nextSteps,
-        graph: {
-          ...currentGraph,
-          nodes: currentGraph.nodes.filter(node => node.stepId !== stepId),
-          edges: currentGraph.edges.filter(
-            edge => edge.sourceStepId !== stepId && edge.targetStepId !== stepId,
-          ),
-        },
-      }
+    // 同 addStep：选中态的切换必须放在 updater 外，避免嵌套 setState 反模式。
+    const currentGraph = workflowGraphFor(draft)
+    const nextSteps = draft.steps.filter(step => step.stepId !== stepId)
+    setDraft({
+      ...draft,
+      steps: nextSteps,
+      graph: {
+        ...currentGraph,
+        nodes: currentGraph.nodes.filter(node => node.stepId !== stepId),
+        edges: currentGraph.edges.filter(
+          edge => edge.sourceStepId !== stepId && edge.targetStepId !== stepId,
+        ),
+      },
     })
+    if (selectedStepId === stepId) {
+      setSelectedStepId(nextSteps[0]?.stepId ?? null)
+    }
     setDirty(true)
   }
 
@@ -239,7 +239,7 @@ export default function WorkflowEditor({
   const bindings = template?.variableBindings ?? []
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex flex-col xl:h-full xl:min-h-0">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-bg-surface px-4 py-3">
         <div className="min-w-0">
           <h2 className="truncate text-base font-semibold text-text-primary">
@@ -295,7 +295,8 @@ export default function WorkflowEditor({
         </div>
       )}
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px]">
+      {/* 窄屏/HD 单列时行高随内容伸展（画布 min-h 溢出会遮盖 aside）；xl 双列时锁定高度 */}
+      <div className="grid grid-cols-1 xl:min-h-0 xl:flex-1 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-h-0 p-3">
           {mode === 'canvas' ? (
             <WorkflowCanvas
@@ -313,7 +314,7 @@ export default function WorkflowEditor({
               onViewportChange={viewport => updateGraph(current => ({ ...current, viewport }))}
             />
           ) : (
-            <div className="h-full min-h-[620px] overflow-y-auto rounded-xl border border-border bg-bg-surface p-4">
+            <div className="h-full min-h-[55dvh] overflow-y-auto rounded-xl border border-border bg-bg-surface p-4 md:min-h-[620px]">
               <div className="mb-3 flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-medium text-text-primary">作者顺序</h3>
@@ -381,7 +382,8 @@ export default function WorkflowEditor({
           )}
         </div>
 
-        <aside className="min-h-0 overflow-y-auto border-l border-border bg-bg-surface p-4">
+        {/* relative 提升绘制层级：画布 transform 堆叠上下文不应盖住检查器 */}
+        <aside className="relative min-h-0 overflow-y-auto border-t border-border bg-bg-surface p-4 xl:border-l xl:border-t-0">
           <div className="mb-4 space-y-3 border-b border-border pb-4">
             <div>
               <label className="mb-1 block text-[10px] text-text-muted">工作流名称</label>

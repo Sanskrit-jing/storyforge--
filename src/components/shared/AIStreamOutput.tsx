@@ -1,8 +1,10 @@
-import { useState } from 'react'
-import { Square, Check, RotateCcw, Loader2, ThumbsUp, ThumbsDown, Braces, ChevronDown, ChevronRight, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Square, Check, RotateCcw, Loader2, ThumbsUp, ThumbsDown, Braces, ChevronDown, ChevronRight, X, Maximize2, Undo2 } from 'lucide-react'
 import { usePromptStore } from '../../stores/prompt'
 import type { PromptModuleKey, PromptExample } from '../../lib/types/prompt'
 import type { TokenUsage } from '../../lib/ai/logger'
+import FullScreenViewer from './FullScreenViewer'
+import { InlineTextarea } from './InlineEdit'
 
 interface AIStreamOutputProps {
   /** 流式输出的文本 */
@@ -46,6 +48,11 @@ export default function AIStreamOutput({
   const hasOutput = output.length > 0
   const [marked, setMarked] = useState<'good' | 'bad' | null>(null)
   const [showRaw, setShowRaw] = useState(false)
+  const [fullscreen, setFullscreen] = useState(false)
+  /** 采纳前手动编辑的文本（null = 未编辑，使用 AI 原文）；AI 重新生成时重置 */
+  const [editedText, setEditedText] = useState<string | null>(null)
+
+  useEffect(() => { setEditedText(null) }, [output])
 
   // 检测是否结构化输出（JSON）——这类内容是给程序解析的，不该让用户直接读原始 JSON
   const trimmed = output.trimStart()
@@ -53,13 +60,18 @@ export default function AIStreamOutput({
     trimmed.startsWith('{') || trimmed.startsWith('[') || /^```(?:json)?\s*[[{]/.test(trimmed)
   )
 
+  // 仅纯文本 + 提供采纳回调时开放手动编辑（编辑结果通过 onAccept 生效）；
+  // 结构化 JSON 是给解析器的，编辑会破坏解析，保持只读
+  const canEdit = hasOutput && !error && !isStreaming && !!onAccept && !isStructured
+  const effectiveText = editedText ?? output
+
   /** 把当前输出存为模板的好/坏示例 */
   const handleMark = async (kind: 'good' | 'bad') => {
-    if (!moduleKey || !output.trim()) return
+    if (!moduleKey || !effectiveText.trim()) return
     const tpl = usePromptStore.getState().getActive(moduleKey)
     const example: PromptExample = {
       id: `ex-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      text: output.trim().slice(0, 2000), // 限制长度
+      text: effectiveText.trim().slice(0, 2000), // 限制长度
       source: 'user-marked',
       rating: kind === 'good' ? 5 : 1,
       createdAt: Date.now(),
@@ -79,6 +91,7 @@ export default function AIStreamOutput({
     : null
 
   return (
+    <>
     <div className="border border-border rounded-lg overflow-hidden border-l-2 border-l-accent">
       {/* 输出区域 */}
       <div className="min-h-[200px] max-h-[500px] overflow-y-auto p-4 bg-accent-soft">
@@ -132,12 +145,24 @@ export default function AIStreamOutput({
             )}
           </div>
         ) : hasOutput ? (
-          <div className="text-text-primary text-sm leading-relaxed whitespace-pre-wrap">
-            {output}
-            {isStreaming && (
-              <span className="inline-block w-1.5 h-4 bg-accent ml-0.5 animate-pulse" />
-            )}
-          </div>
+          isStreaming || !canEdit ? (
+            <div className="text-text-primary text-sm leading-relaxed whitespace-pre-wrap">
+              {effectiveText}
+              {isStreaming && (
+                <span className="inline-block w-1.5 h-4 bg-accent ml-0.5 animate-pulse" />
+              )}
+            </div>
+          ) : (
+            // 采纳前手动编辑：点击文字原地编辑，采纳时使用编辑后的文本
+            <InlineTextarea
+              value={effectiveText}
+              onChange={setEditedText}
+              placeholder={placeholder}
+              className="w-full rounded border border-accent/30 bg-bg-base px-2 py-1 text-sm text-text-primary outline-none resize-none leading-relaxed"
+              displayClassName="!text-sm !text-text-primary leading-relaxed"
+              maxRows={24}
+            />
+          )
         ) : isStreaming ? (
           <div className="flex items-center gap-2 text-text-muted text-sm">
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -151,7 +176,7 @@ export default function AIStreamOutput({
       {/* 操作栏 */}
       <div className="flex items-center justify-between px-4 py-2 bg-bg-elevated border-t border-border">
         <span className="text-text-muted text-xs flex items-center gap-2">
-          {hasOutput && <span>{output.length} 字</span>}
+          {hasOutput && <span>{editedText !== null ? `已编辑 ${effectiveText.length} 字` : `${output.length} 字`}</span>}
           {tokenUsage ? (
             <span title={`输入 ${tokenUsage.inputTokens} + 输出 ${tokenUsage.outputTokens}`}>
               Token: ↑{tokenUsage.inputTokens.toLocaleString()} ↓{tokenUsage.outputTokens.toLocaleString()}
@@ -163,6 +188,17 @@ export default function AIStreamOutput({
           ) : null}
         </span>
         <div className="flex items-center gap-2">
+          {/* 全屏查看：流式中也可看，生成完成后纯文本可编辑 */}
+          {hasOutput && (
+            <button
+              onClick={() => setFullscreen(true)}
+              title="全屏查看"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-bg-hover text-text-secondary rounded-md hover:text-text-primary transition-colors"
+            >
+              <Maximize2 className="w-3 h-3" />
+              全屏
+            </button>
+          )}
           {isStreaming ? (
             <button
               onClick={onStop}
@@ -215,7 +251,7 @@ export default function AIStreamOutput({
               )}
               {hasOutput && !error && onAccept && (
                 <button
-                  onClick={() => onAccept(output)}
+                  onClick={() => onAccept(effectiveText)}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-accent text-white rounded-md hover:bg-accent-hover transition-colors"
                 >
                   <Check className="w-3 h-3" />
@@ -238,5 +274,44 @@ export default function AIStreamOutput({
         </div>
       </div>
     </div>
+
+    {/* 全屏查看/编辑层：结构化输出只读原始 JSON；纯文本（有采纳回调）可直接编辑后采纳 */}
+    <FullScreenViewer
+      open={fullscreen}
+      title="AI 生成结果 · 全屏"
+      subtitle={isStructured
+        ? '结构化输出 · 原始数据只读'
+        : canEdit
+          ? '可直接编辑，采纳时使用编辑后的文本'
+          : isStreaming ? '生成中…' : undefined}
+      onClose={() => setFullscreen(false)}
+    >
+      {isStructured ? (
+        <pre className="text-xs text-text-muted bg-bg-base/50 rounded p-3 overflow-x-auto whitespace-pre-wrap">{output}</pre>
+      ) : canEdit ? (
+        <div className="space-y-2">
+          {editedText !== null && (
+            <div className="flex items-center justify-between gap-2 text-xs text-text-muted">
+              <span>已手动编辑（原 {output.length} 字 → 现 {effectiveText.length} 字）</span>
+              <button
+                onClick={() => setEditedText(null)}
+                className="flex shrink-0 items-center gap-1 rounded border border-border px-2 py-1 text-text-secondary transition-colors hover:bg-bg-elevated hover:text-text-primary"
+              >
+                <Undo2 className="w-3 h-3" />
+                还原为 AI 原文
+              </button>
+            </div>
+          )}
+          <textarea
+            value={effectiveText}
+            onChange={event => setEditedText(event.target.value)}
+            className="w-full min-h-[60vh] rounded border border-accent/30 bg-bg-base p-3 text-sm leading-relaxed text-text-primary outline-none resize-y"
+          />
+        </div>
+      ) : (
+        <div className="text-text-primary text-sm leading-relaxed whitespace-pre-wrap">{effectiveText}</div>
+      )}
+    </FullScreenViewer>
+    </>
   )
 }

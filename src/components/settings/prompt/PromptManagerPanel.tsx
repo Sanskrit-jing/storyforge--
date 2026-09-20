@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Plus, Upload, Download, Layers, FileText, Workflow } from 'lucide-react'
+import { ChevronDown, ChevronUp, Plus, Upload, Download, Layers, FileText, Workflow } from 'lucide-react'
 import { usePromptStore } from '../../../stores/prompt'
 import type { PromptTemplate } from '../../../lib/types/prompt'
 import type { Project } from '../../../lib/types'
@@ -9,6 +9,7 @@ import PromptTemplateEditor from './PromptTemplateEditor'
 import PromptWorkflowsPanel from './PromptWorkflowsPanel'
 import { useToast } from '../../shared/Toast'
 import { saveText } from '../../../lib/export/save-file'
+import { useIsNarrow } from '../../../hooks/useIsNarrow'
 
 type ScopeFilter = 'all' | 'system' | 'user'
 
@@ -209,10 +210,16 @@ function PromptTemplatesView({
   genrePack, handleGenrePackChange, handleNew, handleImportClick,
   handleExportAll, handleImportFile, fileInputRef, reload,
 }: TemplatesViewProps) {
+  // 窄屏（手机竖屏）默认把「工具栏 + 模板列表」折叠成一行开关，编辑器始终显示，
+  // 收起后仍能看到当前提示词的内容；md 及以上始终展开、无开关（不依赖 JS 断点做布局，仅做收放交互）。
+  const narrow = useIsNarrow()
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const showList = !narrow || mobileOpen
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* 题材包切换器（一级显著位置） */}
-      <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-border flex-shrink-0 bg-bg-elevated/30">
+      {/* 题材包切换器（一级显著位置）；窄屏（手机竖屏）紧凑化并隐藏描述 */}
+      <div className="flex items-center gap-3 px-3 py-2 border-b border-border flex-shrink-0 bg-bg-elevated/30 md:justify-between md:px-5 md:py-3">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <Layers className="w-4 h-4 text-accent flex-shrink-0" />
           <span className="text-xs text-text-secondary flex-shrink-0">题材包</span>
@@ -225,67 +232,86 @@ function PromptTemplatesView({
               <option key={p.id} value={p.id}>{p.emoji} {p.label}</option>
             ))}
           </select>
-          <span className="ml-2 text-xs text-text-muted truncate">
+          <span className="hidden truncate text-xs text-text-muted md:ml-2 md:block">
             {GENRE_PACKS.find(p => p.id === genrePack)?.description}
           </span>
         </div>
       </div>
 
-      {/* 工具栏 */}
-      <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-border flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-text-secondary">作用域</span>
-          <select
-            value={scopeFilter}
-            onChange={e => setScopeFilter(e.target.value as ScopeFilter)}
-            className="px-2 py-1 bg-bg-base border border-border rounded text-sm text-text-primary focus:outline-none focus:border-accent"
-          >
-            <option value="all">全部</option>
-            <option value="system">系统内置</option>
-            <option value="user">我的</option>
-          </select>
-          <span className="ml-3 text-xs text-text-muted">
-            共 {filtered.length} 条
+      {/* 窄屏折叠开关：只收放「工具栏 + 模板列表」，下方编辑器始终显示（md 及以上不渲染） */}
+      {narrow && (
+        <button
+          onClick={() => setMobileOpen(v => !v)}
+          className="flex w-full items-center justify-between px-3 py-2.5 border-b border-border flex-shrink-0 bg-bg-elevated/30 text-xs text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors"
+        >
+          <span className="flex items-center gap-1.5">
+            {mobileOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            模板工具与列表（共 {filtered.length} 条）
           </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleNew}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-accent/10 text-accent text-sm rounded hover:bg-accent/20"
-          >
-            <Plus className="w-3.5 h-3.5" /> 新建
-          </button>
-          <button
-            onClick={handleImportClick}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-bg-hover text-text-primary text-sm rounded hover:bg-bg-elevated"
-          >
-            <Upload className="w-3.5 h-3.5" /> 导入
-          </button>
-          <button
-            onClick={handleExportAll}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-bg-hover text-text-primary text-sm rounded hover:bg-bg-elevated"
-          >
-            <Download className="w-3.5 h-3.5" /> 导出全部
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json"
-            className="hidden"
-            onChange={handleImportFile}
-          />
-        </div>
-      </div>
+          <span className="text-[10px] text-text-muted">{mobileOpen ? '点击收起' : '点击展开'}</span>
+        </button>
+      )}
 
-      {/* 主区：左列表 + 右编辑器（窄屏改为上下堆叠） */}
-      <div className="flex-1 flex flex-col overflow-hidden md:flex-row">
-        <div className="max-h-[45dvh] w-full flex-shrink-0 overflow-y-auto border-b border-border md:max-h-none md:w-80 md:border-b-0 md:border-r">
-          <PromptTemplateList
-            templates={filtered}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-          />
+      {showList && (
+        /* 工具栏；窄屏（手机竖屏）允许换行避免按钮被挤压竖排 */
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 border-b border-border flex-shrink-0 md:justify-between md:px-5 md:py-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-text-secondary">作用域</span>
+              <select
+                value={scopeFilter}
+                onChange={e => setScopeFilter(e.target.value as ScopeFilter)}
+                className="px-2 py-1 bg-bg-base border border-border rounded text-sm text-text-primary focus:outline-none focus:border-accent"
+              >
+                <option value="all">全部</option>
+                <option value="system">系统内置</option>
+                <option value="user">我的</option>
+              </select>
+              <span className="text-xs text-text-muted md:ml-3">
+                共 {filtered.length} 条
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleNew}
+                className="flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-1.5 bg-accent/10 text-accent text-sm rounded hover:bg-accent/20"
+              >
+                <Plus className="w-3.5 h-3.5" /> 新建
+              </button>
+              <button
+                onClick={handleImportClick}
+                className="flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-1.5 bg-bg-hover text-text-primary text-sm rounded hover:bg-bg-elevated"
+              >
+                <Upload className="w-3.5 h-3.5" /> 导入
+              </button>
+              <button
+                onClick={handleExportAll}
+                className="flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-1.5 bg-bg-hover text-text-primary text-sm rounded hover:bg-bg-elevated"
+              >
+                <Download className="w-3.5 h-3.5" /> 导出全部
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={handleImportFile}
+              />
+            </div>
         </div>
+      )}
+
+      {/* 主区：左列表 + 右编辑器（窄屏改为上下堆叠；窄屏列表压到 30dvh 给编辑器留空间）。
+          窄屏下列表随折叠开关收放，编辑器始终显示，收起后仍可见当前提示词内容 */}
+      <div className="flex-1 flex flex-col overflow-hidden md:flex-row">
+        {showList && (
+          <div className="max-h-[30dvh] w-full flex-shrink-0 overflow-y-auto border-b border-border md:max-h-none md:w-80 md:border-b-0 md:border-r">
+            <PromptTemplateList
+              templates={filtered}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+            />
+          </div>
+        )}
         <div className="w-full flex-1 overflow-y-auto md:w-auto">
           <PromptTemplateEditor
             template={selected ?? null}

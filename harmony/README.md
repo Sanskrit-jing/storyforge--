@@ -9,11 +9,12 @@
 | 华为平板、老款华为手机 | HarmonyOS 4.x 及以下（兼容 Android） | `.apk` | 仓库根 `npm run android:apk`（手机包）/ `npm run android:apk:tablet`（平板包，应用名“故事熔炉 平板版”） |
 | 新款华为手机、平板 | HarmonyOS NEXT 5.0+（不再兼容 Android） | `.hap` | 本工程 |
 
-两个 Android flavor（`phone` / `tablet`）共用同一份 Web 产物与同一套横竖屏自适应布局，
+两个 Android flavor（`phone` / `tablet`）共用同一套 Web 源码与同一套横竖屏自适应布局，
 平板包只改应用标识（`com.storyforge.app.tablet`）与显示名，因此可与手机包并存安装。
 
 HarmonyOS NEXT 无法安装 APK，所以这里是一个 WebView 壳：**不重写任何业务代码**，把
-`vite build --mode android` 的同一份产物放进 `rawfile` 里跑，因此两端功能与数据模型完全一致。
+`vite build --mode harmony` 的产物放进 `rawfile` 里跑（与 Android 侧同构，仅平台版本号
+标签不同），因此两端功能与数据模型完全一致。
 
 ## 目录
 
@@ -34,10 +35,10 @@ harmony/
 
 ## 出包步骤
 
-1. **同步 Web 产物**（在仓库根执行，会同时刷新应用图标）
+1. **同步 Web 产物**（在仓库根执行，会先以 harmony mode 构建再刷新应用图标）
 
    ```bash
-   npm run harmony:assets
+   npm run harmony:sync
    ```
 
    这一步做两件事：把 `dist/` 拷进 `harmony/entry/src/main/resources/rawfile/`，
@@ -54,7 +55,7 @@ harmony/
    - 正式产物：`Build > Build Hap(s)/APP(s) > Build Hap(s)`，
      产物在 `harmony/entry/build/default/outputs/default/entry-default-signed.hap`。
 
-5. **后续更新 Web 内容**：改完代码重新执行 `npm run harmony:assets`，在 DevEco 里重新 Run 即可，
+5. **后续更新 Web 内容**：改完代码重新执行 `npm run harmony:sync`，在 DevEco 里重新 Run 即可，
    ArkTS 侧通常无需改动。
 
 ## 与 Android / Web 版的关系

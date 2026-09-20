@@ -163,7 +163,7 @@ export default function WorkspacePage() {
 
   if (loading || !project) {
     return (
-      <div className="min-h-dvh bg-bg-base flex items-center justify-center">
+      <div className="min-h-dvh safe-area-pad bg-bg-base flex items-center justify-center">
         <span className="text-text-muted">加载中...</span>
       </div>
     )
@@ -311,10 +311,10 @@ export default function WorkspacePage() {
   }
 
   return (
-    <div className="h-dvh bg-bg-base flex overflow-hidden">
+    <div className="h-dvh safe-area-pad bg-bg-base flex overflow-hidden">
       {/* 左侧导航：md 及以上常驻；窄屏变为复盖抽屉，选中模块后自动收起 */}
       <div
-        className={`fixed inset-y-0 left-0 z-40 transition-transform duration-200 md:static md:z-auto md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 safe-area-pad-y z-40 transition-transform duration-200 md:static md:z-auto md:translate-x-0 ${
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -365,10 +365,10 @@ export default function WorkspacePage() {
           <div className="flex items-center gap-1">
             <button
               onClick={() => {
-                setShowCopilot(value => {
-                  if (!value) setShowProperties(false)
-                  return !value
-                })
+                // 互斥面板切换：在 updater 外计算，避免 updater 内嵌套 setState（StrictMode 反模式）
+                const next = !showCopilot
+                setShowCopilot(next)
+                if (next) setShowProperties(false)
               }}
               title={showCopilot ? '关闭 AI 对话副驾' : '打开 AI 对话副驾'}
               aria-label={showCopilot ? '关闭 AI 对话副驾' : '打开 AI 对话副驾'}
@@ -378,10 +378,9 @@ export default function WorkspacePage() {
             </button>
             <button
               onClick={() => {
-                setShowProperties(value => {
-                  if (!value) setShowCopilot(false)
-                  return !value
-                })
+                const next = !showProperties
+                setShowProperties(next)
+                if (next) setShowCopilot(false)
               }}
               title={showProperties ? '关闭属性面板' : '打开属性面板'}
               aria-label={showProperties ? '关闭属性面板' : '打开属性面板'}
@@ -408,7 +407,7 @@ export default function WorkspacePage() {
       )}
       {showCopilot && (
         <Suspense fallback={(
-          <aside className="fixed inset-y-0 right-0 z-30 flex h-full w-[min(24rem,calc(100vw-3rem))] shrink-0 items-center justify-center border-l border-border bg-bg-surface text-xs text-text-muted shadow-xl lg:static lg:z-auto lg:w-[24rem] lg:shadow-none">
+          <aside className="fixed inset-y-0 right-0 safe-area-pad-y z-30 flex h-full w-[min(24rem,calc(100vw-3rem))] shrink-0 items-center justify-center border-l border-border bg-bg-surface text-xs text-text-muted shadow-xl lg:static lg:z-auto lg:w-[24rem] lg:shadow-none">
             AI 对话副驾加载中…
           </aside>
         )}>

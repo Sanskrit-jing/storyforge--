@@ -40,8 +40,9 @@ export default function CharacterDetailCard({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start gap-4">
-        <div className={`w-16 h-16 rounded-xl flex items-center justify-center text-3xl font-serif font-bold shrink-0 ${glyphColor}`}>
+      {/* 窄屏（手机竖屏）缩小头像、紧凑间距，md 起恢复原尺寸 */}
+      <div className="flex items-start gap-3 md:gap-4">
+        <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl font-serif font-bold shrink-0 md:w-16 md:h-16 md:text-3xl ${glyphColor}`}>
           {char.name.charAt(0)}
         </div>
 

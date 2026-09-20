@@ -24,6 +24,8 @@ import { uniqueBy } from '../../lib/ai/structured-extraction'
 import { adopt } from '../../lib/registry/adopt'
 import ExtractionReviewPanel from '../shared/ExtractionReviewPanel'
 import { assembleContext } from '../../lib/registry/assemble-context'
+import { InlineInput, InlineTextarea } from '../shared/InlineEdit'
+import EditableFieldRow from '../shared/EditableFieldRow'
 
 interface Props {
   project: Project
@@ -148,6 +150,36 @@ export default function LocationPanel({ project }: Props) {
     setCandidates([])
     setSelectedCandidates(new Set())
   }
+
+  // ── 采纳前手动编辑：直接修改地点候选（确认写入时以编辑后内容生效） ──
+  const updateCandidate = (index: number, field: 'name' | 'description' | 'significance', value: string) => {
+    setCandidates(prev => prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)))
+  }
+
+  // 候选项渲染：内嵌与全屏共用（name/描述/剧情重要性 可编辑，标签只读）
+  const renderCandidate = (item: ExtractedLocation, index: number, full: boolean) => (
+    <div className="space-y-1">
+      <InlineInput value={item.name} onChange={v => updateCandidate(index, 'name', v)} placeholder="地点名"
+        className={`min-w-0 w-full font-medium text-text-primary ${full ? 'text-base' : 'text-sm'}`} />
+      {full ? (
+        <>
+          <EditableFieldRow label="描述" value={item.description} placeholder="点击编辑描述…"
+            onChange={v => updateCandidate(index, 'description', v)} maxRows={10} />
+          <EditableFieldRow label="剧情重要性" value={item.significance} placeholder="点击编辑剧情重要性…"
+            onChange={v => updateCandidate(index, 'significance', v)} maxRows={10} />
+        </>
+      ) : (
+        <InlineTextarea value={item.significance || item.description} placeholder="点击编辑…"
+          onChange={v => updateCandidate(index, item.significance ? 'significance' : 'description', v)}
+          className="text-xs text-text-muted" displayClassName="!text-xs !text-text-muted" maxRows={3} />
+      )}
+      {item.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {item.tags.map(tag => <span key={tag} className="px-1.5 py-0.5 rounded bg-bg-elevated text-[10px] text-text-muted">{TAG_EMOJI[tag]} {tag}</span>)}
+        </div>
+      )}
+    </div>
+  )
 
   // 递归渲染列表项
   const renderListItem = (loc: ImportantLocation, depth: number = 0) => {
@@ -379,15 +411,8 @@ export default function LocationPanel({ project }: Props) {
           })}
           onConfirm={handleAdoptLocations}
           onClose={() => { setCandidates([]); setExtractError(null) }}
-          renderItem={item => (
-            <div>
-              <div className="font-medium text-sm text-text-primary">{item.name}</div>
-              <p className="text-xs text-text-muted mt-0.5">{item.significance || item.description}</p>
-              <div className="mt-1 flex flex-wrap gap-1">
-                {item.tags.map(tag => <span key={tag} className="px-1.5 py-0.5 rounded bg-bg-elevated text-[10px] text-text-muted">{TAG_EMOJI[tag]} {tag}</span>)}
-              </div>
-            </div>
-          )}
+          renderItem={(item, index) => renderCandidate(item, index, false)}
+          renderItemFull={(item, index) => renderCandidate(item, index, true)}
         />
       )}
 

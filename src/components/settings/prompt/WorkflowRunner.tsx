@@ -416,12 +416,12 @@ export default function WorkflowRunner({ workflow, project, onClose }: RunnerPro
 
   return (
     <div className="p-5 space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-base font-semibold text-text-primary">▶ 运行：{workflow.name}</h2>
           <p className="mt-0.5 text-xs text-text-muted">{workflow.description}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {globalStatus === 'idle' && (
             <button
               onClick={handleStart}

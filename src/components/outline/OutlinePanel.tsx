@@ -395,6 +395,14 @@ export default function OutlinePanel({ project, onOpenChapter }: Props) {
     }
   }
 
+  // ── 采纳前手动编辑：直接修改大纲预览项（确认写入时以编辑后内容生效） ──
+  const updatePreviewVolume = (index: number, field: 'title' | 'summary', value: string) => {
+    setPreviewVolumes(prev => (prev ? prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)) : prev))
+  }
+  const updatePreviewChapter = (index: number, field: 'title' | 'summary', value: string) => {
+    setPreviewChapters(prev => (prev ? prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)) : prev))
+  }
+
   const handleDeleteSelectedVolume = async () => {
     if (!selectedVol?.id) return
     const ok = await dialog.confirm({
@@ -511,6 +519,8 @@ export default function OutlinePanel({ project, onOpenChapter }: Props) {
           onConfirmVolumes={() => { void handleConfirmVolumes() }}
           onConfirmChapters={() => { void handleConfirmChapters() }}
           onCancelPreview={clearGenerationPreview}
+          onUpdateVolume={updatePreviewVolume}
+          onUpdateChapter={updatePreviewChapter}
         />
 
         <OutlineVolumeDetail

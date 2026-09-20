@@ -265,16 +265,17 @@ function StoryArcEditor({ arc, stages, onUpdateArc, onUpdateStages, onDelete }: 
       <div className="bg-bg-surface border border-border rounded-xl p-4">
         <div className="flex items-center gap-3 mb-3">
           <span className={`w-3 h-3 rounded-full ${arc.type === 'main' ? 'bg-amber-400' : 'bg-blue-400'}`} />
+          {/* min-w-0 解除 input 默认最小宽度挤压，窄屏下 badge 与删除按钮不再被顶出卡片 */}
           <CInput
             value={editName}
             onChange={e => setEditName(e.target.value)}
             onBlur={() => onUpdateArc({ name: editName })}
-            className="flex-1 text-lg font-bold bg-transparent text-text-primary border-none focus:outline-none"
+            className="min-w-0 flex-1 text-lg font-bold bg-transparent text-text-primary border-none focus:outline-none"
           />
-          <span className="text-xs px-2 py-0.5 bg-bg-elevated text-text-muted rounded">
+          <span className="shrink-0 whitespace-nowrap text-xs px-2 py-0.5 bg-bg-elevated text-text-muted rounded">
             {arc.type === 'main' ? '主线' : '支线'}
           </span>
-          <button onClick={onDelete} className="p-1 text-text-muted hover:text-error transition-colors">
+          <button onClick={onDelete} className="shrink-0 p-1 text-text-muted hover:text-error transition-colors">
             <Trash2 className="w-4 h-4" />
           </button>
         </div>

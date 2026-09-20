@@ -90,7 +90,7 @@ export default function WorkflowCanvas({
   }
 
   return (
-    <div className="flex h-full min-h-[620px] flex-col rounded-xl border border-border bg-bg-base">
+    <div className="flex h-full min-h-[55dvh] flex-col rounded-xl border border-border bg-bg-base md:min-h-[620px]">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-bg-surface px-3 py-2">
         <div className="flex items-center gap-2">
           <button

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check, Loader2, Network, RefreshCw, Sparkles } from 'lucide-react'
+import { Check, Loader2, Maximize2, Network, RefreshCw, Sparkles } from 'lucide-react'
 import { useAIStream } from '../../hooks/useAIStream'
 import { createAISessionKey } from '../../stores/ai-generation-session'
 import { useStorylineProgressStore } from '../../stores/storyline-progress'
@@ -19,6 +19,8 @@ import {
   type StorylineCrossingCandidate,
   type StorylineProgressCandidate,
 } from '../../lib/storyline/storyline-progress'
+import { InlineInput, InlineTextarea } from '../shared/InlineEdit'
+import FullScreenViewer from '../shared/FullScreenViewer'
 
 const EMPTY: StorylineAnalysisCandidates = { progress: [], crossings: [], newArcs: [] }
 const STATUS_LABELS = {
@@ -41,6 +43,7 @@ export default function StorylineProgressPanel(props: {
   const [candidates, setCandidates] = useState<StorylineAnalysisCandidates>(EMPTY)
   const [accepted, setAccepted] = useState<Set<string>>(new Set())
   const [actionError, setActionError] = useState('')
+  const [candidatesFullscreen, setCandidatesFullscreen] = useState(false)
   const arcVersion = props.arcs.map(arc => `${arc.id}:${arc.updatedAt}`).join('|')
 
   useEffect(() => {
@@ -87,6 +90,17 @@ export default function StorylineProgressPanel(props: {
   }
 
   const markAccepted = (key: string) => setAccepted(current => new Set(current).add(key))
+
+  // ── 采纳前手动编辑：直接修改候选文本（采纳时以编辑后内容写入） ──
+  const updateProgressNote = (index: number, value: string) => {
+    setCandidates(prev => ({ ...prev, progress: prev.progress.map((item, i) => (i === index ? { ...item, progressNote: value } : item)) }))
+  }
+  const updateCrossingNote = (index: number, value: string) => {
+    setCandidates(prev => ({ ...prev, crossings: prev.crossings.map((item, i) => (i === index ? { ...item, note: value } : item)) }))
+  }
+  const updateNewArc = (index: number, field: 'name' | 'description', value: string) => {
+    setCandidates(prev => ({ ...prev, newArcs: prev.newArcs.map((item, i) => (i === index ? { ...item, [field]: value } : item)) }))
+  }
 
   const acceptProgress = async (candidate: StorylineProgressCandidate) => {
     if (!selectedChapter?.id) return
@@ -214,47 +228,71 @@ export default function StorylineProgressPanel(props: {
       {(hasCandidates || ai.output) && (
         <div className="bg-bg-surface border border-border rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium text-text-primary">本次待确认候选</h4>
-            <button onClick={() => { setCandidates(EMPTY); ai.reset() }} className="text-xs text-text-muted flex items-center gap-1">
-              <RefreshCw className="w-3 h-3" /> 清空
-            </button>
+            <h4 className="text-sm font-medium text-text-primary">本次待确认候选 · 点击文字可直接编辑</h4>
+            <div className="flex items-center gap-2">
+              {hasCandidates && (
+                <button onClick={() => setCandidatesFullscreen(true)} className="text-xs text-text-muted hover:text-accent flex items-center gap-1">
+                  <Maximize2 className="w-3 h-3" /> 全屏查看
+                </button>
+              )}
+              <button onClick={() => { setCandidates(EMPTY); ai.reset() }} className="text-xs text-text-muted flex items-center gap-1">
+                <RefreshCw className="w-3 h-3" /> 清空
+              </button>
+            </div>
           </div>
           {!hasCandidates && !ai.isStreaming && <p className="text-xs text-text-muted">没有通过闭集与逐字证据校验的候选。</p>}
-          {candidates.progress.map(item => (
-            <CandidateCard
-              key={`p:${item.arcId}`}
-              title={`推进 · ${arcsById.get(item.arcId)?.name ?? item.arcId}`}
-              text={`${STATUS_LABELS[item.status]} · ${item.progressNote}`}
-              quote={item.evidenceQuote}
-              accepted={accepted.has(`p:${item.arcId}`)}
-              onAccept={() => acceptProgress(item)}
-            />
-          ))}
-          {candidates.crossings.map(item => (
-            <CandidateCard
-              key={`c:${item.arcIdA}:${item.arcIdB}`}
-              title={`交汇 · ${arcsById.get(item.arcIdA)?.name} × ${arcsById.get(item.arcIdB)?.name}`}
-              text={item.note}
-              quote={item.evidenceQuote}
-              accepted={accepted.has(`c:${item.arcIdA}:${item.arcIdB}`)}
-              onAccept={() => acceptCrossing(item)}
-            />
-          ))}
-          {candidates.newArcs.map(item => (
-            <CandidateCard
-              key={`n:${item.name}`}
-              title={`疑似新故事线 · ${item.name}`}
-              text={`${item.arcType === 'main' ? '主线' : '支线'} · ${item.description}`}
-              quote={item.evidenceQuote}
-              accepted={accepted.has(`n:${item.name}`)}
-              onAccept={() => acceptNewArc(item)}
-              acceptLabel="创建登记"
-            />
-          ))}
+          {renderCandidates()}
         </div>
+      )}
+      {candidatesFullscreen && (
+        <FullScreenViewer open title="剧情线候选" subtitle="点击文字可直接编辑，采纳后写入" onClose={() => setCandidatesFullscreen(false)}>
+          {renderCandidates()}
+        </FullScreenViewer>
       )}
     </section>
   )
+
+  function renderCandidates() {
+    return (
+      <div className="space-y-2">
+        {candidates.progress.map((item, index) => (
+          <CandidateCard
+            key={`p:${item.arcId}`}
+            title={`推进 · ${arcsById.get(item.arcId)?.name ?? item.arcId}`}
+            text={`${STATUS_LABELS[item.status]} · ${item.progressNote}`}
+            quote={item.evidenceQuote}
+            accepted={accepted.has(`p:${item.arcId}`)}
+            onAccept={() => acceptProgress(item)}
+            onEditText={value => updateProgressNote(index, value)}
+          />
+        ))}
+        {candidates.crossings.map((item, index) => (
+          <CandidateCard
+            key={`c:${item.arcIdA}:${item.arcIdB}`}
+            title={`交汇 · ${arcsById.get(item.arcIdA)?.name} × ${arcsById.get(item.arcIdB)?.name}`}
+            text={item.note}
+            quote={item.evidenceQuote}
+            accepted={accepted.has(`c:${item.arcIdA}:${item.arcIdB}`)}
+            onAccept={() => acceptCrossing(item)}
+            onEditText={value => updateCrossingNote(index, value)}
+          />
+        ))}
+        {candidates.newArcs.map((item, index) => (
+          <CandidateCard
+            key={`n:${item.name}`}
+            title={`疑似新故事线 · ${item.name}`}
+            text={`${item.arcType === 'main' ? '主线' : '支线'} · ${item.description}`}
+            quote={item.evidenceQuote}
+            accepted={accepted.has(`n:${item.name}`)}
+            onAccept={() => acceptNewArc(item)}
+            acceptLabel="创建登记"
+            onEditTitle={value => updateNewArc(index, 'name', value)}
+            onEditText={value => updateNewArc(index, 'description', value)}
+          />
+        ))}
+      </div>
+    )
+  }
 }
 
 function CandidateCard(props: {
@@ -264,13 +302,28 @@ function CandidateCard(props: {
   accepted: boolean
   onAccept: () => void
   acceptLabel?: string
+  /** 提供后标题可点击编辑（如新故事线名称） */
+  onEditTitle?: (value: string) => void
+  /** 提供后正文可点击编辑（采纳前手动修正） */
+  onEditText?: (value: string) => void
 }) {
   return (
     <div className="border border-border rounded-lg p-3">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium text-text-primary">{props.title}</p>
-          <p className="text-xs text-text-secondary mt-1">{props.text}</p>
+        <div className="min-w-0 flex-1">
+          {props.onEditTitle ? (
+            <InlineInput value={props.title} onChange={props.onEditTitle} placeholder="名称"
+              className="min-w-0 w-full text-sm font-medium text-text-primary" />
+          ) : (
+            <p className="text-sm font-medium text-text-primary">{props.title}</p>
+          )}
+          {props.onEditText ? (
+            <InlineTextarea value={props.text} onChange={props.onEditText} placeholder="点击编辑…"
+              className="w-full rounded border border-accent/30 bg-bg-base px-2 py-1 text-xs text-text-secondary outline-none resize-none"
+              displayClassName="!text-xs !text-text-secondary !py-0" maxRows={8} />
+          ) : (
+            <p className="text-xs text-text-secondary mt-1">{props.text}</p>
+          )}
           <p className="text-[11px] text-text-muted mt-2">证据：“{props.quote}”</p>
         </div>
         <button

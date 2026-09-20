@@ -41,16 +41,18 @@ export default function CharacterNPCPanel({ project }: Props) {
 
   const update = (id: number, patch: Partial<Character>) => updateCharacter(id, patch)
 
+  // 窄屏（手机竖屏）收紧内边距，md 起恢复
   return (
-    <div className="max-w-5xl p-6">
-      <div className="flex items-center justify-between mb-4">
+    <div className="max-w-5xl p-4 md:p-6">
+      {/* 窄屏（手机竖屏）标题与按钮纵向堆叠，md 起恢复左右分布 */}
+      <div className="flex flex-col items-start gap-3 mb-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-xl font-bold text-text-primary mb-1">🧑‍🤝‍🧑 NPC</h2>
           <p className="text-sm text-text-muted">非剧情驱动的常驻角色 — 紧凑列表，一眼扫完。</p>
         </div>
         <button
           onClick={handleAdd}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white text-sm rounded hover:bg-accent-hover"
+          className="flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-1.5 bg-accent text-white text-sm rounded hover:bg-accent-hover"
         >
           <Plus className="w-4 h-4" /> 新增
         </button>
@@ -67,7 +69,8 @@ export default function CharacterNPCPanel({ project }: Props) {
             const isOpen = expanded.has(c.id!)
             return (
             <div key={c.id} className="p-3 hover:bg-bg-hover transition-colors">
-              <div className="flex items-center gap-3">
+              {/* 窄屏（手机竖屏）允许换行：描述输入框放不下时独占一行，md 起恢复单行 */}
+              <div className="flex flex-wrap items-center gap-2 md:flex-nowrap md:gap-3">
                 <button
                   onClick={() => toggle(c.id!)}
                   className="p-0.5 text-text-muted hover:text-accent flex-shrink-0"
@@ -79,19 +82,19 @@ export default function CharacterNPCPanel({ project }: Props) {
                   value={c.name}
                   onChange={e => update(c.id!, { name: e.target.value })}
                   placeholder="姓名"
-                  className="w-32 flex-shrink-0 px-2 py-1 bg-bg-base border border-border rounded text-sm font-medium text-text-primary focus:outline-none focus:border-accent"
+                  className="w-28 flex-shrink-0 px-2 py-1 bg-bg-base border border-border rounded text-sm font-medium text-text-primary focus:outline-none focus:border-accent md:w-32"
                 />
                 <CInput
                   value={c.location || ''}
                   onChange={e => update(c.id!, { location: e.target.value })}
                   placeholder="地点"
-                  className="w-28 flex-shrink-0 px-2 py-1 bg-bg-base border border-border rounded text-sm text-text-primary focus:outline-none focus:border-accent"
+                  className="w-24 flex-shrink-0 px-2 py-1 bg-bg-base border border-border rounded text-sm text-text-primary focus:outline-none focus:border-accent md:w-28"
                 />
                 <CInput
                   value={c.shortDescription}
                   onChange={e => update(c.id!, { shortDescription: e.target.value })}
                   placeholder="一句话描述（性格/职业/作用）..."
-                  className="flex-1 px-2 py-1 bg-bg-base border border-border rounded text-sm text-text-primary focus:outline-none focus:border-accent"
+                  className="min-w-[150px] flex-1 px-2 py-1 bg-bg-base border border-border rounded text-sm text-text-primary focus:outline-none focus:border-accent"
                 />
                 {filled > 0 && !isOpen && (
                   <span className="flex-shrink-0 text-[11px] text-text-muted whitespace-nowrap" title="已有完整设定，点左侧箭头展开">已填 {filled} 项 ▸</span>

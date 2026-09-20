@@ -48,16 +48,17 @@ export default function ChapterEditorHeader({
   onOpenCompare,
   onSave,
 }: Props) {
+  // 窄屏（手机竖屏）允许换行压缩高度，md 及以上保持原单行布局
   return (
-    <div className="flex items-center justify-between px-6 py-3">
-      <div className="flex items-center gap-3">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.18em] text-text-muted">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 md:justify-between md:px-6 md:py-3">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 md:flex-nowrap md:gap-3">
+        <div className="min-w-0">
+          <p className="hidden text-[11px] uppercase tracking-[0.18em] text-text-muted md:block">
             创作区 · 正文
           </p>
-          <h2 className="font-serif text-xl font-semibold text-text-primary">{title}</h2>
+          <h2 className="truncate font-serif text-lg font-semibold text-text-primary md:text-xl">{title}</h2>
         </div>
-        <span className="rounded-full border border-border bg-bg-elevated px-2.5 py-1 text-xs text-text-muted">
+        <span className="whitespace-nowrap rounded-full border border-border bg-bg-elevated px-2.5 py-1 text-xs text-text-muted">
           {wordCount.toLocaleString()} 字
         </span>
         <select
@@ -72,7 +73,7 @@ export default function ChapterEditorHeader({
           ))}
         </select>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 md:gap-2">
         <button
           type="button"
           onClick={onToggleContext}

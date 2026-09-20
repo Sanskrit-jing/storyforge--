@@ -14,6 +14,12 @@ import { CHARACTER_DIMENSIONS } from '../../lib/character/character-dimensions'
 import AIStreamOutput from '../shared/AIStreamOutput'
 import AutoResizeTextarea from '../shared/AutoResizeTextarea'
 import type { Project } from '../../lib/types'
+import type {
+  ReverseCharacterTextField,
+  ReverseStoryCore,
+  ReverseWorldTextField,
+  ReverseWorldview,
+} from '../../lib/ai/inspiration-reverse'
 import { characterAxesLabel } from '../../lib/character/character-axes'
 import InspirationMultiWorldResult from './InspirationMultiWorldResult'
 import InspirationSingleResult from './InspirationSingleResult'
@@ -43,7 +49,9 @@ export default function InspirationPanel({ project }: Props) {
     userHint,
     setUserHint,
     result,
+    setResult,
     mwResult,
+    setMwResult,
     mwAdopted,
     setMwAdopted,
     selectedChars,
@@ -232,6 +240,32 @@ export default function InspirationPanel({ project }: Props) {
       else next.add(idx)
       return next
     })
+  }
+
+  // ── 采纳前手动编辑：直接修改反推结果草稿（自动随 draft 持久化；确认融合版本时包含这些编辑）──
+  const updateWorldviewField = (field: keyof ReverseWorldview, value: string) => {
+    setResult(prev => (prev ? { ...prev, worldview: { ...prev.worldview, [field]: value } } : prev))
+  }
+  const updateStoryCoreField = (field: keyof ReverseStoryCore, value: string) => {
+    setResult(prev => (prev ? { ...prev, storyCore: { ...prev.storyCore, [field]: value } } : prev))
+  }
+  const updateCharacterField = (index: number, field: ReverseCharacterTextField, value: string) => {
+    setResult(prev => (prev
+      ? { ...prev, characters: prev.characters.map((c, i) => (i === index ? { ...c, [field]: value } : c)) }
+      : prev))
+  }
+  const updateMwStoryCore = (field: keyof ReverseStoryCore, value: string) => {
+    setMwResult(prev => (prev ? { ...prev, storyCore: { ...prev.storyCore, [field]: value } } : prev))
+  }
+  const updateMwWorld = (index: number, field: ReverseWorldTextField, value: string) => {
+    setMwResult(prev => (prev
+      ? { ...prev, worlds: prev.worlds.map((w, i) => (i === index ? { ...w, [field]: value } : w)) }
+      : prev))
+  }
+  const updateMwCharacter = (index: number, field: ReverseCharacterTextField, value: string) => {
+    setMwResult(prev => (prev
+      ? { ...prev, characters: prev.characters.map((c, i) => (i === index ? { ...c, [field]: value } : c)) }
+      : prev))
   }
 
   // ── 采纳世界观 ─────────────────────────────────
@@ -475,6 +509,9 @@ export default function InspirationPanel({ project }: Props) {
             adopting={adopting}
             adoptionLocked={pendingDiff !== null}
             onAdopt={handleAdoptMultiWorld}
+            onUpdateStoryCore={updateMwStoryCore}
+            onUpdateWorld={updateMwWorld}
+            onUpdateCharacter={updateMwCharacter}
           />
         )}
 
@@ -489,6 +526,9 @@ export default function InspirationPanel({ project }: Props) {
             adoptionLocked={pendingDiff !== null}
             onToggleSection={toggleSection}
             onToggleCharacter={toggleChar}
+            onUpdateWorldview={updateWorldviewField}
+            onUpdateStoryCore={updateStoryCoreField}
+            onUpdateCharacter={updateCharacterField}
             onAdoptWorldview={handleAdoptWorldview}
             onAdoptStoryCore={handleAdoptStoryCore}
             onAdoptCharacters={handleAdoptCharacters}

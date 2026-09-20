@@ -84,18 +84,20 @@ export default function OutlineVolumeDetail({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      {/* 标题行：窄屏（手机竖屏）改为上下两行（标题一行、按钮一行可换行），
+          避免整行不换行把容器撑宽溢出视口（连带参数面板等下方内容错位）；md 起恢复单行两端对齐 */}
+      <div className="flex flex-col items-stretch gap-2 md:flex-row md:items-center md:justify-between">
         <CInput
           value={volume.title}
           onChange={event => onUpdateNode(volume.id!, { title: event.target.value })}
-          className="text-lg font-bold bg-transparent text-text-primary outline-none flex-1"
+          className="text-lg font-bold bg-transparent text-text-primary outline-none flex-1 min-w-0"
         />
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 md:justify-end">
           {!volume.summary.trim() && (
             <button
               onClick={() => onGenerateVolume(volume.id!)}
               disabled={aiStreaming}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-bg-elevated text-accent rounded-md hover:bg-accent/10 border border-accent/30 disabled:opacity-50 transition-colors"
+              className="flex items-center gap-1 whitespace-nowrap px-2 md:px-2.5 py-1.5 text-xs bg-bg-elevated text-accent rounded-md hover:bg-accent/10 border border-accent/30 disabled:opacity-50 transition-colors"
             >
               <Sparkles className="w-3.5 h-3.5" /> AI 生成本卷卷纲
             </button>
@@ -103,13 +105,13 @@ export default function OutlineVolumeDetail({
           <button
             onClick={onGenerateAllChapters}
             disabled={aiStreaming}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-accent text-white rounded-md hover:bg-accent-hover disabled:opacity-50 transition-colors"
+            className="flex items-center gap-1 whitespace-nowrap px-2 md:px-2.5 py-1.5 text-xs bg-accent text-white rounded-md hover:bg-accent-hover disabled:opacity-50 transition-colors"
           >
             <Sparkles className="w-3.5 h-3.5" /> 生成本卷所有章节
           </button>
           <button
             onClick={() => onAddChapter()}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-bg-elevated text-text-secondary rounded-md hover:text-text-primary border border-border transition-colors"
+            className="flex items-center gap-1 whitespace-nowrap px-2 md:px-2.5 py-1.5 text-xs bg-bg-elevated text-text-secondary rounded-md hover:text-text-primary border border-border transition-colors"
           >
             <Plus className="w-3.5 h-3.5" /> 添加章节
           </button>

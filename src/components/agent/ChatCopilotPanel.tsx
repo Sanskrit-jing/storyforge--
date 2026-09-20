@@ -1,18 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
+  ArchiveRestore,
+  ArrowLeft,
   Bot,
   Check,
   ChevronDown,
   ChevronRight,
+  History,
   Loader2,
+  MessageSquarePlus,
+  RotateCcw,
   Send,
   ShieldCheck,
   Square,
   Trash2,
+  Undo2,
   X,
 } from 'lucide-react'
 import type { Project } from '../../lib/types'
 import { parseAgentEventPayload } from '../../lib/types'
+import { useDialog } from '../shared/Dialog'
 import { useMasterCopilot } from './useMasterCopilot'
 
 interface Props {
@@ -35,9 +42,17 @@ export default function ChatCopilotPanel({
   onClose,
 }: Props) {
   const copilot = useMasterCopilot({ project, worldGroupId })
+  const dialog = useDialog()
   const [showDetails, setShowDetails] = useState(false)
+  const [showHistoryList, setShowHistoryList] = useState(false)
   const endRef = useRef<HTMLDivElement | null>(null)
-  const messages = copilot.events.filter(event => event.kind === 'message')
+  const viewingHistory = copilot.viewingHistoryId != null
+  const visibleEvents = viewingHistory ? copilot.historyEvents : copilot.events
+  const messages = visibleEvents.filter(event => event.kind === 'message')
+  const lastUserMessage = useMemo(
+    () => [...messages].reverse().find(message => message.role === 'user') ?? null,
+    [messages],
+  )
   const taskEvents = copilot.events.filter(event => event.kind === 'task')
   const latestTasks = useMemo(() => {
     const result = new Map<string, {
@@ -65,12 +80,12 @@ export default function ChatCopilotPanel({
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'nearest' })
-  }, [copilot.events.length, copilot.pendingCandidates.length])
+  }, [copilot.events.length, copilot.historyEvents.length, copilot.pendingCandidates.length])
 
   return (
     <aside
       aria-label="主 Agent 创作副驾"
-      className="fixed inset-y-0 right-0 z-30 flex h-full w-[min(28rem,calc(100vw-2rem))] shrink-0 flex-col border-l border-border bg-bg-surface shadow-xl lg:static lg:z-auto lg:w-[28rem] lg:shadow-none"
+      className="fixed inset-y-0 right-0 safe-area-pad-y z-30 flex h-full w-[min(28rem,calc(100vw-2rem))] shrink-0 flex-col border-l border-border bg-bg-surface shadow-xl lg:static lg:z-auto lg:w-[28rem] lg:shadow-none"
     >
       <header className="border-b border-border/70 px-4 py-3">
         <div className="flex items-start justify-between gap-3">
@@ -86,14 +101,53 @@ export default function ChatCopilotPanel({
               {project.name} · {worldName}
             </p>
           </div>
-          <button
-            type="button"
-            aria-label="关闭主 Agent"
-            onClick={onClose}
-            className="rounded p-1 text-text-muted hover:bg-bg-hover hover:text-text-primary"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              aria-label="历史对话"
+              title="查看历史对话"
+              disabled={copilot.loading || copilot.busy}
+              onClick={() => {
+                const next = !showHistoryList
+                setShowHistoryList(next)
+                if (next) {
+                  copilot.exitHistoryView()
+                  void copilot.openHistory()
+                }
+              }}
+              className={`rounded p-1 text-text-muted hover:bg-bg-hover hover:text-text-primary disabled:opacity-40 ${
+                showHistoryList ? 'bg-bg-hover text-text-primary' : ''
+              }`}
+            >
+              <History className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              aria-label="新建对话"
+              title="新建对话（当前对话归档保留在本地）"
+              disabled={copilot.loading || copilot.busy}
+              onClick={() => {
+                void dialog.confirm({
+                  title: '新建对话',
+                  message: '当前对话将归档并从面板移除，记录仍保留在本地。确定新建吗？',
+                  confirmText: '新建对话',
+                }).then(confirmed => {
+                  if (confirmed) void copilot.startNewConversation()
+                })
+              }}
+              className="rounded p-1 text-text-muted hover:bg-bg-hover hover:text-text-primary disabled:opacity-40"
+            >
+              <MessageSquarePlus className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              aria-label="关闭主 Agent"
+              onClick={onClose}
+              className="rounded p-1 text-text-muted hover:bg-bg-hover hover:text-text-primary"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
         <div className="mt-3 flex items-start gap-2 rounded-md border border-accent/20 bg-accent/5 p-2 text-[11px] leading-4 text-text-secondary">
           <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" />
@@ -109,20 +163,160 @@ export default function ChatCopilotPanel({
           </div>
         )}
 
+        {viewingHistory && (
+          <div className="flex items-center justify-between gap-2 rounded-md border border-warning/40 bg-warning/5 px-2.5 py-1.5 text-[11px] text-text-secondary">
+            <span className="truncate">正在查看历史对话（只读）</span>
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                disabled={copilot.busy}
+                onClick={() => {
+                  const targetId = copilot.viewingHistoryId
+                  if (targetId == null) return
+                  void dialog.confirm({
+                    title: '恢复历史对话',
+                    message: '恢复后它将成为当前对话，现在的对话会自动归档。确定恢复吗？',
+                    confirmText: '恢复',
+                  }).then(confirmed => {
+                    if (confirmed) {
+                      setShowHistoryList(false)
+                      void copilot.restoreHistoryConversation(targetId)
+                    }
+                  })
+                }}
+                className="flex items-center gap-1 rounded border border-border px-2 py-1 text-[10px] text-text-secondary hover:bg-bg-hover hover:text-text-primary disabled:opacity-40"
+              >
+                <ArchiveRestore className="h-3 w-3" />
+                恢复为当前对话
+              </button>
+              <button
+                type="button"
+                onClick={() => copilot.exitHistoryView()}
+                className="flex items-center gap-1 rounded border border-border px-2 py-1 text-[10px] text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+              >
+                <ArrowLeft className="h-3 w-3" />
+                返回当前对话
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!viewingHistory && showHistoryList && (
+          <section className="space-y-2" aria-label="历史对话列表">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-text-primary">历史对话</span>
+              <button
+                type="button"
+                onClick={() => setShowHistoryList(false)}
+                className="rounded px-1.5 py-0.5 text-[10px] text-text-muted hover:bg-bg-hover hover:text-text-primary"
+              >
+                收起
+              </button>
+            </div>
+            {copilot.historyConversations.length === 0 && (
+              <p className="rounded-lg border border-border/70 bg-bg-base px-3 py-2 text-xs text-text-muted">
+                还没有历史对话。点右上角「新建对话」后，旧对话会自动保存在这里。
+              </p>
+            )}
+            {copilot.historyConversations.map(item => (
+              <div
+                key={item.id}
+                className="flex items-start justify-between gap-2 rounded-lg border border-border/70 bg-bg-base p-2.5"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-xs text-text-primary" title={item.title}>
+                    {item.title}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-text-muted">
+                    {item.messageCount} 条消息 · {new Date(item.updatedAt).toLocaleString()}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    disabled={copilot.busy}
+                    onClick={() => { void copilot.viewHistoryConversation(item.id!) }}
+                    className="rounded border border-border px-2 py-1 text-[10px] text-text-secondary hover:bg-bg-hover hover:text-text-primary disabled:opacity-40"
+                  >
+                    查看
+                  </button>
+                  <button
+                    type="button"
+                    disabled={copilot.busy}
+                    onClick={() => {
+                      const targetId = item.id
+                      void dialog.confirm({
+                        title: '恢复历史对话',
+                        message: '恢复后它将成为当前对话，现在的对话会自动归档。确定恢复吗？',
+                        confirmText: '恢复',
+                      }).then(confirmed => {
+                        if (confirmed) {
+                          setShowHistoryList(false)
+                          void copilot.restoreHistoryConversation(targetId!)
+                        }
+                      })
+                    }}
+                    className="flex items-center gap-1 rounded border border-border px-2 py-1 text-[10px] text-text-secondary hover:bg-bg-hover hover:text-text-primary disabled:opacity-40"
+                  >
+                    <ArchiveRestore className="h-3 w-3" />
+                    恢复
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="删除这条历史对话"
+                    title="删除这条历史对话（不可恢复）"
+                    disabled={copilot.busy}
+                    onClick={() => {
+                      const targetId = item.id
+                      void dialog.confirm({
+                        title: '删除历史对话',
+                        message: `将删除「${item.title}」及其全部 ${item.messageCount} 条消息，不可恢复。确定删除吗？`,
+                        confirmText: '删除',
+                      }).then(confirmed => {
+                        if (confirmed) void copilot.deleteHistoryConversation(targetId!)
+                      })
+                    }}
+                    className="flex items-center gap-1 rounded border border-border px-2 py-1 text-[10px] text-text-secondary hover:border-error/60 hover:bg-error/10 hover:text-error disabled:opacity-40"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    删除
+                  </button>
+                </div>
+              </div>
+            ))}
+          </section>
+        )}
+
         {messages.map(message => (
           <div
             key={message.id}
-            className={`max-w-[92%] rounded-lg px-3 py-2 text-xs leading-5 ${
+            className={`group relative max-w-[92%] rounded-lg px-3 py-2 text-xs leading-5 ${
               message.role === 'user'
                 ? 'ml-auto bg-accent text-white'
                 : 'border border-border/70 bg-bg-base text-text-secondary'
             }`}
           >
             {message.content}
+            {message.id != null && (
+              <button
+                type="button"
+                aria-label="删除这条消息"
+                title="删除这条消息"
+                disabled={copilot.busy}
+                onClick={() => { void copilot.deleteMessage(message.id!) }}
+                className={`absolute top-1 flex h-5 w-5 items-center justify-center rounded opacity-30 transition-opacity hover:opacity-100 group-hover:opacity-100 ${
+                  message.role === 'user'
+                    ? '-left-6 bg-bg-surface text-text-muted hover:text-error'
+                    : '-right-6 bg-bg-surface text-text-muted hover:text-error'
+                } disabled:opacity-40`}
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            )}
           </div>
         ))}
 
-        {(latestTasks.length > 0 || copilot.busy) && (
+        {!viewingHistory && (latestTasks.length > 0 || copilot.busy) && (
           <section className="rounded-lg border border-border/70 bg-bg-base">
             <button
               type="button"
@@ -165,7 +359,7 @@ export default function ChatCopilotPanel({
           </section>
         )}
 
-        {copilot.pendingCandidates.map(candidate => (
+        {!viewingHistory && copilot.pendingCandidates.map(candidate => (
           <section
             key={candidate.event.id}
             className="rounded-lg border border-accent/30 bg-bg-base p-3"
@@ -254,6 +448,30 @@ export default function ChatCopilotPanel({
             </div>
           </section>
         ))}
+        {!viewingHistory && lastUserMessage && (
+          <div className="flex items-center justify-center gap-2 pt-1" aria-label="上一轮操作">
+            <button
+              type="button"
+              disabled={copilot.loading || copilot.busy || copilot.pendingCandidates.length > 0}
+              onClick={() => { void copilot.undoLastRound() }}
+              title="删除最后一次请求及其全部输出（含计划、任务、候选）"
+              className="flex items-center gap-1.5 rounded-full border border-border bg-bg-surface px-3 py-1.5 text-xs text-text-secondary hover:border-text-muted hover:text-text-primary disabled:opacity-40"
+            >
+              <Undo2 className="h-3.5 w-3.5" />
+              撤销上一轮
+            </button>
+            <button
+              type="button"
+              disabled={copilot.loading || copilot.busy || copilot.pendingCandidates.length > 0}
+              onClick={() => { void copilot.rewriteLast() }}
+              title="删除最后一次请求及其输出，并用同样的请求重新执行"
+              className="flex items-center gap-1.5 rounded-full border border-border bg-bg-surface px-3 py-1.5 text-xs text-text-secondary hover:border-text-muted hover:text-text-primary disabled:opacity-40"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              重写上一轮
+            </button>
+          </div>
+        )}
         <div ref={endRef} />
       </div>
 
@@ -267,7 +485,7 @@ export default function ChatCopilotPanel({
         <textarea
           aria-label="告诉主 Agent 你的目标"
           value={copilot.authorRequest}
-          disabled={copilot.loading || copilot.busy || copilot.pendingCandidates.length > 0}
+          disabled={copilot.loading || copilot.busy || copilot.pendingCandidates.length > 0 || viewingHistory}
           maxLength={2000}
           rows={4}
           onChange={event => copilot.setAuthorRequest(event.target.value)}
@@ -277,13 +495,17 @@ export default function ChatCopilotPanel({
               void copilot.submit()
             }
           }}
-          placeholder={copilot.pendingCandidates.length
-            ? '请先处理当前候选，再继续对话'
-            : '例如：建立宋风世界，设计守灯人主角，规划三卷大纲，再写第一章正文…'}
+          placeholder={viewingHistory
+            ? '正在查看历史对话，返回当前对话后可继续输入'
+            : copilot.pendingCandidates.length
+              ? '请先处理当前候选，再继续对话'
+              : '例如：建立宋风世界，设计守灯人主角，规划三卷大纲，再写第一章正文…'}
           className="w-full resize-none rounded-md border border-border bg-bg-base px-3 py-2 text-xs leading-5 text-text-primary outline-none focus:border-accent disabled:opacity-60"
         />
-        <div className="mt-2 flex items-center justify-between">
-          <span className="text-[10px] text-text-muted">Enter 发送 · 输入、计划和候选自动保存在本地</span>
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <span className="min-w-0 truncate text-[10px] text-text-muted">
+            Enter 发送 · 记录自动保存在本地 · 撤销/重写按钮在对话末尾
+          </span>
           {copilot.busy ? (
             <button
               type="button"
@@ -300,6 +522,7 @@ export default function ChatCopilotPanel({
                 copilot.loading
                 || !copilot.authorRequest.trim()
                 || copilot.pendingCandidates.length > 0
+                || viewingHistory
               }
               className="flex items-center gap-1 rounded bg-accent px-3 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-40"
             >

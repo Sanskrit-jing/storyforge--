@@ -204,7 +204,7 @@ AI 输出经 `adopt({ target, data })` 写回,只有这里登记的字段可写(
 | `character.generate` | `src/components/character/CharacterPanel.tsx:160` |
 | `character.structure` | `src/lib/ai/parse-character-output.ts:80` |
 | `character.supplement` | `src/components/character/CharacterSupplementAction.tsx:80` |
-| `codex.extract` | `src/components/codex/CodexPanel.tsx:237` |
+| `codex.extract` | `src/components/codex/CodexPanel.tsx:240` |
 | `cultivation.progress` | `src/components/cultivation/CultivationProgressPanel.tsx:143` |
 | `detail.scene` | `src/components/outline/DetailedOutlinePanel.tsx:151`<br/>`src/components/outline/ScenePanel.tsx:126`<br/>`src/lib/ai/batch-detail-runner.ts:109` |
 | `emotion.beat` | `src/components/editor/EmotionBeatCard.tsx:66` |
@@ -216,10 +216,10 @@ AI 输出经 `adopt({ target, data })` 写回,只有这里登记的字段可写(
 | `history.storm` | `src/components/history/useHistoryAI.ts:120` |
 | `inspiration.reverse` | `src/hooks/useIncrementalInspiration.ts:226` |
 | `inventory.extract` | `src/components/items/InventoryPanel.tsx:150` |
-| `location.extract` | `src/components/location/LocationPanel.tsx:106` |
+| `location.extract` | `src/components/location/LocationPanel.tsx:108` |
 | `node.creation` | `src/lib/node-flow/executor.ts:203` |
 | `outline.chapter` | `src/lib/ai/batch-outline-runner.ts:123`<br/>`src/lib/outline/generation-node.ts:55` |
-| `outline.character-driven` | `src/components/outline/CharacterDrivenPlotPanel.tsx:198` |
+| `outline.character-driven` | `src/components/outline/CharacterDrivenPlotPanel.tsx:202` |
 | `outline.character-revision` | `src/components/outline/CharacterRevisionPanel.tsx:170` |
 | `outline.volume` | `src/lib/outline/generation-node.ts:51` |
 | `outline.workshop.collision` | `src/lib/outline/workshop.ts:448` |
@@ -240,7 +240,7 @@ AI 输出经 `adopt({ target, data })` 写回,只有这里登记的字段可写(
 | `story-arc.generate` | `src/components/outline/StoryArcPanel.tsx:85` |
 | `story.generate` | `src/components/worldview/StoryCorePanel.tsx:200` |
 | `story.timeline` | `src/components/timeline/StoryTimelinePanel.tsx:85` |
-| `storyline-progress.map` | `src/components/outline/StorylineProgressPanel.tsx:76` |
+| `storyline-progress.map` | `src/components/outline/StorylineProgressPanel.tsx:79` |
 | `style.calibrate` | `src/components/style/StyleCalibrationPanel.tsx:63` |
 | `style.learn` | `src/components/style/StyleLearningPanel.tsx:125` |
 | `world-group.expand` | `src/components/world-group/WorldGroupDetail.tsx:98` |
@@ -262,4 +262,4 @@ AI 输出经 `adopt({ target, data })` 写回,只有这里登记的字段可写(
 
 ---
 
-生成时间基准:commit `fbe54b5`
+生成时间基准:commit `0215f5c`

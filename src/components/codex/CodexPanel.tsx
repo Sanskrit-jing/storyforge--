@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   Plus, Trash2, EyeOff, Eye, FolderPlus, Boxes, Settings2, X,
-  Sparkles, Loader2, ChevronLeft,
+  Sparkles, Loader2, ChevronLeft, Maximize2,
 } from 'lucide-react'
 import { useCodexStore } from '../../stores/codex'
 import {
@@ -30,6 +30,8 @@ import { assembleContext } from '../../lib/registry/assemble-context'
 import CodexCategoryFieldsEditor from './CodexCategoryFieldsEditor'
 import CodexEntryDetail from './CodexEntryDetail'
 import { useIsNarrow } from '../../hooks/useIsNarrow'
+import { InlineInput, InlineTextarea } from '../shared/InlineEdit'
+import FullScreenViewer from '../shared/FullScreenViewer'
 
 interface Props {
   project: Project
@@ -86,6 +88,7 @@ export default function CodexPanel({ project, fixedDomain, fixedCategoryKeys, em
   const [extracting, setExtracting] = useState(false)
   const [candidates, setCandidates] = useState<ReturnType<typeof parseCodexEntries>>([])
   const [selectedCandidates, setSelectedCandidates] = useState<Set<number>>(new Set())
+  const [candidatesFullscreen, setCandidatesFullscreen] = useState(false)
 
   useEffect(() => { loadAll(projectId) }, [projectId, loadAll])
 
@@ -282,6 +285,43 @@ export default function CodexPanel({ project, fixedDomain, fixedCategoryKeys, em
     setExtractOpen(false)
     toast.success(`已写入 ${result.written.length} 个词条${result.skipped.length ? `，跳过 ${result.skipped.length} 个重复项` : ''}。`)
   }
+
+  // ── 采纳前手动编辑：直接修改 AI 拆分的词条候选（确认写入时以编辑后内容生效） ──
+  const updateCandidate = (index: number, field: 'name' | 'summary' | 'tags', value: string) => {
+    setCandidates(prev => prev.map((item, i) => {
+      if (i !== index) return item
+      if (field === 'tags') {
+        return { ...item, tags: value.split(/[,，\s]+/).map(t => t.trim().replace(/^#/, '')).filter(Boolean) }
+      }
+      return { ...item, [field]: value }
+    }))
+  }
+
+  const toggleCandidate = (index: number) => {
+    setSelectedCandidates(prev => {
+      const next = new Set(prev)
+      if (next.has(index)) next.delete(index); else next.add(index)
+      return next
+    })
+  }
+
+  // 候选项渲染：卡片内嵌与全屏共用（name/summary/tags 全部可编辑）
+  const renderCandidateItem = (item: ReturnType<typeof parseCodexEntries>[number], index: number, full: boolean) => (
+    <div key={`${item.name}-${index}`} className="flex gap-3 p-3 border border-border rounded-lg bg-bg-base">
+      <label className="flex shrink-0 items-start pt-1 cursor-pointer">
+        <input type="checkbox" checked={selectedCandidates.has(index)} onChange={() => toggleCandidate(index)} className="accent-accent" />
+      </label>
+      <div className="min-w-0 flex-1 space-y-1">
+        <InlineInput value={item.name} onChange={v => updateCandidate(index, 'name', v)} placeholder="词条名"
+          className={`min-w-0 w-full text-sm font-medium text-text-primary ${full ? 'text-base' : ''}`} />
+        <InlineTextarea value={item.summary} onChange={v => updateCandidate(index, 'summary', v)} placeholder="点击编辑简介…"
+          className="w-full text-text-muted" displayClassName={full ? '!text-sm !text-text-primary leading-relaxed' : '!text-xs !text-text-muted'}
+          maxRows={full ? 12 : 3} />
+        <InlineInput value={item.tags.map(t => `#${t}`).join(' ')} onChange={v => updateCandidate(index, 'tags', v)} placeholder="#标签（空格或逗号分隔，可留空）"
+          className="w-full !text-[10px] !text-accent" />
+      </div>
+    </div>
+  )
 
   // 窄屏详情页:仅在窄屏、用户已进入详情、且当前词条仍存在时展示
   // (删除词条 / 切换分类会把 activeEntryId 置空,此处自动退回列表页,不会卡在空白详情)
@@ -576,22 +616,14 @@ export default function CodexPanel({ project, fixedDomain, fixedCategoryKeys, em
             </button>
             {candidates.length > 0 && (
               <div className="space-y-2 border-t border-border pt-3">
-                {candidates.map((item, index) => (
-                  <label key={`${item.name}-${index}`} className="flex gap-3 p-3 border border-border rounded-lg bg-bg-base">
-                    <input type="checkbox" checked={selectedCandidates.has(index)} onChange={() => {
-                      setSelectedCandidates(prev => {
-                        const next = new Set(prev)
-                        if (next.has(index)) next.delete(index); else next.add(index)
-                        return next
-                      })
-                    }} className="mt-1 accent-accent" />
-                    <div className="min-w-0">
-                      <div className="font-medium text-sm text-text-primary">{item.name}</div>
-                      <div className="text-xs text-text-muted">{item.summary}</div>
-                      {item.tags.length > 0 && <div className="mt-1 text-[10px] text-accent">{item.tags.map(t => `#${t}`).join(' ')}</div>}
-                    </div>
-                  </label>
-                ))}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-text-muted">候选词条 · 点击文字可直接编辑</span>
+                  <button onClick={() => setCandidatesFullscreen(true)}
+                    className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-text-muted hover:bg-bg-active hover:text-accent">
+                    <Maximize2 className="w-3.5 h-3.5" /> 全屏查看
+                  </button>
+                </div>
+                {candidates.map((item, index) => renderCandidateItem(item, index, false))}
                 <div className="flex justify-end gap-2">
                   <button onClick={() => setExtractOpen(false)} className="px-3 py-1.5 text-xs text-text-muted">取消</button>
                   <button onClick={handleAdoptCandidates} disabled={!selectedCandidates.size}
@@ -603,6 +635,23 @@ export default function CodexPanel({ project, fixedDomain, fixedCategoryKeys, em
             )}
           </div>
         </div>
+      )}
+      {candidatesFullscreen && (
+        <FullScreenViewer open title={`AI 拆分「${activeCat?.name ?? ''}」词条候选`} subtitle="点击文字可直接编辑，勾选后写入"
+          onClose={() => setCandidatesFullscreen(false)}
+          footer={
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setCandidatesFullscreen(false)} className="px-3 py-1.5 text-xs text-text-muted">收起</button>
+              <button onClick={handleAdoptCandidates} disabled={!selectedCandidates.size}
+                className="px-3 py-1.5 text-xs bg-accent text-white rounded disabled:opacity-40">
+                写入所选 {selectedCandidates.size} 项
+              </button>
+            </div>
+          }>
+          <div className="space-y-2">
+            {candidates.map((item, index) => renderCandidateItem(item, index, true))}
+          </div>
+        </FullScreenViewer>
       )}
     </div>
   )

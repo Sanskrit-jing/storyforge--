@@ -110,22 +110,22 @@ export default function PromptRunPanel({
 
   return (
     <div className="bg-bg-elevated border border-border rounded-lg text-xs">
-      {/* 头部 */}
+      {/* 头部（窄屏防溢出：模板名截断，徽章不换行） */}
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between px-3 py-2 hover:bg-bg-hover transition-colors"
       >
-        <div className="flex items-center gap-2">
-          <Settings2 className="w-3.5 h-3.5 text-text-secondary" />
-          <span className="text-text-secondary">当前模板：</span>
-          <span className="text-text-primary font-medium">{tpl.name}</span>
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <Settings2 className="w-3.5 h-3.5 flex-shrink-0 text-text-secondary" />
+          <span className="flex-shrink-0 text-text-secondary">当前模板：</span>
+          <span className="truncate text-text-primary font-medium">{tpl.name}</span>
           {dirty && (
-            <span className="px-1.5 py-0.5 rounded bg-warning/15 text-warning text-[10px]">
+            <span className="flex-shrink-0 whitespace-nowrap px-1.5 py-0.5 rounded bg-warning/15 text-warning text-[10px]">
               已临时调整
             </span>
           )}
         </div>
-        {open ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+        {open ? <ChevronUp className="w-3.5 h-3.5 flex-shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 flex-shrink-0" />}
       </button>
 
       {open && (
@@ -245,7 +245,7 @@ function ParamControl({
           value={String(shown)}
           onChange={e => onChange(e.target.value)}
           disabled={!enabled}
-          className="flex-1 px-2 py-1 bg-bg-base border border-border rounded text-text-primary disabled:opacity-50 focus:outline-none focus:border-accent"
+          className="min-w-0 flex-1 px-2 py-1 bg-bg-base border border-border rounded text-text-primary disabled:opacity-50 focus:outline-none focus:border-accent"
         >
           {(param.options || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
         </select>
@@ -260,7 +260,7 @@ function ParamControl({
             value={Math.min(Number(shown), Number(sliderMax))}
             onChange={e => onChange(Number(e.target.value))}
             disabled={!enabled}
-            className="flex-1 accent-accent disabled:opacity-50"
+            className="min-w-0 flex-1 accent-accent disabled:opacity-50"
           />
           {/* 可编辑数字框：能手填任意值（含超过滑块上限），滑块只作快速拖拽 */}
           <input
@@ -270,7 +270,7 @@ function ParamControl({
             value={Number(shown)}
             onChange={e => onChange(Number(e.target.value))}
             disabled={!enabled}
-            className={`w-16 px-1 py-0.5 text-right bg-bg-base border border-border rounded disabled:opacity-50 focus:outline-none focus:border-accent ${enabled ? 'text-text-primary' : 'text-text-muted'}`}
+            className={`w-16 flex-shrink-0 px-1 py-0.5 text-right bg-bg-base border border-border rounded disabled:opacity-50 focus:outline-none focus:border-accent ${enabled ? 'text-text-primary' : 'text-text-muted'}`}
           />
         </>
       )}
@@ -283,7 +283,7 @@ function ParamControl({
           value={Number(shown)}
           onChange={e => onChange(Number(e.target.value))}
           disabled={!enabled}
-          className="flex-1 px-2 py-1 bg-bg-base border border-border rounded text-text-primary disabled:opacity-50 focus:outline-none focus:border-accent"
+          className="min-w-0 flex-1 px-2 py-1 bg-bg-base border border-border rounded text-text-primary disabled:opacity-50 focus:outline-none focus:border-accent"
         />
       )}
       {param.type === 'text' && (
@@ -292,7 +292,7 @@ function ParamControl({
           value={String(shown)}
           onChange={e => onChange(e.target.value)}
           disabled={!enabled}
-          className="flex-1 px-2 py-1 bg-bg-base border border-border rounded text-text-primary disabled:opacity-50 focus:outline-none focus:border-accent"
+          className="min-w-0 flex-1 px-2 py-1 bg-bg-base border border-border rounded text-text-primary disabled:opacity-50 focus:outline-none focus:border-accent"
         />
       )}
       {param.type === 'boolean' && (

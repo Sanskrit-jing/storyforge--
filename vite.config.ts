@@ -13,15 +13,40 @@ function resolveBuildSha(): string {
   }
 }
 
-// Android（Capacitor）打包的站点挂在 WebView 站根 https://localhost/，故 base 取 '/'；
-// 资源随 APK 内置，不需要 PWA 的离线缓存与清单，因此在 android mode 下不注入 VitePWA。
+/**
+ * 平台标识：界面版本号显示为 v{版本}+{平台}。
+ * 四个打包目标各自独立构建（同一套 src，仅此标签与 base/PWA 不同）：
+ * - 默认（Electron / 网页 dev·build）→ PC版
+ * - --mode android（手机 APK）→ 安卓版
+ * - --mode tablet（平板 APK 的 HD flavor）→ HD版
+ * - --mode harmony（鸿蒙 rawfile）→ 鸿蒙版
+ * 手机与平板共用 gradle 工程但产物不同源，运行时无法区分 flavor，必须在构建时注入。
+ */
+function resolvePlatformLabel(mode: string): string {
+  switch (mode) {
+    case 'android':
+      return '安卓版'
+    case 'tablet':
+      return 'HD版'
+    case 'harmony':
+      return '鸿蒙版'
+    default:
+      return 'PC版'
+  }
+}
+
+// 原生端（Capacitor Android / 鸿蒙壳）都不注入 PWA：资源随安装包内置，
+// 不需要离线缓存与清单。
+const NATIVE_MODES = ['android', 'tablet', 'harmony']
+
 export default defineConfig(({ mode }) => ({
   define: {
     __STORYFORGE_BUILD_SHA__: JSON.stringify(resolveBuildSha()),
+    __STORYFORGE_PLATFORM__: JSON.stringify(resolvePlatformLabel(mode)),
   },
   plugins: [
     react(),
-    ...(mode === 'android' ? [] : [VitePWA({
+    ...(NATIVE_MODES.includes(mode) ? [] : [VitePWA({
       injectRegister: null,
       registerType: 'autoUpdate',
       base: '/storyforge/',
@@ -76,7 +101,12 @@ export default defineConfig(({ mode }) => ({
       },
     })]),
   ],
-  base: mode === 'android' ? '/' : '/storyforge/',
+  // 原生端都以站根启动（Android Capacitor 挂 https://localhost/；鸿蒙壳用虚拟 https 源
+  // https://appassets.local/，onInterceptRequest 把它映射到 rawfile——resource://rawfile
+  // 的 origin 为 'null'，ES module 的 CORS fetch 必然被拦截导致白屏，故不能用）。
+  // base 必须为 '/'：React Router 的 basename 取自 BASE_URL，
+  // 用 './' 会变成 '/.' 而拒绝匹配任何 URL（表现仍是白屏）。
+  base: NATIVE_MODES.includes(mode) ? '/' : '/storyforge/',
   server: {
     port: 1111,
     // CF-1: 端口被占用时直接失败报错，而不是静默换到 1112 —— 避免用户以为在 1111、

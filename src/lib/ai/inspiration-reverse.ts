@@ -83,6 +83,19 @@ export interface ReverseMultiWorldResult {
   characters: ReverseCharacterMW[]
 }
 
+/** 采纳前可自由文本编辑的世界字段（排除枚举 type——由世界组类型管理，不可当文本改） */
+export type ReverseWorldTextField = Exclude<keyof ReverseWorld, 'type'>
+
+/** 采纳前可自由文本编辑的角色字段（排除 roleWeight/moralAxis/orderAxis 等枚举轴位） */
+export type ReverseCharacterTextField =
+  | 'name'
+  | 'shortDescription'
+  | 'personality'
+  | 'background'
+  | 'motivation'
+  | 'arc'
+  | 'homeWorld'
+
 const VALID_WG_TYPES: WorldGroupType[] = ['primary', 'traversal', 'instance', 'parallel', 'ascension', 'custom']
 const VALID_WEIGHTS: CharacterRoleWeight[] = ['main', 'secondary', 'npc', 'extra']
 const VALID_MORAL: CharacterMoralAxis[] = ['good', 'neutral', 'evil']

@@ -341,9 +341,10 @@ export default function CharacterPanel({ project, view = 'generator' }: Props) {
           </p>
         </div>
       ) : (
-        <div className="flex gap-4">
-          {/* 左侧角色列表 */}
-          <div className="w-40 shrink-0 space-y-0.5">
+        <div className="flex flex-col gap-3 md:flex-row md:gap-4">
+          {/* 窄屏（手机竖屏）纵向堆叠，列表横向滑动；md 起恢复左右双栏 */}
+          {/* 左侧角色列表：窄屏为横向滑动条，md 起固定窄列 */}
+          <div className="flex gap-1 overflow-x-auto pb-1 md:w-40 md:shrink-0 md:flex-col md:gap-0 md:overflow-x-visible md:pb-0 md:space-y-0.5">
             {displayedChars.map((c, i) => {
               const active = selected === c.id
               const colorClass = GLYPH_COLORS[i % GLYPH_COLORS.length]
@@ -351,7 +352,7 @@ export default function CharacterPanel({ project, view = 'generator' }: Props) {
                 <button
                   key={c.id}
                   onClick={() => setSelected(active ? null : c.id!)}
-                  className={`w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-left transition-all ${
+                  className={`flex w-32 shrink-0 items-center gap-2.5 px-2 py-2 rounded-lg text-left transition-all md:w-full md:shrink ${
                     active
                       ? 'bg-accent/8 border-l-2 border-accent'
                       : 'hover:bg-bg-hover border-l-2 border-transparent'
@@ -372,7 +373,7 @@ export default function CharacterPanel({ project, view = 'generator' }: Props) {
           </div>
 
           {/* 右侧详情卡 */}
-          <div className="flex-1 min-w-0">
+          <div className="w-full min-w-0 md:flex-1">
             {selectedChar ? (
               <CharacterDetailCard
                 char={selectedChar}

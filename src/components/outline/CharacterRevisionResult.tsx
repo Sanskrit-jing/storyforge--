@@ -1,5 +1,8 @@
-import { AlertTriangle, Check, Clipboard, Loader2 } from 'lucide-react'
+import { useState } from 'react'
+import { AlertTriangle, Check, Clipboard, Loader2, Maximize2 } from 'lucide-react'
 import type { CharacterRevisionPlan } from '../../lib/story-planning/character-revision'
+import { InlineInput, InlineTextarea } from '../shared/InlineEdit'
+import FullScreenViewer from '../shared/FullScreenViewer'
 
 interface Props {
   analysis: CharacterRevisionPlan
@@ -8,6 +11,8 @@ interface Props {
   applying: boolean
   onSelectOption: (id: string) => void
   onTogglePatch: (outlineNodeId: number) => void
+  /** 采纳前手动编辑 patch 提议内容（应用时以编辑后内容写入） */
+  onUpdatePatch: (optionId: string, outlineNodeId: number, field: 'proposedTitle' | 'proposedSummary', value: string) => void
   onCopy: () => void
   onApply: () => void
 }
@@ -19,18 +24,26 @@ export default function CharacterRevisionResult({
   applying,
   onSelectOption,
   onTogglePatch,
+  onUpdatePatch,
   onCopy,
   onApply,
 }: Props) {
+  const [fullscreen, setFullscreen] = useState(false)
   const selectedOption = analysis.options.find(option => option.id === selectedOptionId) ?? null
-  return (
-    <section className="space-y-4 rounded-lg border border-border bg-bg-surface p-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <h3 className="text-base font-semibold text-text-primary">影响分析结果</h3>
-        <button onClick={onCopy} className="ml-auto inline-flex items-center gap-1 text-xs text-accent">
-          <Clipboard className="w-3.5 h-3.5" />复制修订计划
-        </button>
-      </div>
+
+  const applyButton = (
+    <button
+      onClick={onApply}
+      disabled={!selectedPatchIds.size || applying}
+      className="inline-flex items-center gap-1.5 rounded bg-green-600 px-4 py-2 text-sm text-white disabled:opacity-40"
+    >
+      {applying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+      应用选中 patch 到未写大纲
+    </button>
+  )
+
+  const content = (
+    <>
       <p className="text-sm text-text-primary">{analysis.changeSummary}</p>
       <p className="text-xs text-text-muted">{analysis.scopeSummary}</p>
 
@@ -108,7 +121,7 @@ export default function CharacterRevisionResult({
       {selectedOption && (
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <h4 className="text-sm font-medium text-text-primary">逐项预览和选择大纲 patch</h4>
+            <h4 className="text-sm font-medium text-text-primary">逐项预览和选择大纲 patch（新标题/新摘要可直接编辑）</h4>
             <span className="text-xs text-text-muted">{selectedPatchIds.size} 项待应用</span>
           </div>
           {selectedOption.patches.length === 0 ? (
@@ -118,7 +131,7 @@ export default function CharacterRevisionResult({
           ) : (
             <div className="space-y-2">
               {selectedOption.patches.map(patch => (
-                <label key={patch.outlineNodeId} className="block rounded border border-border bg-bg-base p-3">
+                <div key={patch.outlineNodeId} className="block rounded border border-border bg-bg-base p-3">
                   <div className="flex items-start gap-2">
                     <input
                       type="checkbox"
@@ -131,43 +144,87 @@ export default function CharacterRevisionResult({
                         第{patch.ordinal}章 · {patch.title}
                         {patch.anchorProtected && <span className="ml-2 text-amber-700">锚点</span>}
                       </div>
-                      {patch.currentTitle !== patch.proposedTitle && (
-                        <p className="mt-1 text-xs">
-                          <span className="text-text-muted line-through">{patch.currentTitle}</span>
-                          <span className="mx-1 text-accent">→</span>
-                          <span className="text-text-primary">{patch.proposedTitle}</span>
-                        </p>
-                      )}
+                      <div className="mt-1 flex flex-wrap items-center gap-1 text-xs">
+                        {patch.currentTitle !== patch.proposedTitle && (
+                          <>
+                            <span className="text-text-muted line-through">{patch.currentTitle}</span>
+                            <span className="mx-1 text-accent">→</span>
+                          </>
+                        )}
+                        <InlineInput
+                          value={patch.proposedTitle}
+                          onChange={value => onUpdatePatch(selectedOption.id, patch.outlineNodeId, 'proposedTitle', value)}
+                          placeholder="新标题"
+                          className="min-w-[10rem] flex-1 text-xs text-text-primary"
+                        />
+                      </div>
                       <div className="mt-1 grid gap-1 text-xs md:grid-cols-2">
                         <p className="rounded bg-red-500/5 p-2 text-text-muted whitespace-pre-wrap">
                           原：{patch.currentSummary || '无摘要'}
                         </p>
-                        <p className="rounded bg-green-500/5 p-2 text-text-primary whitespace-pre-wrap">
-                          新：{patch.proposedSummary || '无摘要'}
-                        </p>
+                        <div className="rounded bg-green-500/5 p-2 [&>div]:text-xs">
+                          <span className="text-[11px] font-medium text-green-700">新（点击编辑）：</span>
+                          <InlineTextarea
+                            value={patch.proposedSummary}
+                            onChange={value => onUpdatePatch(selectedOption.id, patch.outlineNodeId, 'proposedSummary', value)}
+                            placeholder="无摘要，点击编辑"
+                            maxRows={10}
+                          />
+                        </div>
                       </div>
                       {patch.reason && <p className="mt-1 text-[11px] text-text-muted">原因：{patch.reason}</p>}
                     </div>
                   </div>
-                </label>
+                </div>
               ))}
             </div>
           )}
         </div>
       )}
+    </>
+  )
 
-      <div className="flex flex-wrap items-center gap-3 border-t border-border pt-3">
-        <button
-          onClick={onApply}
-          disabled={!selectedPatchIds.size || applying}
-          className="inline-flex items-center gap-1.5 rounded bg-green-600 px-4 py-2 text-sm text-white disabled:opacity-40"
+  return (
+    <>
+      <section className="space-y-4 rounded-lg border border-border bg-bg-surface p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="text-base font-semibold text-text-primary">影响分析结果</h3>
+          <div className="ml-auto flex items-center gap-3">
+            <button onClick={onCopy} className="inline-flex items-center gap-1 text-xs text-accent">
+              <Clipboard className="w-3.5 h-3.5" />复制修订计划
+            </button>
+            <button onClick={() => setFullscreen(true)} className="inline-flex items-center gap-1 text-xs text-accent">
+              <Maximize2 className="w-3.5 h-3.5" />全屏查看
+            </button>
+          </div>
+        </div>
+        {content}
+        <div className="flex flex-wrap items-center gap-3 border-t border-border pt-3">
+          {applyButton}
+          <span className="text-xs text-text-muted">应用前会重新检查，不会改正文和 storyCore</span>
+        </div>
+      </section>
+
+      {fullscreen && (
+        <FullScreenViewer
+          open
+          title="影响分析结果"
+          subtitle="AI 修订计划 · patch 新标题/新摘要可直接点击编辑"
+          onClose={() => setFullscreen(false)}
+          footer={
+            <div className="flex flex-wrap items-center gap-3">
+              {applyButton}
+              <button onClick={onCopy} className="inline-flex items-center gap-1.5 rounded border border-border px-3 py-2 text-sm text-text-secondary hover:text-text-primary">
+                <Clipboard className="w-4 h-4" />复制修订计划
+              </button>
+              <span className="text-xs text-text-muted">应用前会重新检查，不会改正文和 storyCore</span>
+            </div>
+          }
         >
-          {applying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-          应用选中 patch 到未写大纲
-        </button>
-        <span className="text-xs text-text-muted">应用前会重新检查，不会改正文和 storyCore</span>
-      </div>
-    </section>
+          {content}
+        </FullScreenViewer>
+      )}
+    </>
   )
 }
 

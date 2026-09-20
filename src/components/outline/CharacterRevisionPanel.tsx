@@ -246,6 +246,26 @@ export default function CharacterRevisionPanel({
     })
   }
 
+  // ── 采纳前手动编辑：修改 patch 提议标题/摘要（应用时以编辑后内容生效） ──
+  const updateAnalysisPatch = (
+    optionId: string,
+    outlineNodeId: number,
+    field: 'proposedTitle' | 'proposedSummary',
+    value: string,
+  ) => {
+    setAnalysis(prev => prev ? {
+      ...prev,
+      options: prev.options.map(option => (
+        option.id !== optionId ? option : {
+          ...option,
+          patches: option.patches.map(patch => (
+            patch.outlineNodeId === outlineNodeId ? { ...patch, [field]: value } : patch
+          )),
+        }
+      )),
+    } : prev)
+  }
+
   return (
     <div className="h-full flex flex-col overflow-hidden">
       <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-border bg-bg-surface">
@@ -461,6 +481,7 @@ export default function CharacterRevisionPanel({
             applying={applying}
             onSelectOption={setSelectedOptionId}
             onTogglePatch={togglePatch}
+            onUpdatePatch={updateAnalysisPatch}
             onCopy={handleCopy}
             onApply={handleApply}
           />

@@ -91,34 +91,47 @@ export default function PromptWorkflowsPanel({ project }: Props = {}) {
     if (ok) await removeWorkflow(id)
   }
 
+  // 派生：runningId/editingId 指向的工作流可能已被删除或重载后消失
+  const runningWorkflow =
+    runningId !== null ? workflows.find(w => w.id === runningId) ?? null : null
+  const editingWorkflow =
+    editingId !== null ? workflows.find(w => w.id === editingId) ?? null : null
+
+  // 清理失效的 runningId/editingId 必须放在 useEffect 中，
+  // 严禁渲染期间直接 setState（React 反模式，会触发警告且 StrictMode 下行为异常）。
+  useEffect(() => {
+    if (runningId !== null && !runningWorkflow) setRunningId(null)
+  }, [runningId, runningWorkflow])
+
+  useEffect(() => {
+    if (editingId !== null && !editingWorkflow) setEditingId(null)
+  }, [editingId, editingWorkflow])
+
   if (runningId !== null) {
-    const wf = workflows.find(w => w.id === runningId)
-    if (!wf) {
-      setRunningId(null)
-      return null
+    if (!runningWorkflow) {
+      // 等待 useEffect 清理的过渡帧，渲染占位避免白屏
+      return <div className="p-5 text-sm text-text-muted">加载中...</div>
     }
-    return <WorkflowRunner workflow={wf} project={project} onClose={() => setRunningId(null)} />
+    return <WorkflowRunner workflow={runningWorkflow} project={project} onClose={() => setRunningId(null)} />
   }
 
   if (editingId !== null) {
-    const wf = workflows.find(w => w.id === editingId)
-    if (!wf) {
-      setEditingId(null)
-      return null
+    if (!editingWorkflow) {
+      return <div className="p-5 text-sm text-text-muted">加载中...</div>
     }
-    return <WorkflowEditor workflow={wf} onClose={() => setEditingId(null)} />
+    return <WorkflowEditor workflow={editingWorkflow} onClose={() => setEditingId(null)} />
   }
 
   return (
     <div className="p-5 space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-base font-semibold text-text-primary mb-1">节点模式</h2>
           <p className="text-sm text-text-muted">
             ComfyUI 式创作模式：连接节点组成流程；每步仍可暂停、编辑和确认。
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={handleNew}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-accent/10 text-accent text-xs rounded hover:bg-accent/20"
@@ -153,7 +166,7 @@ export default function PromptWorkflowsPanel({ project }: Props = {}) {
         <div className="space-y-2">
           {workflows.map(w => (
             <div key={w.id} className="bg-bg-surface border border-border rounded-xl p-4">
-              <div className="flex items-start justify-between gap-3 mb-2">
+              <div className="flex flex-col gap-2 mb-2 md:flex-row md:items-start md:justify-between md:gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm font-semibold text-text-primary truncate">{w.name}</h3>
@@ -166,7 +179,7 @@ export default function PromptWorkflowsPanel({ project }: Props = {}) {
                   </div>
                   <p className="mt-0.5 text-xs text-text-secondary">{w.description}</p>
                 </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
+                <div className="flex items-center gap-1 flex-wrap">
                   <button
                     type="button"
                     aria-label={`运行工作流 ${w.name}`}
