@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../../shared/FullScreenTextarea'
 import { useMemo, useState } from 'react'
 import { AlertTriangle, GitBranch, List, Plus, Save, Trash2, X } from 'lucide-react'
 import { nanoid } from 'nanoid'
@@ -395,11 +396,11 @@ export default function WorkflowEditor({
             </div>
             <div>
               <label className="mb-1 block text-[10px] text-text-muted">说明</label>
-              <textarea
+              <FullScreenTextarea
                 value={draft.description}
                 onChange={event => update({ description: event.target.value })}
                 rows={2}
-                className="w-full resize-y rounded border border-border bg-bg-base px-2 py-1.5 text-xs text-text-primary focus:border-accent focus:outline-none"
+                className="w-full rounded border border-border bg-bg-base px-2 py-1.5 text-xs text-text-primary focus:border-accent focus:outline-none"
               />
             </div>
           </div>
@@ -437,11 +438,11 @@ export default function WorkflowEditor({
               </div>
               <div>
                 <label className="mb-1 block text-[10px] text-text-muted">给 AI 的提示</label>
-                <textarea
+                <FullScreenTextarea
                   value={selectedStep.userHint ?? ''}
                   onChange={event => updateStepById(selectedStep.stepId, { userHint: event.target.value })}
                   rows={3}
-                  className="w-full resize-y rounded border border-border bg-bg-base px-2 py-1.5 text-xs text-text-primary focus:border-accent focus:outline-none"
+                  className="w-full rounded border border-border bg-bg-base px-2 py-1.5 text-xs text-text-primary focus:border-accent focus:outline-none"
                 />
               </div>
               <div>
@@ -512,7 +513,7 @@ export default function WorkflowEditor({
                         <label className="mb-1 block text-[10px] text-text-muted">
                           {binding.label}{binding.required ? ' *' : ''}
                         </label>
-                        <textarea
+                        <FullScreenTextarea
                           value={selectedStep.inputValues?.[binding.variable] ?? ''}
                           onChange={event => updateStepById(selectedStep.stepId, {
                             inputValues: {
@@ -521,7 +522,7 @@ export default function WorkflowEditor({
                             },
                           })}
                           rows={2}
-                          className="w-full resize-y rounded border border-border bg-bg-base px-2 py-1.5 text-xs text-text-primary focus:border-accent focus:outline-none"
+                          className="w-full rounded border border-border bg-bg-base px-2 py-1.5 text-xs text-text-primary focus:border-accent focus:outline-none"
                         />
                       </div>
                     ))}

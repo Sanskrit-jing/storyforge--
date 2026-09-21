@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
@@ -433,13 +434,13 @@ export default function ChapterOutlineWorkshop({
                       <Maximize2 className="h-3.5 w-3.5" />全屏查看
                     </button>
                   </div>
-                  <textarea
+                  <FullScreenTextarea
                     aria-label={`${OUTLINE_WORKSHOP_STAGE_META[activeStage].title}产物`}
                     value={displayedOutput}
                     disabled={running}
                     onChange={event => updateDraft(event.target.value)}
                     rows={activeStage === 'quality' || activeStage === 'scenes' ? 16 : 12}
-                    className="w-full resize-y rounded border border-border bg-bg-base px-3 py-2 text-xs leading-6 text-text-primary focus:border-accent focus:outline-none disabled:opacity-80"
+                    className="w-full rounded border border-border bg-bg-base px-3 py-2 text-xs leading-6 text-text-primary focus:border-accent focus:outline-none disabled:opacity-80"
                   />
                   {running && (
                     <button
@@ -583,12 +584,12 @@ export default function ChapterOutlineWorkshop({
             </div>
           }
         >
-          <textarea
+          <FullScreenTextarea
             value={displayedOutput}
             disabled={running}
             onChange={event => updateDraft(event.target.value)}
             rows={26}
-            className="w-full resize-y rounded border border-border bg-bg-base px-3 py-2 text-sm leading-7 text-text-primary focus:border-accent focus:outline-none disabled:opacity-80"
+            className="w-full rounded border border-border bg-bg-base px-3 py-2 text-sm leading-7 text-text-primary focus:border-accent focus:outline-none disabled:opacity-80"
           />
         </FullScreenViewer>
       )}

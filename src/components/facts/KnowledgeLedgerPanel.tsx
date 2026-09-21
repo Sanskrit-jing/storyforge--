@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 import { useEffect, useMemo, useState } from 'react'
 import { Brain, Check, Plus, X } from 'lucide-react'
 import type { KnowledgeAction, KnowledgeEventStatus, Project } from '../../lib/types'
@@ -113,11 +114,11 @@ export default function KnowledgeLedgerPanel({ project, onShowFacts }: {
         <input value={knowledgeKey} onChange={event => setKnowledgeKey(event.target.value)}
           placeholder="稳定知识 key，例如 enemy.true_identity"
           className="w-full px-2 py-1.5 text-xs rounded bg-bg-base border border-border text-text-primary placeholder:text-text-muted" />
-        <textarea value={statement} onChange={event => setStatement(event.target.value)}
+        <FullScreenTextarea value={statement} onChange={event => setStatement(event.target.value)}
           placeholder="世界中的真实命题，例如：黑衣人是城主"
           className="w-full min-h-[56px] px-2 py-1.5 text-xs rounded bg-bg-base border border-border text-text-primary placeholder:text-text-muted" />
         {action === 'mislearn' && (
-          <textarea value={belief} onChange={event => setBelief(event.target.value)}
+          <FullScreenTextarea value={belief} onChange={event => setBelief(event.target.value)}
             placeholder="角色实际相信的错误内容"
             className="w-full min-h-[48px] px-2 py-1.5 text-xs rounded bg-bg-base border border-border text-text-primary placeholder:text-text-muted" />
         )}

@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 import { useState, useEffect, useCallback } from 'react'
 import { Plus, Trash2, ChevronDown, ChevronRight, MapPin, GitBranch, List, Sparkles, Image, Copy, Check, Loader2 } from 'lucide-react'
 import { useGeographyStore } from '../../stores/project-singletons'
@@ -157,12 +158,12 @@ export default function GeographyPanel({ project }: Props) {
       {/* 总述 */}
       <div className="mb-6">
         <label className="block text-sm font-medium text-text-secondary mb-1">地理总述</label>
-        <textarea
+        <FullScreenTextarea
           value={overview}
           onChange={e => setOverview(e.target.value)}
           onBlur={handleSaveOverview}
           placeholder="描述这个世界的整体地理面貌、大陆分布、气候特征等..."
-          className="w-full h-32 p-3 bg-bg-surface border border-border rounded-lg text-text-primary text-sm resize-y focus:outline-none focus:border-accent"
+          className="w-full h-32 p-3 bg-bg-surface border border-border rounded-lg text-text-primary text-sm focus:outline-none focus:border-accent"
         />
       </div>
 
@@ -342,10 +343,10 @@ export default function GeographyPanel({ project }: Props) {
                     </div>
                     <div>
                       <label className="block text-xs text-text-muted mb-1">描述</label>
-                      <textarea
+                      <FullScreenTextarea
                         value={loc.description}
                         onChange={e => handleUpdateLocation(loc.id, { description: e.target.value })}
-                        className="w-full h-20 p-2 bg-bg-base border border-border rounded text-sm text-text-primary resize-y focus:outline-none focus:border-accent"
+                        className="w-full h-20 p-2 bg-bg-base border border-border rounded text-sm text-text-primary focus:outline-none focus:border-accent"
                       />
                     </div>
                     <div>

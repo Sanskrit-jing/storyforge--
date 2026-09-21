@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArchiveRestore,
@@ -377,14 +378,14 @@ export default function ChatCopilotPanel({
                   : `${candidate.payload.contextSources.length} 个输入来源`}
               </span>
             </div>
-            <textarea
+            <FullScreenTextarea
               aria-label={`${candidate.payload.label}候选内容`}
               value={candidate.event.content}
               disabled={copilot.busy}
               onChange={event => {
                 void copilot.updateCandidate(candidate.event.id!, event.target.value)
               }}
-              className={`h-64 w-full resize-y rounded border border-border bg-bg-surface p-2 text-[11px] leading-5 text-text-primary outline-none focus:border-accent disabled:opacity-60 ${
+              className={`h-64 w-full rounded border border-border bg-bg-surface p-2 text-[11px] leading-5 text-text-primary outline-none focus:border-accent disabled:opacity-60 ${
                 candidate.payload.agentId === 'world-origin' ? '' : 'font-mono'
               }`}
             />
@@ -482,7 +483,7 @@ export default function ChatCopilotPanel({
           void copilot.submit()
         }}
       >
-        <textarea
+        <FullScreenTextarea
           aria-label="告诉主 Agent 你的目标"
           value={copilot.authorRequest}
           disabled={copilot.loading || copilot.busy || copilot.pendingCandidates.length > 0 || viewingHistory}

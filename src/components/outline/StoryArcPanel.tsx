@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 /**
  * 故事线面板 — Phase B2
  * 展示/编辑全局故事线（主线+支线），支持 AI 生成
@@ -12,7 +13,6 @@ import { createAISessionKey } from '../../stores/ai-generation-session'
 import { buildStoryArcPrompt, parseStoryArcResult } from '../../lib/ai/adapters/story-arc-adapter'
 import { assembleContext } from '../../lib/registry/assemble-context'
 import { CInput } from '../shared/CompositionInput'
-import { CTextarea } from '../shared/CompositionInput'
 import AIStreamOutput from '../shared/AIStreamOutput'
 import { useDialog } from '../shared/Dialog'
 import type { Project, StoryArc, StoryArcType } from '../../lib/types'
@@ -279,12 +279,12 @@ function StoryArcEditor({ arc, stages, onUpdateArc, onUpdateStages, onDelete }: 
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
-        <CTextarea
+        <FullScreenTextarea
           value={editDesc}
           onChange={e => setEditDesc(e.target.value)}
           onBlur={() => onUpdateArc({ description: editDesc })}
           placeholder="故事线整体描述..."
-          className="w-full h-16 p-2 bg-bg-base border border-border rounded text-sm text-text-secondary resize-y focus:outline-none focus:border-accent"
+          className="w-full h-16 p-2 bg-bg-base border border-border rounded text-sm text-text-secondary focus:outline-none focus:border-accent"
         />
       </div>
 
@@ -405,11 +405,11 @@ function StageCard({ stage, index, total, onUpdate, onDelete }: {
           />
 
           {/* 描述 */}
-          <CTextarea
+          <FullScreenTextarea
             value={stage.description}
             onChange={e => onUpdate({ description: e.target.value })}
             placeholder="这个阶段发生什么..."
-            className="w-full h-20 p-2 bg-bg-base border border-border rounded text-sm text-text-secondary resize-y focus:outline-none focus:border-accent"
+            className="w-full h-20 p-2 bg-bg-base border border-border rounded text-sm text-text-secondary focus:outline-none focus:border-accent"
           />
 
           {/* 转折点 */}

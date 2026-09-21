@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../../shared/FullScreenTextarea'
 import { Upload, Sparkles, AlertTriangle, FileText, Wand2 } from 'lucide-react'
 import { ACCEPT_ATTR } from '../../../lib/doc-parser'
 import type { ChunkPlan } from '../../../lib/import/chunker'
@@ -65,12 +66,12 @@ export default function ImportUploadZone({
         </p>
       )}
 
-      <textarea
+      <FullScreenTextarea
         value={rawText}
         onChange={e => onRawTextChange(e.target.value)}
         placeholder="把文档内容粘贴在这里，或上方点「上传文件」——AI 会自己判断是设定集 / 成品小说 / 大纲，哪怕千万字也没事。"
         rows={10}
-        className="w-full px-3 py-2 bg-bg-base border border-border rounded text-sm text-text-primary font-mono resize-y focus:outline-none focus:border-accent"
+        className="w-full px-3 py-2 bg-bg-base border border-border rounded text-sm text-text-primary font-mono focus:outline-none focus:border-accent"
       />
 
       {/* 预切块预览 */}

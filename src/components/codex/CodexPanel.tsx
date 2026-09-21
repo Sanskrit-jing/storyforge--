@@ -1,10 +1,11 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 /**
  * Phase 35-a — 通用词条面板
  *
  * 三栏：领域分类树（左） → 词条列表（中） → 词条详情表单（右，由 fieldSchema 驱动）。
  * 支持内置分类播种、自定义分类增删、词条 CRUD、词条间 ref 关联。
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Plus, Trash2, EyeOff, Eye, FolderPlus, Boxes, Settings2, X,
   Sparkles, Loader2, ChevronLeft, Maximize2,
@@ -89,6 +90,11 @@ export default function CodexPanel({ project, fixedDomain, fixedCategoryKeys, em
   const [candidates, setCandidates] = useState<ReturnType<typeof parseCodexEntries>>([])
   const [selectedCandidates, setSelectedCandidates] = useState<Set<number>>(new Set())
   const [candidatesFullscreen, setCandidatesFullscreen] = useState(false)
+  // 拆分结果反馈：attempted 标记本轮已跑完；error 持久展示在弹窗内（toast 会自动消失，手机上容易漏看）
+  const [extractAttempted, setExtractAttempted] = useState(false)
+  const [extractError, setExtractError] = useState<string | null>(null)
+  // 候选区锚点：拆分完成后自动滚动过去（候选区渲染在按钮下方，窄屏一屏放不下，不滚会误以为「没有结果」）
+  const extractResultRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { loadAll(projectId) }, [projectId, loadAll])
 
@@ -217,9 +223,16 @@ export default function CodexPanel({ project, fixedDomain, fixedCategoryKeys, em
       toast.error('世界数据尚未加载完成，请稍后再试。')
       return
     }
+    // 全貌来源为空时仍打开弹窗（允许直接粘贴文本），但明确提示用户为什么没有自动带入内容，
+    // 避免手机上点开只看到一个空框而误以为「拆分失败」
+    if (!extractionSourceText.trim()) {
+      toast.info('上方「全貌」还没有内容，可在弹窗中直接粘贴要拆分的设定文本。')
+    }
     setExtractText(extractionSourceText)
     setCandidates([])
     setSelectedCandidates(new Set())
+    setExtractAttempted(false)
+    setExtractError(null)
     setExtractOpen(true)
   }
 
@@ -228,6 +241,8 @@ export default function CodexPanel({ project, fixedDomain, fixedCategoryKeys, em
     const effectiveConfig = resolveRequestConfig(aiConfig, { category: 'codex.extract' }).config
     if (!isAIConfigReady(effectiveConfig)) { toast.error(getAIConfigRequiredMessage(effectiveConfig)); return }
     setExtracting(true)
+    setExtractAttempted(false)
+    setExtractError(null)
     try {
       const schema = parseFieldSchema(activeCat.fieldSchema)
       const found: ReturnType<typeof parseCodexEntries> = []
@@ -253,7 +268,19 @@ export default function CodexPanel({ project, fixedDomain, fixedCategoryKeys, em
       )
       setCandidates(parsed)
       setSelectedCandidates(new Set(parsed.map((_, index) => index)))
+      setExtractAttempted(true)
       if (!parsed.length) toast.info('AI 未从这段内容中识别出可独立登记的词条。')
+      // 候选区在弹窗滚动区底部（窄屏一屏放不下）：完成后自动滚过去，避免误以为「没有结果」
+      window.setTimeout(() => {
+        const el = extractResultRef.current
+        if (el && typeof el.scrollIntoView === 'function') el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 80)
+    } catch (error) {
+      // 此前异常被静默吞掉：拆分失败时弹窗毫无反馈，用户误以为「拆分结束但没有结果」
+      const message = error instanceof Error ? error.message : String(error)
+      setExtractError(message)
+      setExtractAttempted(true)
+      toast.error(`拆分失败：${message}`)
     } finally {
       setExtracting(false)
     }
@@ -593,18 +620,24 @@ export default function CodexPanel({ project, fixedDomain, fixedCategoryKeys, em
         />
       )}
       {extractOpen && activeCat && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4" onClick={() => setExtractOpen(false)}>
-          <div className="w-full max-w-2xl max-h-[85vh] overflow-y-auto bg-bg-surface border border-border rounded-xl p-4 space-y-3" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
-              <div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 pt-[max(1rem,var(--safe-area-inset-top))] pb-[max(1rem,var(--safe-area-inset-bottom))] xl:pt-4 xl:pb-4" onClick={() => setExtractOpen(false)}>
+          <div className="w-full max-w-2xl max-h-[85dvh] overflow-y-auto bg-bg-surface border border-border rounded-xl p-4 space-y-3" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
                 <h3 className="font-semibold text-text-primary">AI 拆分「{activeCat.name}」词条</h3>
                 <p className="text-xs text-text-muted">AI 只生成候选，确认后才写入；同名词条会自动合并/跳过。</p>
               </div>
-              <button onClick={() => setExtractOpen(false)}><X className="w-4 h-4 text-text-muted" /></button>
+              <button onClick={() => setExtractOpen(false)} className="shrink-0 p-1"><X className="w-4 h-4 text-text-muted" /></button>
             </div>
-            <textarea value={extractText} onChange={e => setExtractText(e.target.value)} rows={8}
+            {!extractText.trim() && (
+              <p className="rounded border border-warning/30 bg-warning/5 px-2 py-1.5 text-xs text-warning">
+                没有可自动带入的「全貌」内容：请直接在下方粘贴要拆分的整段设定（右下角可全屏编辑），再点「开始拆分」。
+              </p>
+            )}
+            <FullScreenTextarea value={extractText} onChange={e => setExtractText(e.target.value)} rows={8}
+              fullscreenTitle="拆分来源文本"
               placeholder="粘贴或编辑要拆分的整段设定内容"
-              className="w-full p-3 bg-bg-base border border-border rounded-lg text-sm text-text-primary resize-y" />
+              className="w-full p-3 bg-bg-base border border-border rounded-lg text-sm text-text-primary" />
             <label className="flex items-start gap-2 text-xs text-text-secondary">
               <input type="checkbox" checked={supplementTags} onChange={e => setSupplementTags(e.target.checked)} className="mt-0.5 accent-accent" />
               <span>AI 补充词条标签 <span className="text-amber-400">⚠ 会增加少量 token 消耗</span></span>
@@ -614,10 +647,20 @@ export default function CodexPanel({ project, fixedDomain, fixedCategoryKeys, em
               {extracting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
               {extracting ? 'AI 拆分中…' : '开始拆分'}
             </button>
+            {!extracting && extractAttempted && extractError && (
+              <p className="rounded border border-error/30 bg-error/5 px-2 py-1.5 text-xs text-error">
+                拆分失败：{extractError}。请检查 AI 配置或网络后重试。
+              </p>
+            )}
+            {!extracting && extractAttempted && !extractError && candidates.length === 0 && (
+              <p className="rounded border border-warning/30 bg-warning/5 px-2 py-1.5 text-xs text-warning">
+                拆分完成，但没有产出候选词条：来源内容可能缺少可独立成条的设定，可补充细节后再试。
+              </p>
+            )}
             {candidates.length > 0 && (
-              <div className="space-y-2 border-t border-border pt-3">
+              <div ref={extractResultRef} className="space-y-2 border-t border-border pt-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-text-muted">候选词条 · 点击文字可直接编辑</span>
+                  <span className="text-xs text-text-muted">拆分完成 · 共 {candidates.length} 条候选 · 点击文字可直接编辑</span>
                   <button onClick={() => setCandidatesFullscreen(true)}
                     className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-text-muted hover:bg-bg-active hover:text-accent">
                     <Maximize2 className="w-3.5 h-3.5" /> 全屏查看

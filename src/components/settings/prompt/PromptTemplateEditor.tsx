@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../../shared/FullScreenTextarea'
 import { useState, useEffect, useMemo } from 'react'
 import {
   Save, Trash2, Copy, Download, CheckCircle2, Lock, Plus, X,
@@ -299,12 +300,12 @@ export default function PromptTemplateEditor({ template, onChanged, onDeleted }:
       {/* System Prompt */}
       <div className="bg-bg-surface border border-border rounded-xl p-4">
         <label className="block text-sm font-medium text-text-primary mb-2">System Prompt</label>
-        <textarea
+        <FullScreenTextarea
           value={draft.systemPrompt}
           onChange={e => update({ systemPrompt: e.target.value })}
           readOnly={isSystem}
           rows={8}
-          className={`w-full px-3 py-2 bg-bg-base border border-border rounded text-sm text-text-primary font-mono focus:outline-none focus:border-accent resize-y ${
+          className={`w-full px-3 py-2 bg-bg-base border border-border rounded text-sm text-text-primary font-mono focus:outline-none focus:border-accent ${
             isSystem ? 'opacity-70 cursor-not-allowed' : ''
           }`}
         />
@@ -318,12 +319,12 @@ export default function PromptTemplateEditor({ template, onChanged, onDeleted }:
             支持 <code className="px-1 bg-bg-base rounded">{'{{var}}'}</code> 和 <code className="px-1 bg-bg-base rounded">{'{{#if var}}...{{/if}}'}</code>
           </span>
         </div>
-        <textarea
+        <FullScreenTextarea
           value={draft.userPromptTemplate}
           onChange={e => update({ userPromptTemplate: e.target.value })}
           readOnly={isSystem}
           rows={12}
-          className={`w-full px-3 py-2 bg-bg-base border border-border rounded text-sm text-text-primary font-mono focus:outline-none focus:border-accent resize-y ${
+          className={`w-full px-3 py-2 bg-bg-base border border-border rounded text-sm text-text-primary font-mono focus:outline-none focus:border-accent ${
             isSystem ? 'opacity-70 cursor-not-allowed' : ''
           }`}
         />

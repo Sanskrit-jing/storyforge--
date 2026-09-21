@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { Sparkles, Brain, Loader2, Check, AlertCircle, Power } from 'lucide-react'
 import { useChapterStore } from '../../stores/chapter'
@@ -250,14 +251,14 @@ export default function StyleLearningPanel({ project }: Props) {
               下方可手动修改,失焦自动保存。
             </p>
 
-            <textarea
+            <FullScreenTextarea
               ref={taRef}
               value={draft}
               onChange={e => setDraft(e.target.value)}
               onBlur={() => { if (draft !== (profile.profile || '')) updateProfileText(draft) }}
               rows={16}
               placeholder="文风画像(可手动编辑,失焦自动保存)"
-              className="w-full px-3 py-2 bg-bg-base border border-border rounded text-sm text-text-secondary leading-relaxed resize-y focus:outline-none focus:border-accent font-mono"
+              className="w-full px-3 py-2 bg-bg-base border border-border rounded text-sm text-text-secondary leading-relaxed focus:outline-none focus:border-accent font-mono"
             />
           </div>
         )}

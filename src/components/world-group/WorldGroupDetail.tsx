@@ -1,7 +1,8 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 /**
  * 世界组详情面板 — 编辑单个世界的基础信息和穿越规则
  */
-import { CTextarea, CInput } from '../shared/CompositionInput'
+import { CInput } from '../shared/CompositionInput'
 import { useState, useEffect } from 'react'
 import { ArrowLeft, Save, Loader2, Sparkles, Check } from 'lucide-react'
 import { useWorldGroupStore } from '../../stores/world-group'
@@ -184,7 +185,7 @@ export default function WorldGroupDetail({ group, onBack }: Props) {
 
         <div>
           <label className="block text-xs text-text-muted mb-1">世界描述</label>
-          <CTextarea
+          <FullScreenTextarea
             value={form.description}
             onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
             rows={3}
@@ -231,7 +232,7 @@ export default function WorldGroupDetail({ group, onBack }: Props) {
 
           <div>
             <label className="block text-xs text-text-muted mb-1">进入条件</label>
-            <CTextarea
+            <FullScreenTextarea
               value={form.entryCondition}
               onChange={e => setForm(f => ({ ...f, entryCondition: e.target.value }))}
               rows={2}
@@ -242,7 +243,7 @@ export default function WorldGroupDetail({ group, onBack }: Props) {
 
           <div>
             <label className="block text-xs text-text-muted mb-1">能力限制</label>
-            <CTextarea
+            <FullScreenTextarea
               value={form.powerRestriction}
               onChange={e => setForm(f => ({ ...f, powerRestriction: e.target.value }))}
               rows={2}
@@ -253,7 +254,7 @@ export default function WorldGroupDetail({ group, onBack }: Props) {
 
           <div>
             <label className="block text-xs text-text-muted mb-1">可带走的能力/物品</label>
-            <CTextarea
+            <FullScreenTextarea
               value={form.takeawayRules}
               onChange={e => setForm(f => ({ ...f, takeawayRules: e.target.value }))}
               rows={2}
@@ -264,7 +265,7 @@ export default function WorldGroupDetail({ group, onBack }: Props) {
 
           <div>
             <label className="block text-xs text-text-muted mb-1">离开条件</label>
-            <CTextarea
+            <FullScreenTextarea
               value={form.exitCondition}
               onChange={e => setForm(f => ({ ...f, exitCondition: e.target.value }))}
               rows={2}

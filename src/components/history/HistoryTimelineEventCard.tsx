@@ -1,8 +1,9 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import type { Chapter, HistoricalEra, HistoricalTimelineEvent } from '../../lib/types'
 import { HISTORICAL_ERA_LABELS } from '../../lib/types/history'
 import { formatHistoricalYear } from '../../lib/history/year'
-import { CInput, CTextarea } from '../shared/CompositionInput'
+import { CInput } from '../shared/CompositionInput'
 import HistoryAgentWorkspace, { type HistoryAgentViewState } from './HistoryAgentWorkspace'
 import HistoryChapterPicker from './HistoryChapterPicker'
 
@@ -212,21 +213,21 @@ export default function HistoryTimelineEventCard({
               <label className="block text-[11px] text-text-muted mb-1">
                 📒 条目定稿（写作时会进入小说上下文；考据 / 风暴 agent 会读取作为核验或发散对象，但<span className="text-amber-500">不会直接覆盖</span>）
               </label>
-              <CTextarea
+              <FullScreenTextarea
                 value={event.description}
                 onChange={change => onChange({ description: change.target.value })}
                 placeholder="作者打磨好的最终条目内容，将作为 AI 写作的历史背景注入。例如：『公元 712 年，李隆基即位为唐玄宗，开元之治始。』"
-                className="w-full h-24 p-2 bg-bg-base border border-border rounded-lg text-xs text-text-primary resize-y focus:outline-none focus:border-accent"
+                className="w-full h-24 p-2 bg-bg-base border border-border rounded-lg text-xs text-text-primary focus:outline-none focus:border-accent"
               />
             </div>
 
             <div>
               <label className="block text-[11px] text-text-muted mb-1">对剧情/世界的影响 (可选)</label>
-              <CTextarea
+              <FullScreenTextarea
                 value={event.impact || ''}
                 onChange={change => onChange({ impact: change.target.value })}
                 placeholder="该事件如何推动主角剧情，或者对架空世界线产生什么影响..."
-                className="w-full h-20 p-2 bg-bg-base border border-border rounded-lg text-xs text-text-primary resize-y focus:outline-none focus:border-accent"
+                className="w-full h-20 p-2 bg-bg-base border border-border rounded-lg text-xs text-text-primary focus:outline-none focus:border-accent"
               />
             </div>
 
@@ -243,11 +244,11 @@ export default function HistoryTimelineEventCard({
               <label className="block text-[11px] text-text-muted mb-1">
                 🧭 概念与创作思路（提交给 AI 之前的初步设定；得到 agent 反馈后可在此处修正）
               </label>
-              <CTextarea
+              <FullScreenTextarea
                 value={event.conceptNote || ''}
                 onChange={change => onChange({ conceptNote: change.target.value })}
                 placeholder="描述你为这条事件想达到的效果、能接受的艺术改造或架空范围、希望保留 / 偏离的史实点。例如：『允许把火药提前到本朝；其余制度仍按真实唐制写。』"
-                className="w-full h-24 p-2 bg-bg-base border border-border rounded-lg text-xs text-text-primary resize-y focus:outline-none focus:border-accent"
+                className="w-full h-24 p-2 bg-bg-base border border-border rounded-lg text-xs text-text-primary focus:outline-none focus:border-accent"
               />
             </div>
 
@@ -256,22 +257,22 @@ export default function HistoryTimelineEventCard({
                 <label className="block text-[11px] text-text-muted mb-1">
                   📝 给「历史考据 agent」的补充说明
                 </label>
-                <CTextarea
+                <FullScreenTextarea
                   value={event.consultPrompt || ''}
                   onChange={change => onChange({ consultPrompt: change.target.value })}
                   placeholder="例：本作允许将火药提前到唐代，不必再纠结这一项；请重点检查官制称谓和时令风俗。"
-                  className="w-full h-20 p-2 bg-bg-base border border-border rounded-lg text-xs text-text-primary resize-y focus:outline-none focus:border-accent"
+                  className="w-full h-20 p-2 bg-bg-base border border-border rounded-lg text-xs text-text-primary focus:outline-none focus:border-accent"
                 />
               </div>
               <div>
                 <label className="block text-[11px] text-text-muted mb-1">
                   💡 给「头脑风暴 agent」的补充说明
                 </label>
-                <CTextarea
+                <FullScreenTextarea
                   value={event.stormPrompt || ''}
                   onChange={change => onChange({ stormPrompt: change.target.value })}
                   placeholder="例：重点发散街市气味、市井人物对白、能引出主角第一次进城的可能场景。"
-                  className="w-full h-20 p-2 bg-bg-base border border-border rounded-lg text-xs text-text-primary resize-y focus:outline-none focus:border-accent"
+                  className="w-full h-20 p-2 bg-bg-base border border-border rounded-lg text-xs text-text-primary focus:outline-none focus:border-accent"
                 />
               </div>
             </div>

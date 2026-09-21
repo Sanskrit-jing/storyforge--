@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 import { useState, useEffect } from 'react'
 import { useWorldviewStore } from '../../stores/worldview'
 import { useWorldGroupStore } from '../../stores/world-group'
@@ -53,35 +54,35 @@ export default function PowerSystemPanel({ project }: Props) {
         </div>
         <div>
           <label className="block text-sm font-medium text-text-secondary mb-1">体系描述</label>
-          <textarea
+          <FullScreenTextarea
             value={description}
             onChange={e => setDescription(e.target.value)}
             onBlur={handleSave}
             placeholder="简述力量体系的核心原理..."
             rows={3}
-            className="w-full p-3 bg-bg-surface border border-border rounded-lg text-text-primary text-sm resize-y focus:outline-none focus:border-accent"
+            className="w-full p-3 bg-bg-surface border border-border rounded-lg text-text-primary text-sm focus:outline-none focus:border-accent"
           />
         </div>
         <div>
           <label className="block text-sm font-medium text-text-secondary mb-1">等级列表</label>
-          <textarea
+          <FullScreenTextarea
             value={levels}
             onChange={e => setLevels(e.target.value)}
             onBlur={handleSave}
             placeholder="从低到高列出等级，每行一个..."
             rows={5}
-            className="w-full p-3 bg-bg-surface border border-border rounded-lg text-text-primary text-sm resize-y focus:outline-none focus:border-accent"
+            className="w-full p-3 bg-bg-surface border border-border rounded-lg text-text-primary text-sm focus:outline-none focus:border-accent"
           />
         </div>
         <div>
           <label className="block text-sm font-medium text-text-secondary mb-1">体系规则</label>
-          <textarea
+          <FullScreenTextarea
             value={rules}
             onChange={e => setRules(e.target.value)}
             onBlur={handleSave}
             placeholder="修炼条件、突破瓶颈、禁忌..."
             rows={4}
-            className="w-full p-3 bg-bg-surface border border-border rounded-lg text-text-primary text-sm resize-y focus:outline-none focus:border-accent"
+            className="w-full p-3 bg-bg-surface border border-border rounded-lg text-text-primary text-sm focus:outline-none focus:border-accent"
           />
         </div>
       </div>

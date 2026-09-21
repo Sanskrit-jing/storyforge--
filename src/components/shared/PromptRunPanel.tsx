@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, RotateCcw, Save, Settings2 } from 'lucide-react'
 import { usePromptStore } from '../../stores/prompt'
@@ -159,11 +160,11 @@ export default function PromptRunPanel({
                     <button onClick={() => onSystemOverrideChange(null)} className="text-accent hover:underline">还原</button>
                   )}
                 </div>
-                <textarea
+                <FullScreenTextarea
                   value={systemOverride ?? tpl.systemPrompt}
                   onChange={e => onSystemOverrideChange(e.target.value)}
                   rows={4}
-                  className="w-full px-2 py-1.5 bg-bg-base border border-border rounded text-text-primary font-mono text-[11px] resize-y focus:outline-none focus:border-accent"
+                  className="w-full px-2 py-1.5 bg-bg-base border border-border rounded text-text-primary font-mono text-[11px] focus:outline-none focus:border-accent"
                 />
               </div>
               <div>
@@ -173,11 +174,11 @@ export default function PromptRunPanel({
                     <button onClick={() => onUserOverrideChange(null)} className="text-accent hover:underline">还原</button>
                   )}
                 </div>
-                <textarea
+                <FullScreenTextarea
                   value={userOverride ?? tpl.userPromptTemplate}
                   onChange={e => onUserOverrideChange(e.target.value)}
                   rows={5}
-                  className="w-full px-2 py-1.5 bg-bg-base border border-border rounded text-text-primary font-mono text-[11px] resize-y focus:outline-none focus:border-accent"
+                  className="w-full px-2 py-1.5 bg-bg-base border border-border rounded text-text-primary font-mono text-[11px] focus:outline-none focus:border-accent"
                 />
               </div>
             </div>

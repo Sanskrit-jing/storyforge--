@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Plus, Trash2, ArrowRightLeft, ArrowRight, Users, GitFork, List, Sparkles, Check, X, AlertCircle } from 'lucide-react'
 import { useCharacterRelationStore } from '../../stores/character-relation'
@@ -6,7 +7,7 @@ import { useAIStream } from '../../hooks/useAIStream'
 import { createAISessionKey } from '../../stores/ai-generation-session'
 import { buildRelationExtractPrompt, parseRelationOutput, matchRelations, type MatchedRelation } from '../../lib/ai/relation-extractor'
 import type { Project, RelationType } from '../../lib/types'
-import { CInput, CTextarea } from '../shared/CompositionInput'
+import { CInput } from '../shared/CompositionInput'
 import { useToast } from '../shared/Toast'
 import { syncRelationToCharacterFields } from '../../lib/relations/relationship-summary'
 import RelationGraph from './RelationGraph'
@@ -193,9 +194,9 @@ export default function CharacterRelationPanel({ project }: Props) {
           <h1 className="text-2xl font-bold text-text-primary">角色关系</h1>
           <span className="text-sm text-text-muted">({projectRelations.length} 条关系)</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 [&>button]:shrink-0 [&>button]:whitespace-nowrap">
           {/* 视图切换 */}
-          <div className="flex bg-bg-elevated rounded-lg p-0.5">
+          <div className="flex shrink-0 flex-wrap bg-bg-elevated rounded-lg p-0.5 [&>button]:whitespace-nowrap">
             <button
               onClick={() => setView('graph')}
               className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-sm transition-colors ${
@@ -481,7 +482,7 @@ export default function CharacterRelationPanel({ project }: Props) {
               {isEditing && (
                 <div className="mt-3 pt-3 border-t border-border">
                   <label className="block text-xs text-text-muted mb-1">关系描述</label>
-                  <CTextarea
+                  <FullScreenTextarea
                     value={rel.description}
                     onChange={(e) => handleUpdateRelation(rel.id!, { description: e.target.value })}
                     rows={3}

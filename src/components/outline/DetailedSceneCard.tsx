@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 import { Trash2 } from 'lucide-react'
 import type { DetailedScene, ScenePace } from '../../lib/types'
 
@@ -54,7 +55,7 @@ export default function DetailedSceneCard({ scene, index, onUpdate, onDelete }: 
           <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>
-      <textarea
+      <FullScreenTextarea
         value={scene.summary}
         onChange={event => onUpdate({ summary: event.target.value })}
         placeholder="一句话场景概要..."
@@ -76,12 +77,12 @@ export default function DetailedSceneCard({ scene, index, onUpdate, onDelete }: 
         />
       </div>
       {scene.notes && (
-        <textarea
+        <FullScreenTextarea
           value={scene.notes}
           onChange={event => onUpdate({ notes: event.target.value })}
           placeholder="备注 / AI 建议..."
           rows={3}
-          className="w-full px-2 py-1 bg-bg-base border border-border rounded text-xs text-text-muted resize-y focus:outline-none focus:border-accent"
+          className="w-full px-2 py-1 bg-bg-base border border-border rounded text-xs text-text-muted focus:outline-none focus:border-accent"
         />
       )}
     </div>

@@ -4,11 +4,11 @@
  * 并可为当前项目历史章节批量建立语义索引(幂等可续跑)。隐私首选本地 Ollama(手稿不出本机)。
  */
 import { useState } from 'react'
-import { Sparkles, Loader2 } from 'lucide-react'
+import { Sparkles, Loader2, PlugZap } from 'lucide-react'
 import { useAIConfigStore } from '../../stores/ai-config'
 import { useProjectStore } from '../../stores/project'
 import { ensureChunkEmbeddings, rebuildProjectNarrativeSummaries, rebuildProjectRetrievalChunks } from '../../lib/retrieval/retrieval'
-import { isEmbeddingReady } from '../../lib/ai/adapters/embedding-adapter'
+import { embedTexts, isEmbeddingReady } from '../../lib/ai/adapters/embedding-adapter'
 import type { EmbeddingConfig } from '../../lib/types'
 
 // 本地代理 ↔ 直连 地址对（与聊天配置同套路：本地运行用代理绕 CORS，线上部署用直连）。
@@ -34,6 +34,36 @@ export default function EmbeddingConfigCard() {
   const [indexing, setIndexing] = useState(false)
   const [progress, setProgress] = useState('')
   const [msg, setMsg] = useState('')
+  // 草稿模式：输入/预设/代理切换只改草稿，点「保存」才写入持久层（与主配置自动保存不同，本卡有显式保存反馈）。
+  const [draft, setDraft] = useState<EmbeddingConfig>(() => embedding)
+  const [testing, setTesting] = useState(false)
+
+  const dirty = draft.provider !== embedding.provider
+    || draft.baseUrl !== embedding.baseUrl
+    || draft.model !== embedding.model
+    || draft.apiKey !== embedding.apiKey
+  const patchDraft = (partial: Partial<EmbeddingConfig>) => setDraft(d => ({ ...d, ...partial }))
+
+  const save = () => {
+    setEmbeddingConfig(draft)
+    setMsg('已保存。')
+  }
+
+  /** 发一条真实嵌入请求验证 Base URL/模型/Key/网络连通（不写入任何索引） */
+  const testConnection = async () => {
+    const base = draft.baseUrl.trim()
+    const model = draft.model.trim()
+    if (!base || !model) { setMsg('请先填写 Base URL 与嵌入模型'); return }
+    setTesting(true); setMsg('')
+    try {
+      const vecs = await embedTexts(['连接测试'], { ...draft, enabled: true })
+      setMsg(`连接成功：返回 ${vecs[0]?.length ?? 0} 维向量${dirty ? '。记得点「保存」生效。' : '。'}`)
+    } catch (e) {
+      setMsg(`连接失败：${e instanceof Error ? e.message : String(e)}（请检查 Base URL/模型/API Key 与网络；本地 Ollama 需已启动）`)
+    } finally {
+      setTesting(false)
+    }
+  }
 
   const buildIndex = async () => {
     if (!currentProjectId) return
@@ -99,7 +129,7 @@ export default function EmbeddingConfigCard() {
         <div className="space-y-3">
           <div className="flex flex-wrap gap-2">
             {PRESETS.map(p => (
-              <button key={p.label} onClick={() => setEmbeddingConfig(p.cfg)}
+              <button key={p.label} onClick={() => patchDraft(p.cfg)}
                 className="text-xs px-2.5 py-1.5 rounded-lg bg-bg-elevated border border-border text-text-secondary hover:text-accent hover:border-accent/50 transition-colors text-left">
                 <div className="font-medium">{p.label}</div>
                 <div className="text-[10px] text-text-muted">{p.note}</div>
@@ -107,24 +137,24 @@ export default function EmbeddingConfigCard() {
             ))}
           </div>
           <p className="text-[11px] text-text-muted">
-            国内预设默认走<strong>本地代理</strong>(本地运行工具时自动绕过浏览器 CORS);线上部署版请把 Base URL 改成服务商直连地址。没显卡选<strong>硅基流动/通义/智谱</strong>即可,云端算力、填 key 就能用。
+            点预设填入下方表单，确认后点「保存」生效。国内预设默认走<strong>本地代理</strong>(本地运行工具时自动绕过浏览器 CORS);线上部署版请把 Base URL 改成服务商直连地址。没显卡选<strong>硅基流动/通义/智谱</strong>即可,云端算力、填 key 就能用。
           </p>
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs text-text-secondary mb-1">Base URL</label>
-              <input type="text" value={embedding.baseUrl} onChange={e => setEmbeddingConfig({ baseUrl: e.target.value })}
+              <input type="text" value={draft.baseUrl} onChange={e => patchDraft({ baseUrl: e.target.value })}
                 className="w-full px-3 py-1.5 bg-bg-base border border-border rounded text-text-primary text-xs focus:outline-none focus:border-accent" />
               {(() => {
-                const pair = PROXY_PAIRS.find(p => embedding.baseUrl === p.proxy || embedding.baseUrl === p.direct)
+                const pair = PROXY_PAIRS.find(p => draft.baseUrl === p.proxy || draft.baseUrl === p.direct)
                 if (!pair) return null
-                const isProxy = embedding.baseUrl === pair.proxy
+                const isProxy = draft.baseUrl === pair.proxy
                 return isProxy ? (
-                  <button onClick={() => setEmbeddingConfig({ baseUrl: pair.direct })}
+                  <button onClick={() => patchDraft({ baseUrl: pair.direct })}
                     className="mt-1 text-[11px] px-2 py-1 rounded bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors">
                     🔗 切换到直连(线上部署用)
                   </button>
                 ) : (
-                  <button onClick={() => setEmbeddingConfig({ baseUrl: pair.proxy })}
+                  <button onClick={() => patchDraft({ baseUrl: pair.proxy })}
                     className="mt-1 text-[11px] px-2 py-1 rounded bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors">
                     🔄 切换到本地代理(本地运行用)
                   </button>
@@ -133,16 +163,29 @@ export default function EmbeddingConfigCard() {
             </div>
             <div>
               <label className="block text-xs text-text-secondary mb-1">嵌入模型</label>
-              <input type="text" value={embedding.model} onChange={e => setEmbeddingConfig({ model: e.target.value })}
+              <input type="text" value={draft.model} onChange={e => patchDraft({ model: e.target.value })}
                 className="w-full px-3 py-1.5 bg-bg-base border border-border rounded text-text-primary text-xs focus:outline-none focus:border-accent" />
             </div>
           </div>
           <div>
             <label className="block text-xs text-text-secondary mb-1">API Key <span className="text-text-muted">(本地 Ollama 可留空)</span></label>
-            <input type="password" value={embedding.apiKey} onChange={e => setEmbeddingConfig({ apiKey: e.target.value })}
+            <input type="password" value={draft.apiKey} onChange={e => patchDraft({ apiKey: e.target.value })}
               placeholder="sk-..." className="w-full px-3 py-1.5 bg-bg-base border border-border rounded text-text-primary text-xs focus:outline-none focus:border-accent" />
           </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button onClick={save} disabled={!dirty}
+              className="px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-lg hover:bg-accent/20 disabled:opacity-40 transition-colors">
+              保存
+            </button>
+            <button onClick={testConnection} disabled={testing}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-bg-elevated text-text-secondary rounded-lg hover:bg-bg-hover hover:text-accent disabled:opacity-50 transition-colors">
+              {testing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <PlugZap className="w-3.5 h-3.5" />}
+              {testing ? '测试中…' : '测试连接'}
+            </button>
+            {dirty && <span className="text-[11px] text-amber-500">有未保存更改</span>}
+          </div>
           <p className="text-[11px] text-text-muted">
+            「测试连接」发一条真实嵌入请求验证地址/模型/Key 连通(不写入索引);「建立检索索引」使用已保存的配置。
             语义向量幂等可续跑;新写章节在接受时会自动建索引。约百万字嵌一次,云端约 ¥0.2、本地免费。
           </p>
         </div>

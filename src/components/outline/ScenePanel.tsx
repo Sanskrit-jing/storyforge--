@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 /**
  * 场景拆分面板 — 从 DetailedOutlinePanel 提取，可嵌入章节编辑页
  *
@@ -271,7 +272,7 @@ export default function ScenePanel({ project, outlineNodeId, chapterTitle, chapt
                     <Trash2 className="w-3 h-3" />
                   </button>
                 </div>
-                <textarea
+                <FullScreenTextarea
                   value={s.summary}
                   onChange={e => updateScene(s.sceneId, { summary: e.target.value })}
                   placeholder="一句话场景概要..."
@@ -293,12 +294,12 @@ export default function ScenePanel({ project, outlineNodeId, chapterTitle, chapt
                   />
                 </div>
                 {s.notes && (
-                  <textarea
+                  <FullScreenTextarea
                     value={s.notes}
                     onChange={e => updateScene(s.sceneId, { notes: e.target.value })}
                     placeholder="备注 / AI 建议..."
                     rows={2}
-                    className="w-full px-2 py-1 bg-transparent border border-border rounded text-[10px] text-text-muted resize-y focus:outline-none focus:border-accent"
+                    className="w-full px-2 py-1 bg-transparent border border-border rounded text-[10px] text-text-muted focus:outline-none focus:border-accent"
                   />
                 )}
               </div>

@@ -173,9 +173,9 @@ export default function AIStreamOutput({
         )}
       </div>
 
-      {/* 操作栏 */}
-      <div className="flex items-center justify-between px-4 py-2 bg-bg-elevated border-t border-border">
-        <span className="text-text-muted text-xs flex items-center gap-2">
+      {/* 操作栏：按钮组强制单行横排（窄屏缩小按钮保证不折行），字数/token 信息放不下时折到按钮上方 */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2 bg-bg-elevated border-t border-border">
+        <span className="min-w-0 truncate text-text-muted text-xs flex items-center gap-2">
           {hasOutput && <span>{editedText !== null ? `已编辑 ${effectiveText.length} 字` : `${output.length} 字`}</span>}
           {tokenUsage ? (
             <span title={`输入 ${tokenUsage.inputTokens} + 输出 ${tokenUsage.outputTokens}`}>
@@ -187,7 +187,7 @@ export default function AIStreamOutput({
             </span>
           ) : null}
         </span>
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex flex-nowrap items-center justify-end gap-1.5 sm:gap-2 [&>button]:shrink-0 [&>button]:whitespace-nowrap [&>button]:gap-1 [&>button]:px-1.5 [&>button]:py-1 [&>button]:text-[11px] sm:[&>button]:gap-1.5 sm:[&>button]:px-2.5 sm:[&>button]:py-1.5 sm:[&>button]:text-xs">
           {/* 全屏查看：流式中也可看，生成完成后纯文本可编辑 */}
           {hasOutput && (
             <button
@@ -305,7 +305,7 @@ export default function AIStreamOutput({
           <textarea
             value={effectiveText}
             onChange={event => setEditedText(event.target.value)}
-            className="w-full min-h-[60vh] rounded border border-accent/30 bg-bg-base p-3 text-sm leading-relaxed text-text-primary outline-none resize-y"
+            className="w-full min-h-[60vh] rounded border border-accent/30 bg-bg-base p-3 text-sm leading-relaxed text-text-primary outline-none resize-none xl:resize-y"
           />
         </div>
       ) : (

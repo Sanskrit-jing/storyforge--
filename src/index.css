@@ -555,6 +555,14 @@ body {
 .tiptap-editor .sf-entity-ref-location { border-bottom-color: #3f8f78; }
 .tiptap-editor .sf-entity-ref-codex { border-bottom-color: #557bb8; }
 
+/* 语音朗读：当前朗读段落高亮（node decoration，不写入正文） */
+.tiptap-editor .sf-read-highlight {
+  border-radius: 0.375rem;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow: 0 0 0 0.25rem color-mix(in srgb, var(--accent) 12%, transparent);
+  transition: background 0.2s ease;
+}
+
 .tiptap-editor p {
   margin: 0 0 0.75em 0;
 }
@@ -819,6 +827,18 @@ html {
 .safe-area-pad-y {
   padding-top: var(--safe-area-inset-top);
   padding-bottom: var(--safe-area-inset-bottom);
+}
+
+/*
+ * 章节编辑器：手机竖屏 / HD（<1280px）下，正文上方的辅助信息块
+ * （本章目标 / 情感节拍 / AI 高级选项 / 上下文预算 / 章节摘要与计划对账）
+ * 可整体折叠，保证正文常驻可见。仅在容器带 sf-aux-collapsed 时隐藏标记块；
+ * PC（≥1280px）本规则不生效，块顺序与显隐与历史完全一致。
+ */
+@media (max-width: 1279px) {
+  .sf-aux-collapsed .sf-aux-block {
+    display: none;
+  }
 }
 
 @media (hover: none) {

@@ -43,7 +43,7 @@ export default function CodexCategoryFieldsEditor({ category, onClose, onSave }:
   }])
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 pt-[max(1rem,var(--safe-area-inset-top))] pb-[max(1rem,var(--safe-area-inset-bottom))] xl:pt-4 xl:pb-4" onClick={onClose}>
       <div className="bg-bg-surface border border-border rounded-xl w-full max-w-lg max-h-[80vh] flex flex-col" onClick={event => event.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <h3 className="text-sm font-bold text-text-primary flex items-center gap-2">

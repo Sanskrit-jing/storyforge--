@@ -18,8 +18,11 @@ async function mount(patch: Record<string, unknown> = {}) {
     saving: false,
     saveError: '',
     isSaved: false,
+    canRead: true,
+    reading: false,
     onStatusChange: vi.fn(),
     onToggleContext: vi.fn(),
+    onToggleReader: vi.fn(),
     onOpenCompare: vi.fn(),
     onSave: vi.fn(),
     ...patch,
@@ -35,6 +38,12 @@ async function mount(patch: Record<string, unknown> = {}) {
 function button(host: HTMLElement, label: string): HTMLButtonElement {
   const match = Array.from(host.querySelectorAll('button')).find(item => item.textContent?.trim() === label)
   if (!match) throw new Error(`missing button: ${label}`)
+  return match
+}
+
+function readerButton(host: HTMLElement): HTMLButtonElement {
+  const match = Array.from(host.querySelectorAll('button')).find(item => item.textContent?.includes('朗读'))
+  if (!match) throw new Error('missing reader button')
   return match
 }
 
@@ -68,6 +77,20 @@ describe('AUDIT-6 · 正文编辑器标题栏', () => {
     expect(props.onToggleContext).toHaveBeenCalledOnce()
     expect(props.onOpenCompare).toHaveBeenCalledOnce()
     expect(props.onSave).toHaveBeenCalledOnce()
+  })
+
+  it('朗读按钮转发开关命令；不支持/对照模式时隐藏；朗读中高亮', async () => {
+    const { host, props } = await mount()
+    const btn = readerButton(host)
+    expect(btn.getAttribute('aria-pressed')).toBe('false')
+    await act(async () => btn.click())
+    expect(props.onToggleReader).toHaveBeenCalledOnce()
+
+    const reading = await mount({ reading: true })
+    expect(readerButton(reading.host).getAttribute('aria-pressed')).toBe('true')
+
+    const hidden = await mount({ canRead: false })
+    expect(() => readerButton(hidden.host)).toThrow('missing reader button')
   })
 
   it('准确展示保存中、失败、已保存和禁用状态', async () => {

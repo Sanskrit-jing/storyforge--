@@ -1,5 +1,6 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 import { lazy, Suspense, useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { FileText, ClipboardList } from 'lucide-react'
+import { FileText, ClipboardList, ChevronDown, ChevronRight } from 'lucide-react'
 import { useChapterStore } from '../../stores/chapter'
 import { useOutlineStore } from '../../stores/outline'
 import { useStateCardStore } from '../../stores/state-card'
@@ -8,6 +9,11 @@ import { useAIStream } from '../../hooks/useAIStream'
 import { createAISessionKey } from '../../stores/ai-generation-session'
 import { useAutoSave } from '../../hooks/useAutoSave'
 import { useBeforeUnload } from '../../hooks/useBeforeUnload'
+import { useSpeechReader, type SpeechEngineKind } from '../../hooks/useSpeechReader'
+import { buildReaderItems, sortVoicesByNaturalness, type ReaderItem } from '../../lib/speech/speech-reader'
+import type { ReaderBarMode, ReaderBarPosition } from '../../lib/speech/reader-bar'
+import { loadReaderBarPosition, saveReaderBarPosition } from '../../lib/speech/reader-settings'
+import ChapterReaderBar from './ChapterReaderBar'
 import { buildChapterContentPrompt, buildContinuePrompt, buildPolishPrompt, buildExpandPrompt, buildDeAIPrompt } from '../../lib/ai/adapters/chapter-adapter'
 import { buildReviewRevisePrompt, type ReviewResult } from '../../lib/ai/adapters/review-adapter'
 import { buildStateExtractPrompt, parseStateDiffs } from '../../lib/ai/adapters/state-extract-adapter'
@@ -146,6 +152,17 @@ export default function ChapterEditor({ project, outlineNodeId }: Props) {
   const stateAI = useAIStream()
   const memoryAI = useAIStream()
   const editorRef = useRef<RichEditorHandle>(null)
+  // 语音朗读：朗读条目为点开始时的正文快照（朗读中编辑正文不影响队列顺序）
+  const reader = useSpeechReader()
+  const readerItemsRef = useRef<ReaderItem[]>([])
+  const readerActive = reader.snapshot.active
+  // 朗读控制条 UI 状态：展示模式（完整条/最小化悬浮球/隐藏）与拖动位置（跨会话记忆）
+  const [readerBarMode, setReaderBarMode] = useState<ReaderBarMode>('expanded')
+  const [readerBarPos, setReaderBarPos] = useState<ReaderBarPosition | null>(() => loadReaderBarPosition())
+  const handleReaderBarPositionChange = useCallback((pos: ReaderBarPosition) => {
+    setReaderBarPos(pos)
+    saveReaderBarPosition(pos)
+  }, [])
   const organizationAbortRef = useRef<AbortController | null>(null)
   const consistencyRunRef = useRef<ConsistencyAgentRun | null>(null)
   const memoryRebuildInFlightRef = useRef(new Set<number>())
@@ -156,6 +173,8 @@ export default function ChapterEditor({ project, outlineNodeId }: Props) {
   const [showOutlinePreview, setShowOutlinePreview] = useState(false)
   const [showReviewPanel, setShowReviewPanel] = useState(false)
   const [showNotePanel, setShowNotePanel] = useState(false)
+  // 手机竖屏 / HD：正文上方的辅助信息（本章目标/情感节拍/高级选项/章节摘要/计划对账）整体折叠，默认收起，正文常驻可见；PC 不受影响
+  const [auxCollapsed, setAuxCollapsed] = useState(true)
   const [compareSourceHtml, setCompareSourceHtml] = useState<string | null>(null)
   const [contextBudget, setContextBudget] = useState<ContextBudget | null>(null)
   const [transparentMode, setTransparentMode] = useState(false)
@@ -304,6 +323,40 @@ export default function ChapterEditor({ project, outlineNodeId }: Props) {
     setCompareSourceHtml(null)
   }, [currentChapter?.id])
 
+  // 切换章节必须硬停止朗读，避免上一章的语音继续播放、段落高亮错位
+  useEffect(() => {
+    reader.stop()
+    readerItemsRef.current = []
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 只在切章时停止，reader 方法身份稳定
+  }, [currentChapter?.id])
+
+  // 进入对照润色（只读视图）时停止朗读，该模式下也不显示朗读入口
+  useEffect(() => {
+    if (compareSourceHtml != null) reader.stop()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅在对照模式开关变化时处理
+  }, [compareSourceHtml != null])
+
+  // 语音环境不可用（系统无语音、Worker 连不上）时按引擎来源
+  // 给出针对性指引，避免朗读控制条因每条都失败而一闪过后无从排查
+  useEffect(() => {
+    if (!reader.snapshot.readerError) return
+    const guidance: Record<NonNullable<SpeechEngineKind>, string> = {
+      // Worker 已配置但请求失败：认证失败或服务不可达
+      remote:
+        '自部署 Worker 连接失败，无法朗读正文。请到 设置 → 朗读人声 检查：服务地址是否正确可访问（点「测试连接」验证）、API Key 是否与部署时一致；也可清空 Worker 地址，先回落浏览器内置语音。',
+      // 浏览器 Web Speech API 不可用：无系统语音/被策略拒绝
+      browser:
+        '当前浏览器或系统没有可用的语音合成服务，无法朗读正文。可在 设置 → 朗读人声 中配置自部署 Worker（微软在线 TTS 的 Neural 人声），或检查系统语音设置、更换浏览器后再试。',
+    }
+    void dialog
+      .alert({
+        title: '朗读不可用',
+        message: guidance[reader.engineKind ?? 'browser'],
+      })
+      .finally(() => reader.stop())
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 只在错误标记出现时提示一次
+  }, [reader.snapshot.readerError])
+
   useEffect(() => {
     let cancelled = false
     if (!currentChapter?.planReconciliation) {
@@ -324,6 +377,23 @@ export default function ChapterEditor({ project, outlineNodeId }: Props) {
       setSavedContent(html)
     }
   }, [currentChapter?.id, updateChapter]))
+
+  // 朗读开关：未朗读→以当前正文为快照从头朗读；朗读中→切换控制条显示/隐藏（停止用控制条 ×）
+  const handleToggleReader = useCallback(() => {
+    if (reader.snapshot.active) {
+      setReaderBarMode(mode => (mode === 'expanded' ? 'hidden' : 'expanded'))
+      return
+    }
+    const blocks = editorRef.current?.getReadingBlocks() ?? []
+    const items = buildReaderItems(blocks)
+    if (items.length === 0) {
+      void dialog.alert({ title: '暂不能朗读', message: '本章正文还没有内容，请先写作或生成正文。' })
+      return
+    }
+    readerItemsRef.current = items
+    setReaderBarMode('expanded')
+    reader.start(items, 0)
+  }, [reader, dialog])
 
   const outlineNode = currentChapter ? nodes.find(n => n.id === currentChapter.outlineNodeId) : null
   const chapterDisplay = useMemo(() => {
@@ -1146,10 +1216,13 @@ export default function ChapterEditor({ project, outlineNodeId }: Props) {
           saving={manualSaving}
           saveError={manualSaveError}
           isSaved={content === savedContent}
+          canRead={reader.supported && compareSourceHtml == null}
+          reading={readerActive}
           onStatusChange={status => {
             if (currentChapter.id) void updateChapter(currentChapter.id, { status })
           }}
           onToggleContext={() => setShowContext(!showContext)}
+          onToggleReader={handleToggleReader}
           onOpenCompare={() => { void handleOpenComparePolish() }}
           onSave={() => { void handleManualSave() }}
         />
@@ -1213,9 +1286,23 @@ export default function ChapterEditor({ project, outlineNodeId }: Props) {
       )}
       </div>
 
-      <div className="mx-auto max-w-6xl space-y-4 px-6 py-6">
+      <div className={`mx-auto max-w-6xl space-y-4 px-6 py-6 ${auxCollapsed ? 'sf-aux-collapsed' : ''}`}>
+      {/* 手机竖屏 / HD：辅助信息整体折叠（默认收起），与正文分开，正文常驻；
+          PC（≥1280px）不显示折叠头，带 sf-aux-block 标记的各块始终原样显示 */}
+      <button
+        type="button"
+        onClick={() => setAuxCollapsed(value => !value)}
+        className="flex w-full items-center justify-between gap-2 rounded-xl border border-border bg-bg-surface/50 px-3 py-2 text-left text-xs font-medium text-text-secondary xl:hidden"
+        aria-expanded={!auxCollapsed}
+      >
+        <span className="flex items-center gap-1.5">
+          {auxCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          本章辅助信息
+        </span>
+        <span className="text-[10px] text-text-muted">目标 · 情感节拍 · 高级选项 · 章节摘要/对账</span>
+      </button>
       {outlineNode && (
-        <div className="rounded-xl border border-border bg-bg-surface/70 px-5 py-4 shadow-theme-sm">
+        <div className="sf-aux-block rounded-xl border border-border bg-bg-surface/70 px-5 py-4 shadow-theme-sm">
           <div className="flex items-start gap-3">
             <span className="mt-1 text-accent">☰</span>
             <div>
@@ -1288,6 +1375,7 @@ export default function ChapterEditor({ project, outlineNodeId }: Props) {
       {/* AI 输出 */}
       {/* A3: 情感节拍卡 */}
       {outlineNode && currentChapter?.id && (
+        <div className="sf-aux-block">
         <EmotionBeatCard
           projectId={project.id!}
           chapterId={currentChapter.id}
@@ -1300,10 +1388,11 @@ export default function ChapterEditor({ project, outlineNodeId }: Props) {
             return htmlToPlainText(prev?.content || '').slice(-500)
           })()}
         />
+        </div>
       )}
 
       {/* Phase 21.3: 上下文预算条 */}
-      <details className="mb-2 rounded-lg border border-border bg-bg-surface/60 px-3 py-2 text-xs">
+      <details className="sf-aux-block mb-2 rounded-lg border border-border bg-bg-surface/60 px-3 py-2 text-xs">
         <summary className="cursor-pointer text-text-secondary hover:text-text-primary">
           AI 生成高级选项
           {transparentMode && <span className="ml-2 text-accent">透明模式已开启</span>}
@@ -1328,7 +1417,7 @@ export default function ChapterEditor({ project, outlineNodeId }: Props) {
       </details>
 
       {contextBudget && (
-        <div className="mb-2">
+        <div className="sf-aux-block mb-2">
           <ContextBudgetBar budget={contextBudget} compact={ai.isStreaming} />
         </div>
       )}
@@ -1387,6 +1476,7 @@ export default function ChapterEditor({ project, outlineNodeId }: Props) {
         </div>
       )}
 
+      <div className="sf-aux-block">
       <ChapterMemoryPanel
         summary={currentChapter.summary}
         hasText={!!plainText}
@@ -1397,6 +1487,7 @@ export default function ChapterEditor({ project, outlineNodeId }: Props) {
         onConfirmActualProgress={() => { void handleConfirmActualProgress() }}
         onApplyOutlineCandidate={() => { void handleApplyOutlineCandidate() }}
       />
+      </div>
 
       {/* TipTap 富文本编辑器 / 对照润色模式 */}
       {compareSourceHtml != null ? (
@@ -1431,6 +1522,7 @@ export default function ChapterEditor({ project, outlineNodeId }: Props) {
           minHeight={560}
           className="sf-manuscript-editor border-0 bg-transparent shadow-none"
           entityReferences={entityReferences}
+          readingBlockPos={readerActive ? readerItemsRef.current[reader.snapshot.index]?.blockPos ?? null : null}
           contentHeader={
             <div className="mb-8 mt-8 text-center">
               <p className="text-[11px] uppercase tracking-[0.28em] text-text-muted">
@@ -1460,17 +1552,39 @@ export default function ChapterEditor({ project, outlineNodeId }: Props) {
         disabled={ai.isStreaming}
       />}
 
+      {/* 正文语音朗读控制条（可拖动/最小化/隐藏） */}
+      {compareSourceHtml == null && readerActive && readerBarMode !== 'hidden' && (
+        <ChapterReaderBar
+          snapshot={reader.snapshot}
+          voices={sortVoicesByNaturalness(reader.voices.filter(voice => voice.lang?.toLowerCase().startsWith('zh')))}
+          mode={readerBarMode}
+          position={readerBarPos}
+          onModeChange={setReaderBarMode}
+          onPositionChange={handleReaderBarPositionChange}
+          onTogglePause={reader.togglePause}
+          onPrev={reader.prev}
+          onNext={reader.next}
+          onStop={() => {
+            reader.stop()
+            readerItemsRef.current = []
+          }}
+          onRateChange={reader.setRate}
+          onVoiceChange={reader.setVoice}
+          onPreviewVoice={reader.previewVoice}
+        />
+      )}
+
       {/* 作者笔记 */}
       <div className="mt-3">
         <label className="block text-xs text-text-muted mb-1">
           <FileText className="w-3 h-3 inline mr-1" />作者笔记
         </label>
-        <textarea
+        <FullScreenTextarea
           value={currentChapter.notes || ''}
           onChange={e => currentChapter.id && updateChapter(currentChapter.id, { notes: e.target.value })}
           placeholder="写给自己的备忘..."
           rows={2}
-          className="w-full p-2 bg-bg-elevated border border-border rounded text-xs text-text-muted resize-y focus:outline-none focus:border-accent"
+          className="w-full p-2 bg-bg-elevated border border-border rounded text-xs text-text-muted focus:outline-none focus:border-accent"
         />
       </div>
 

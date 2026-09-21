@@ -42,6 +42,11 @@ export interface RichEditorHandle {
   getPlainText: () => string
   /** 获取字数（去空白字符） */
   getWordCount: () => number
+  /**
+   * 获取正文朗读块（顶层段落/标题等块级节点，跳过空块）。
+   * pos 为 ProseMirror 文档位置，可回传给 readingBlockPos 做段落高亮。
+   */
+  getReadingBlocks: () => Array<{ pos: number; text: string }>
   /** 设置全部内容（HTML 或纯文本皆可，内部会自动转换） */
   setContent: (content: string) => void
   /** 聚焦编辑器 */
@@ -65,6 +70,8 @@ interface Props {
   showToolbar?: boolean
   /** 项目实体档案；提供 @ 补全和正文内悬浮查看，不写入正文 HTML。 */
   entityReferences?: readonly EditorEntityReference[]
+  /** 语音朗读时需要高亮的正文块位置（ProseMirror pos）；null = 无高亮 */
+  readingBlockPos?: number | null
   /** 工具栏与正文之间的内容（例如章节标题）；用于让格式工具栏固定在最上方 */
   contentHeader?: ReactNode
 }
@@ -75,7 +82,7 @@ interface Props {
  * - value 允许传入旧的纯文本（自动包装为 <p>），新内容以 HTML 保存
  */
 const RichEditor = forwardRef<RichEditorHandle, Props>(function RichEditor(
-  { value, onChange, placeholder = '开始写作...', className = '', minHeight = 400, disabled = false, showToolbar = true, entityReferences = [], contentHeader },
+  { value, onChange, placeholder = '开始写作...', className = '', minHeight = 400, disabled = false, showToolbar = true, entityReferences = [], readingBlockPos = null, contentHeader },
   ref,
 ) {
   // 避免 onChange 引起 editor 重建
@@ -90,6 +97,9 @@ const RichEditor = forwardRef<RichEditorHandle, Props>(function RichEditor(
   const [hoveredEntity, setHoveredEntity] = useState<{ reference: EditorEntityReference; x: number; y: number } | null>(null)
   const entityReferencesRef = useRef(entityReferences)
   entityReferencesRef.current = entityReferences
+  // 语音朗读当前段落位置：插件经 ref 读取，避免随朗读进度反复注册插件
+  const readingBlockPosRef = useRef<number | null>(readingBlockPos)
+  readingBlockPosRef.current = readingBlockPos
   const entityCandidates = useMemo(
     () => entityMenu ? filterEditorEntityReferences(entityReferences, entityMenu.query) : [],
     [entityMenu, entityReferences],
@@ -260,6 +270,46 @@ const RichEditor = forwardRef<RichEditorHandle, Props>(function RichEditor(
     }
   }, [editor, entityReferences])
 
+  // 语音朗读当前段落高亮（node 级 decoration，不改正文数据）
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return
+    const pluginKey = new PluginKey('storyforgeReadingBlock')
+    const plugin = new Plugin({
+      key: pluginKey,
+      props: {
+        decorations(state) {
+          const targetPos = readingBlockPosRef.current
+          if (targetPos == null) return DecorationSet.empty
+          let decoration: Decoration | null = null
+          state.doc.descendants((node, pos) => {
+            if (decoration) return false
+            if (pos === targetPos && (node.isBlock || node.isTextblock)) {
+              decoration = Decoration.node(pos, pos + node.nodeSize, { class: 'sf-read-highlight' })
+            }
+            return undefined
+          })
+          return decoration ? DecorationSet.create(state.doc, [decoration]) : DecorationSet.empty
+        },
+      },
+    })
+    editor.registerPlugin(plugin)
+    return () => {
+      if (!editor.isDestroyed) editor.unregisterPlugin(pluginKey)
+    }
+  }, [editor])
+
+  // 朗读段落变化：触发 decoration 重算并把当前段滚动到编辑区中部
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return
+    // 空事务仅驱动装饰重算（doc 未变，不触发 onUpdate/不落库）
+    editor.view.dispatch(editor.state.tr.setMeta('sf-reading-highlight', readingBlockPos ?? null))
+    if (readingBlockPos == null) return
+    const dom = editor.view.nodeDOM(readingBlockPos)
+    if (dom instanceof HTMLElement) {
+      dom.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }
+  }, [editor, readingBlockPos])
+
   const insertEntityReference = useCallback((reference: EditorEntityReference) => {
     if (!editor || editor.isDestroyed || !entityMenu) return
     editor.chain().focus().deleteRange({ from: entityMenu.from, to: entityMenu.to }).insertContent({
@@ -355,6 +405,18 @@ const RichEditor = forwardRef<RichEditorHandle, Props>(function RichEditor(
       getHTML: () => editor && !editor.isDestroyed ? editor.getHTML() : '',
       getPlainText: () => editor && !editor.isDestroyed ? editor.getText() : '',
       getWordCount: () => countWords(editor && !editor.isDestroyed ? editor.getText() : ''),
+      getReadingBlocks: () => {
+        if (!editor || editor.isDestroyed) return []
+        const blocks: Array<{ pos: number; text: string }> = []
+        // 只取文档顶层块（段落/标题/引用/列表容器），与视觉段落顺序一致
+        editor.state.doc.descendants((node, pos, parent) => {
+          if (parent !== editor.state.doc) return false
+          const text = node.textContent.replace(/\s+/g, ' ').trim()
+          if (text) blocks.push({ pos, text })
+          return false
+        })
+        return blocks
+      },
       setContent: (content) => {
         if (!editor || editor.isDestroyed) return
         editor.commands.setContent(toHtml(content), { emitUpdate: false })
@@ -490,7 +552,7 @@ const RichEditor = forwardRef<RichEditorHandle, Props>(function RichEditor(
 
       {/* 编辑区 */}
       <div
-        className="overflow-y-auto resize-y"
+        className="overflow-y-auto resize-none xl:resize-y"
         style={{ minHeight }}
         onClick={() => editor.commands.focus()}
       >

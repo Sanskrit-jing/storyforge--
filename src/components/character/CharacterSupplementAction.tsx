@@ -99,8 +99,9 @@ export default function CharacterSupplementAction({ character, projectId, worldG
           : 'flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-accent border border-border rounded hover:border-accent/50 transition-colors'}
         title={`AI 补全设定${empties ? `（缺 ${empties} 项）` : ''}`}
       >
-        <Wand2 className="w-4 h-4" />
-        {!compact && <span>AI 补全设定{empties > 0 && <span className="text-accent ml-0.5">·缺{empties}</span>}</span>}
+        <Wand2 className="w-4 h-4 shrink-0" />
+        {/* 手机竖屏 / HD 只显示图标，避免和头像/折叠/删除按钮一起把一句话简介压成窄列；PC 恢复完整文字 */}
+        {!compact && <span className="hidden whitespace-nowrap xl:inline">AI 补全设定{empties > 0 && <span className="text-accent ml-0.5">·缺{empties}</span>}</span>}
       </button>
 
       {open && (

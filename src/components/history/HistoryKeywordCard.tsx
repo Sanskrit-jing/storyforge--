@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import type {
   Chapter,
@@ -6,7 +7,7 @@ import type {
   HistoricalKeywordCategory,
 } from '../../lib/types'
 import { HISTORICAL_ERA_LABELS, KEYWORD_CATEGORY_LABELS } from '../../lib/types/history'
-import { CInput, CTextarea } from '../shared/CompositionInput'
+import { CInput } from '../shared/CompositionInput'
 import HistoryAgentWorkspace, { type HistoryAgentViewState } from './HistoryAgentWorkspace'
 import HistoryChapterPicker from './HistoryChapterPicker'
 
@@ -146,11 +147,11 @@ export default function HistoryKeywordCard({
             <label className="block text-[11px] text-text-muted mb-1">
               📒 条目定稿（写作时会进入小说上下文；考据 / 风暴 agent 会读取作为核验或发散对象，但<span className="text-amber-500">不会直接覆盖</span>）
             </label>
-            <CTextarea
+            <FullScreenTextarea
               value={keyword.description}
               onChange={event => onChange({ description: event.target.value })}
               placeholder="作者打磨好的最终条目内容，将作为 AI 写作的历史细节注入。例如：『飞钱：唐宪宗时期出现的汇兑凭证，由邸店或商号代为兑付。』"
-              className="w-full h-24 p-2 bg-bg-base border border-border rounded-lg text-xs text-text-primary resize-y focus:outline-none focus:border-accent"
+              className="w-full h-24 p-2 bg-bg-base border border-border rounded-lg text-xs text-text-primary focus:outline-none focus:border-accent"
             />
           </div>
 
@@ -168,11 +169,11 @@ export default function HistoryKeywordCard({
             <label className="block text-[11px] text-text-muted mb-1">
               🧭 概念与创作思路（提交给 AI 之前的初步设定；得到 agent 反馈后可在此处修正）
             </label>
-            <CTextarea
+            <FullScreenTextarea
               value={keyword.conceptNote || ''}
               onChange={event => onChange({ conceptNote: event.target.value })}
               placeholder="描述你想为这个关键词达到的效果、能接受的艺术改造或架空范围。例如：『允许把飞钱的普及度写得比真实高一些；想要市井使用场景。』"
-              className="w-full h-24 p-2 bg-bg-base border border-border rounded-lg text-xs text-text-primary resize-y focus:outline-none focus:border-accent"
+              className="w-full h-24 p-2 bg-bg-base border border-border rounded-lg text-xs text-text-primary focus:outline-none focus:border-accent"
             />
           </div>
 
@@ -181,22 +182,22 @@ export default function HistoryKeywordCard({
               <label className="block text-[11px] text-text-muted mb-1">
                 📝 给「历史考据 agent」的补充说明
               </label>
-              <CTextarea
+              <FullScreenTextarea
                 value={keyword.consultPrompt || ''}
                 onChange={event => onChange({ consultPrompt: event.target.value })}
                 placeholder="例：本作允许把飞钱写得普及度更高；请重点检查兑付流程和涉事衙门称谓。"
-                className="w-full h-20 p-2 bg-bg-base border border-border rounded-lg text-xs text-text-primary resize-y focus:outline-none focus:border-accent"
+                className="w-full h-20 p-2 bg-bg-base border border-border rounded-lg text-xs text-text-primary focus:outline-none focus:border-accent"
               />
             </div>
             <div>
               <label className="block text-[11px] text-text-muted mb-1">
                 💡 给「头脑风暴 agent」的补充说明
               </label>
-              <CTextarea
+              <FullScreenTextarea
                 value={keyword.stormPrompt || ''}
                 onChange={event => onChange({ stormPrompt: event.target.value })}
                 placeholder="例：重点发散市井使用场景与可能的诈骗冲突。"
-                className="w-full h-20 p-2 bg-bg-base border border-border rounded-lg text-xs text-text-primary resize-y focus:outline-none focus:border-accent"
+                className="w-full h-20 p-2 bg-bg-base border border-border rounded-lg text-xs text-text-primary focus:outline-none focus:border-accent"
               />
             </div>
           </div>

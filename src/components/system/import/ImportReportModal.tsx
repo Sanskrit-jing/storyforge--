@@ -45,8 +45,8 @@ export default function ImportReportModal({
   const codexCandidates = session.merged?.codexCandidates?.length || 0
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-      <div className="bg-bg-surface border border-border rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 pt-[max(1rem,var(--safe-area-inset-top))] pb-[max(1rem,var(--safe-area-inset-bottom))] xl:pt-4 xl:pb-4">
+      <div className="bg-bg-surface border border-border rounded-2xl max-w-2xl w-full max-h-[90dvh] overflow-hidden flex flex-col xl:max-h-[90vh]">
         {/* Header */}
         <div className={`flex items-center justify-between px-5 py-4 border-b border-border ${
           allSuccess ? 'bg-success/10' : 'bg-warning/10'

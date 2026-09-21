@@ -81,8 +81,9 @@ export default function StatePanel({ project, onOpenInventory }: Props) {
 
   return (
     <div className="max-w-5xl space-y-5">
-      <div className="flex items-start justify-between gap-3 pb-4 border-b border-border/40">
-        <div>
+      {/* 手机竖屏 / HD：标题描述占满整行，按钮换行右对齐；PC 保持单行 */}
+      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 pb-4 border-b border-border/40">
+        <div className="min-w-0 flex-1">
           <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
             <UserRound className="w-5 h-5" /> 角色状态卡
           </h2>
@@ -93,7 +94,7 @@ export default function StatePanel({ project, onOpenInventory }: Props) {
         <button
           onClick={handleExportText}
           disabled={!characterCards.length}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-border bg-bg-elevated text-text-secondary disabled:opacity-40"
+          className="w-auto justify-self-end self-start xl:shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-border bg-bg-elevated text-text-secondary disabled:opacity-40"
         >
           <Download className="w-3.5 h-3.5" /> 导出
         </button>

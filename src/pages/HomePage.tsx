@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../components/shared/FullScreenTextarea'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { Flame, Github, X, ChevronDown, ChevronRight, FolderOpen, Loader2 } from 'lucide-react'
@@ -448,7 +449,7 @@ export default function HomePage() {
               {/* 简介 */}
               <div>
                 <label className="block text-xs text-text-secondary mb-1.5">简介</label>
-                <textarea
+                <FullScreenTextarea
                   value={form.description}
                   onChange={e => setForm({ ...form, description: e.target.value })}
                   placeholder="一句话描述你的故事…"

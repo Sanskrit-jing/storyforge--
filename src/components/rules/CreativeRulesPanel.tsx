@@ -1,4 +1,4 @@
-import { CTextarea } from '../shared/CompositionInput'
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 import { useState, useEffect, useCallback } from 'react'
 import { Plus, X, Sparkles, Microscope, Check } from 'lucide-react'
 import { useCreativeRulesStore } from '../../stores/project-singletons'
@@ -199,12 +199,12 @@ export default function CreativeRulesPanel({ project }: Props) {
             <Sparkles className="w-3 h-3" /> AI 建议
           </button>
         </div>
-        <CTextarea
+        <FullScreenTextarea
           value={writingStyle}
           onChange={e => setWritingStyle(e.target.value)}
           onBlur={() => saveField({ writingStyle })}
           placeholder="描述期望的写作风格，如：简洁凌厉、文笔华丽、幽默诙谐、冷峻写实..."
-          className="w-full h-24 p-3 bg-bg-surface border border-border rounded-lg text-text-primary text-sm resize-y focus:outline-none focus:border-accent"
+          className="w-full h-24 p-3 bg-bg-surface border border-border rounded-lg text-text-primary text-sm focus:outline-none focus:border-accent"
         />
         {currentAITarget === 'writingStyle' && (ai.output || ai.isStreaming || ai.error) && (
           <div className="mt-2">
@@ -253,12 +253,12 @@ export default function CreativeRulesPanel({ project }: Props) {
             <Sparkles className="w-3 h-3" /> AI 建议
           </button>
         </div>
-        <CTextarea
+        <FullScreenTextarea
           value={toneAndMood}
           onChange={e => setToneAndMood(e.target.value)}
           onBlur={() => saveField({ toneAndMood })}
           placeholder="描述作品的整体基调和氛围，如：黑暗压抑、热血激昂、温馨治愈..."
-          className="w-full h-20 p-3 bg-bg-surface border border-border rounded-lg text-text-primary text-sm resize-y focus:outline-none focus:border-accent"
+          className="w-full h-20 p-3 bg-bg-surface border border-border rounded-lg text-text-primary text-sm focus:outline-none focus:border-accent"
         />
         {currentAITarget === 'toneAndMood' && (ai.output || ai.isStreaming || ai.error) && (
           <div className="mt-2">
@@ -354,12 +354,12 @@ export default function CreativeRulesPanel({ project }: Props) {
             <Sparkles className="w-3 h-3" /> AI 建议
           </button>
         </div>
-        <CTextarea
+        <FullScreenTextarea
           value={specialRequirements}
           onChange={e => setSpecialRequirements(e.target.value)}
           onBlur={() => saveField({ specialRequirements })}
           placeholder="其他需要 AI 遵守的特殊创作要求..."
-          className="w-full h-24 p-3 bg-bg-surface border border-border rounded-lg text-text-primary text-sm resize-y focus:outline-none focus:border-accent"
+          className="w-full h-24 p-3 bg-bg-surface border border-border rounded-lg text-text-primary text-sm focus:outline-none focus:border-accent"
         />
         {currentAITarget === 'specialRequirements' && (ai.output || ai.isStreaming || ai.error) && (
           <div className="mt-2">

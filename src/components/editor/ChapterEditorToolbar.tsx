@@ -54,32 +54,34 @@ export default function ChapterEditorToolbar({
   onToggleNotePanel,
   onCustomInstructionChange,
 }: Props) {
-  // 窄屏（手机竖屏）紧凑化内边距与间距，md 及以上保持原布局
+  // 手机竖屏 / HD（<1280px）：动作按钮收进 3 列（HD 4 列）等分网格，整齐对齐；
+  // 自定义指令独占整行。PC（≥1280px）通过 xl:contents 让包裹层“透明”，完全恢复历史 flex-wrap 布局。
   return (
     <div className="flex flex-wrap gap-1.5 border-t border-border/60 bg-bg-surface/35 px-3 py-2 md:gap-2 md:px-6 md:py-3">
+      <div className="grid w-full grid-cols-3 gap-1.5 md:grid-cols-4 xl:contents">
       <button onClick={onGenerate} disabled={isStreaming}
-        className="rounded-md border border-accent/40 bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent hover:bg-accent/20 disabled:opacity-50 transition-colors md:px-3 md:py-1.5">
+        className="flex w-full items-center justify-center whitespace-nowrap rounded-md border border-accent/40 bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent hover:bg-accent/20 disabled:opacity-50 transition-colors md:px-3 md:py-1.5 xl:w-auto">
         ✨ 生成正文
       </button>
       <button onClick={onContinue} disabled={isStreaming || !hasText}
-        className="rounded-md border border-border bg-bg-elevated px-2.5 py-1 text-xs text-text-secondary hover:text-text-primary disabled:opacity-50 transition-colors md:px-3 md:py-1.5">
+        className="flex w-full items-center justify-center whitespace-nowrap rounded-md border border-border bg-bg-elevated px-2.5 py-1 text-xs text-text-secondary hover:text-text-primary disabled:opacity-50 transition-colors md:px-3 md:py-1.5 xl:w-auto">
         📝 续写
       </button>
       <button onClick={onExpand} disabled={isStreaming}
-        className="rounded-md border border-border bg-bg-elevated px-2.5 py-1 text-xs text-text-secondary hover:text-text-primary disabled:opacity-50 transition-colors md:px-3 md:py-1.5">
+        className="flex w-full items-center justify-center whitespace-nowrap rounded-md border border-border bg-bg-elevated px-2.5 py-1 text-xs text-text-secondary hover:text-text-primary disabled:opacity-50 transition-colors md:px-3 md:py-1.5 xl:w-auto">
         📖 扩写
       </button>
       <button onClick={onPolish} disabled={isStreaming}
-        className="rounded-md border border-border bg-bg-elevated px-2.5 py-1 text-xs text-text-secondary hover:text-text-primary disabled:opacity-50 transition-colors md:px-3 md:py-1.5">
+        className="flex w-full items-center justify-center whitespace-nowrap rounded-md border border-border bg-bg-elevated px-2.5 py-1 text-xs text-text-secondary hover:text-text-primary disabled:opacity-50 transition-colors md:px-3 md:py-1.5 xl:w-auto">
         💎 润色
       </button>
       <button onClick={onDeAI} disabled={isStreaming}
-        className="rounded-md border border-border bg-bg-elevated px-2.5 py-1 text-xs text-text-secondary hover:text-text-primary disabled:opacity-50 transition-colors md:px-3 md:py-1.5">
+        className="flex w-full items-center justify-center whitespace-nowrap rounded-md border border-border bg-bg-elevated px-2.5 py-1 text-xs text-text-secondary hover:text-text-primary disabled:opacity-50 transition-colors md:px-3 md:py-1.5 xl:w-auto">
         🔥 去AI味
       </button>
       <button onClick={onOrganizeChapter} disabled={isStreaming || !hasText}
         title="一次分析本章，生成状态、事实、物品、年表、关系和伏笔候选；确认前不会写入项目"
-        className="flex items-center gap-1 px-2.5 py-1 bg-emerald-500/10 text-emerald-400 text-xs rounded-md hover:bg-emerald-500/20 disabled:opacity-50 transition-colors md:px-3 md:py-1.5">
+        className="flex w-full items-center justify-center gap-1 whitespace-nowrap px-2.5 py-1 bg-emerald-500/10 text-emerald-400 text-xs rounded-md hover:bg-emerald-500/20 disabled:opacity-50 transition-colors md:px-3 md:py-1.5 xl:w-auto">
         {organizingChapter
           ? <Loader2 className="w-3 h-3 animate-spin" />
           : <ClipboardList className="w-3 h-3" />}
@@ -87,12 +89,12 @@ export default function ChapterEditorToolbar({
       </button>
       <button onClick={onAnalyzeImpact} disabled={analyzingImpact || !hasText}
         title="NS-6：改了历史章后，检查源自本章的事实证据是否失效（失效则降级待复核），并列出需复核的后续章节。不会自动改正文。"
-        className="flex items-center gap-1 px-2.5 py-1 bg-amber-500/10 text-amber-400 text-xs rounded-md hover:bg-amber-500/20 disabled:opacity-50 transition-colors md:px-3 md:py-1.5">
+        className="flex w-full items-center justify-center gap-1 whitespace-nowrap px-2.5 py-1 bg-amber-500/10 text-amber-400 text-xs rounded-md hover:bg-amber-500/20 disabled:opacity-50 transition-colors md:px-3 md:py-1.5 xl:w-auto">
         <ClipboardList className="w-3 h-3" />
         {analyzingImpact ? '分析中...' : '影响分析'}
       </button>
       {impactInfo && (
-        <span className="flex items-center gap-2 px-2 py-1 text-xs text-amber-300/90 bg-amber-500/5 rounded-md">
+        <span className="col-span-full flex items-center gap-2 px-2 py-1 text-xs text-amber-300/90 bg-amber-500/5 rounded-md">
           {impactInfo}
           <button onClick={onDismissImpact} aria-label="关闭影响分析结果" className="text-text-muted hover:text-text-primary">×</button>
         </span>
@@ -101,7 +103,7 @@ export default function ChapterEditorToolbar({
         <button onClick={onToggleOutlinePreview}
           title="大纲预览"
           aria-pressed={showOutlinePreview}
-          className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded-md transition-colors md:px-3 md:py-1.5 ${
+          className={`flex w-full items-center justify-center gap-1 whitespace-nowrap px-2.5 py-1 text-xs rounded-md transition-colors md:px-3 md:py-1.5 xl:w-auto ${
             showOutlinePreview
               ? 'bg-accent/10 text-accent'
               : 'bg-bg-elevated text-text-secondary hover:text-text-primary'
@@ -114,7 +116,7 @@ export default function ChapterEditorToolbar({
         disabled={!hasText}
         title="质量审校"
         aria-pressed={showReviewPanel}
-        className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded-md transition-colors disabled:opacity-50 md:px-3 md:py-1.5 ${
+        className={`flex w-full items-center justify-center gap-1 whitespace-nowrap px-2.5 py-1 text-xs rounded-md transition-colors disabled:opacity-50 md:px-3 md:py-1.5 xl:w-auto ${
           showReviewPanel
             ? 'bg-success/10 text-success'
             : 'bg-bg-elevated text-text-secondary hover:text-text-primary'
@@ -130,7 +132,7 @@ export default function ChapterEditorToolbar({
       <button onClick={onToggleNotePanel}
         title="便签"
         aria-pressed={showNotePanel}
-        className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded-md transition-colors md:px-3 md:py-1.5 ${
+        className={`flex w-full items-center justify-center gap-1 whitespace-nowrap px-2.5 py-1 text-xs rounded-md transition-colors md:px-3 md:py-1.5 xl:w-auto ${
           showNotePanel
             ? 'bg-yellow-500/10 text-yellow-600'
             : 'bg-bg-elevated text-text-secondary hover:text-text-primary'
@@ -138,9 +140,10 @@ export default function ChapterEditorToolbar({
         <StickyNote className="w-3 h-3" />
         便签
       </button>
+      </div>
       <CInput value={customInstruction} onChange={event => onCustomInstructionChange(event.target.value)}
         placeholder="自定义指令..."
-        className="min-w-0 flex-1 rounded-md border border-border bg-bg-elevated px-2.5 py-1 text-xs text-text-primary focus:outline-none focus:border-accent md:min-w-[220px] md:px-3 md:py-1.5" />
+        className="w-full min-w-0 rounded-md border border-border bg-bg-elevated px-2.5 py-1 text-xs text-text-primary focus:outline-none focus:border-accent md:px-3 md:py-1.5 xl:w-auto xl:flex-1 xl:min-w-0" />
     </div>
   )
 }

@@ -45,7 +45,9 @@ export default function FullScreenViewer({
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-[10000] flex flex-col bg-bg-base" role="dialog" aria-modal="true" aria-label={title}>
+    // safe-area-pad：全屏层是相对视口的 fixed 元素，不继承工作台外壳的安全区内边距，
+    // 必须自己避让手机状态栏与底部手势条；PC 上 inset 变量为 0，不产生任何影响。
+    <div className="safe-area-pad fixed inset-0 z-[10000] flex flex-col bg-bg-base" role="dialog" aria-modal="true" aria-label={title}>
       <header className="flex shrink-0 items-center gap-3 border-b border-border bg-bg-surface px-4 py-3">
         <h2 className="min-w-0 truncate text-sm font-semibold text-text-primary">{title}</h2>
         {subtitle && <span className="hidden min-w-0 truncate text-xs text-text-muted sm:inline">{subtitle}</span>}

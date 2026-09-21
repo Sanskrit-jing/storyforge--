@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { BookOpen } from 'lucide-react'
 import AIConfigPanel from './AIConfigPanel'
+import TtsConfigCard from './TtsConfigCard'
 import { resetWelcomeGuide } from '../guide/WelcomeGuide'
 import NS0EvalPanel from './NS0EvalPanel'
 
@@ -15,6 +16,7 @@ export default function SettingsPage() {
   return (
     <div className="h-full overflow-auto p-6">
       <AIConfigPanel />
+      <TtsConfigCard />
       {import.meta.env.DEV && <NS0EvalPanel />}
 
       {/* 其他设置 */}

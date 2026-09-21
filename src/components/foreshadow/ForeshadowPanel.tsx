@@ -1,4 +1,5 @@
-import { CInput, CTextarea } from '../shared/CompositionInput'
+import FullScreenTextarea from '../shared/FullScreenTextarea'
+import { CInput } from '../shared/CompositionInput'
 import { useState, useEffect, useMemo } from 'react'
 import { Plus, Trash2, ArrowRight, Sparkles, Loader2, LayoutList, LayoutGrid, Info } from 'lucide-react'
 import { useForeshadowStore } from '../../stores/foreshadow'
@@ -220,10 +221,11 @@ export default function ForeshadowPanel({ project }: Props) {
     <div className="min-h-full bg-bg-base/30 px-8 py-8">
       <div className="mx-auto max-w-7xl space-y-6">
       {/* 顶部工具栏 */}
-      <div className="flex items-start justify-between gap-6">
-        <div>
+      {/* 手机竖屏 / HD：标题区占满整行，按钮换行右对齐；PC 保持单行 */}
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+        <div className="min-w-0 flex-1">
           <p className="text-[11px] uppercase tracking-[0.22em] text-text-muted">创作区</p>
-          <h1 className="mt-3 font-serif text-4xl font-semibold tracking-wide text-text-primary">伏笔追踪</h1>
+          <h1 className="mt-3 font-serif text-3xl xl:text-4xl font-semibold tracking-wide text-text-primary">伏笔追踪</h1>
           <p className="mt-3 text-sm text-text-secondary">
             {projectForeshadows.length} 个伏笔 ·{' '}
             <span className="text-error">{statusCounts.planted} 已埋设</span> ·{' '}
@@ -231,7 +233,7 @@ export default function ForeshadowPanel({ project }: Props) {
             <span className="text-success">{statusCounts.resolved} 已回收</span>
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full items-center justify-end gap-2 xl:w-auto xl:shrink-0">
           <button onClick={handleAISuggest}
             disabled={ai.isStreaming || !isAIConfigReady(resolveRequestConfig(config, { category: 'foreshadow.suggest' }).config)}
             className="flex items-center gap-1.5 rounded-md border border-border bg-bg-elevated px-3 py-2 text-sm text-text-secondary transition-colors hover:text-accent disabled:opacity-40"
@@ -398,8 +400,8 @@ export default function ForeshadowPanel({ project }: Props) {
 
             <div>
               <label className="block text-xs text-text-muted mb-1">伏笔描述</label>
-              <CTextarea value={selectedF.description} onChange={e => handleUpdate('description', e.target.value)}
-                rows={4} className="w-full p-2 bg-bg-base border border-border rounded text-sm text-text-primary resize-y focus:outline-none focus:border-accent" />
+              <FullScreenTextarea value={selectedF.description} onChange={e => handleUpdate('description', e.target.value)}
+                rows={4} className="w-full p-2 bg-bg-base border border-border rounded text-sm text-text-primary focus:outline-none focus:border-accent" />
             </div>
 
             {/* 章节关联区域 */}
@@ -467,8 +469,8 @@ export default function ForeshadowPanel({ project }: Props) {
 
             <div>
               <label className="block text-xs text-text-muted mb-1">备注</label>
-              <CTextarea value={selectedF.notes} onChange={e => handleUpdate('notes', e.target.value)}
-                rows={2} className="w-full p-2 bg-bg-base border border-border rounded text-xs text-text-muted resize-y focus:outline-none focus:border-accent" />
+              <FullScreenTextarea value={selectedF.notes} onChange={e => handleUpdate('notes', e.target.value)}
+                rows={2} className="w-full p-2 bg-bg-base border border-border rounded text-xs text-text-muted focus:outline-none focus:border-accent" />
             </div>
           </div>
         ) : !showAI ? (

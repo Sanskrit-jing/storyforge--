@@ -1,6 +1,7 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronRight, Star } from 'lucide-react'
-import { CInput, CTextarea } from '../shared/CompositionInput'
+import { CInput } from '../shared/CompositionInput'
 import {
   codexEntryInWorld,
   parseEntryFields,
@@ -104,12 +105,12 @@ export default function CodexEntryDetail({
         placeholder="标签（用顿号或逗号分隔）"
         className="w-full px-3 py-2 rounded-lg bg-bg-elevated border border-border text-sm"
       />
-      <CTextarea
+      <FullScreenTextarea
         value={entry.description}
         onChange={event => onChange({ description: event.target.value })}
         placeholder="详细描述"
         rows={3}
-        className="w-full px-3 py-2 rounded-lg bg-bg-elevated border border-border text-sm resize-y"
+        className="w-full px-3 py-2 rounded-lg bg-bg-elevated border border-border text-sm"
       />
 
       {category.builtInKey === 'beast' && (
@@ -247,8 +248,8 @@ function CodexFieldRow({
       <label className="text-xs text-text-muted pt-2 text-right">{definition.label}</label>
       <div className="min-w-0">
         {definition.type === 'longtext' && (
-          <CTextarea value={value} onChange={event => onValue(event.target.value)} placeholder={definition.placeholder} rows={2}
-            className="w-full px-3 py-1.5 rounded-lg bg-bg-elevated border border-border text-sm resize-y" />
+          <FullScreenTextarea value={value} onChange={event => onValue(event.target.value)} placeholder={definition.placeholder} rows={2}
+            className="w-full px-3 py-1.5 rounded-lg bg-bg-elevated border border-border text-sm" />
         )}
         {definition.type === 'select' && (
           <select value={value} onChange={event => onValue(event.target.value)} aria-label={definition.label}

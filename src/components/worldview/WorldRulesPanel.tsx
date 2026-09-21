@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 /**
  * Phase 32.4 — 世界规则面板（真实与幻想）
  *
@@ -372,12 +373,12 @@ export default function WorldRulesPanel({ project }: Props) {
         <label className="block text-sm font-medium text-text-secondary mb-1.5">
           📝 全局补充说明（对 AI 的额外约束，适用于所有维度）
         </label>
-        <textarea
+        <FullScreenTextarea
           value={profile.globalNote || ''}
           onChange={e => updateGlobalNote(e.target.value)}
           placeholder="例如：本作以唐代为蓝本但加入仙侠元素，凡是涉及朝堂制度的一律遵循史实，力量体系完全虚构。"
           rows={3}
-          className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-bg-base text-text-primary placeholder:text-text-muted/50 focus:ring-1 focus:ring-accent focus:border-accent resize-y"
+          className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-bg-base text-text-primary placeholder:text-text-muted/50 focus:ring-1 focus:ring-accent focus:border-accent"
         />
       </div>
 

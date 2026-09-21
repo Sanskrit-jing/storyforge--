@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 /**
  * 世界总览面板 — 管理多个世界组 + 世界关系
  */
@@ -166,7 +167,7 @@ export default function WorldGroupOverview({ project }: Props) {
             {/* AI 建议世界面板 */}
             {showSuggest && (
               <div className="p-3 bg-bg-surface border border-border rounded-lg space-y-2.5">
-                <textarea
+                <FullScreenTextarea
                   value={concept}
                   onChange={e => setConcept(e.target.value)}
                   placeholder="描述你的整体故事概念，例如：主角带着诸天系统穿越各个世界，每个世界完成任务后获得奖励...（留空则用项目简介）"

@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 import { useEffect, useMemo, useState } from 'react'
 import {
   Box,
@@ -242,7 +243,7 @@ export default function SimulationRuntimePanel(props: {
                     判定
                   </button>
                 </div>
-                <textarea
+                <FullScreenTextarea
                   value={narrative}
                   onChange={event => setNarrative(event.target.value)}
                   placeholder="记录只属于该会话的叙事…"

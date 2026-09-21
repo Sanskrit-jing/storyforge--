@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 /**
  * NS-4 · 事实库面板 — 审阅事实账本候选、确认升 Canon / 否决。
  * 所有变更走 useFactLedgerStore（→ lib/fact-ledger 单一入口），面板不裸写 db。
@@ -89,12 +90,12 @@ export default function FactLibraryPanel({ project }: { project: Project }) {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between gap-3 mb-1">
-        <div className="flex items-center gap-2">
-          <Database className="w-5 h-5 text-sky-400" />
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-1">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <Database className="w-5 h-5 text-sky-400 shrink-0" />
           <h1 className="text-lg font-bold text-text-primary">事实库（NS-4 长期一致性）</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full items-center justify-end gap-2 xl:w-auto xl:shrink-0">
           <button onClick={() => setLibraryMode('constitution')}
             className="px-3 py-1.5 text-xs rounded-md bg-amber-500/10 text-amber-300 hover:bg-amber-500/20">
             查看世界宪法
@@ -121,7 +122,7 @@ export default function FactLibraryPanel({ project }: { project: Project }) {
           </button>
           {ioMsg && <span className="text-[11px] text-text-muted">{ioMsg}</span>}
         </div>
-        <textarea value={diffText} onChange={e => setDiffText(e.target.value)}
+        <FullScreenTextarea value={diffText} onChange={e => setDiffText(e.target.value)}
           placeholder={'粘贴外部编辑后的候选 JSON，例如：\n{"facts":[{"subjectName":"林飞","predicate":"location","value":"北境","sourceQuote":"人工整理"}]}\n导入结果只会进入 candidate，必须再由作者确认。'}
           className="w-full min-h-[76px] px-3 py-2 text-xs rounded bg-bg-base border border-border text-text-primary placeholder:text-text-muted focus:outline-none focus:border-sky-500" />
       </div>

@@ -81,12 +81,12 @@ export default function UsageStatsPage({ project }: Props) {
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-4">
-      <div className="flex items-center gap-2">
-        <Coins className="w-5 h-5 text-accent" />
-        <h2 className="text-xl font-bold text-text-primary">消耗统计</h2>
-        <span className="text-xs text-text-muted">（{totals.count} 次调用）</span>
-        <div className="ml-auto flex items-center gap-3">
-          <label className="text-xs text-text-muted flex items-center gap-1">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-3">
+        <Coins className="w-5 h-5 shrink-0 text-accent" />
+        <h2 className="text-xl font-bold whitespace-nowrap text-text-primary">消耗统计</h2>
+        <span className="text-xs whitespace-nowrap text-text-muted">（{totals.count} 次调用）</span>
+        <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-2 xl:w-auto xl:ml-auto">
+          <label className="text-xs text-text-muted flex items-center gap-1 whitespace-nowrap">
             汇率 1$ =
             <input
               type="number" value={rate} step="0.1" min="0.1"
@@ -95,19 +95,19 @@ export default function UsageStatsPage({ project }: Props) {
             />
             ¥
           </label>
-          <label className="text-xs text-text-muted flex items-center gap-1">
+          <label className="text-xs text-text-muted flex items-center gap-1 whitespace-nowrap">
             <input type="checkbox" checked={scopeProject} onChange={e => setScopeProject(e.target.checked)} />
             仅当前项目
           </label>
           <button
             onClick={() => loadAll(scopeProject ? (project?.id ?? null) : null)}
-            className="text-xs text-text-muted hover:text-text-primary inline-flex items-center gap-1"
+            className="text-xs text-text-muted hover:text-text-primary inline-flex items-center gap-1 whitespace-nowrap"
           >
             <RefreshCw className="w-3.5 h-3.5" /> 刷新
           </button>
           <button
             onClick={() => { void handleClear() }}
-            className="text-xs text-red-400 hover:text-red-300 inline-flex items-center gap-1"
+            className="text-xs text-red-400 hover:text-red-300 inline-flex items-center gap-1 whitespace-nowrap"
           >
             <Trash2 className="w-3.5 h-3.5" /> 清空
           </button>
@@ -127,7 +127,7 @@ export default function UsageStatsPage({ project }: Props) {
 
       {/* 明细表：外层保留圆角边框，内部横向滚动，窄屏不裁掉最右侧「花费」列 */}
       <div className="rounded-xl border border-border overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="bg-bg-elevated text-text-muted text-xs">
               <th className="text-left font-medium px-3 py-2">时间</th>
@@ -152,7 +152,7 @@ export default function UsageStatsPage({ project }: Props) {
                   <td className="px-3 py-2 text-text-secondary whitespace-nowrap">{fmtTime(e.timestamp)}</td>
                   <td className="px-3 py-2">
                     <span
-                      className="inline-block px-2 py-0.5 rounded text-xs font-medium"
+                      className="inline-block whitespace-nowrap px-2 py-0.5 rounded text-xs font-medium"
                       style={{ backgroundColor: meta.color + '22', color: meta.color }}
                     >
                       {meta.label}

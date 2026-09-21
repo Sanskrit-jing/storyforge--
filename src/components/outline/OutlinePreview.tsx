@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 /**
  * 大纲预览面板 — Phase D3
  *
@@ -115,13 +116,13 @@ export default function OutlinePreview({ outlineNodeId, onClose }: Props) {
         {(
           <div>
             <SectionLabel icon={<BookOpen className="w-3 h-3" />} label="章节摘要" />
-            <textarea
+            <FullScreenTextarea
               value={summaryDraft}
               onChange={e => setSummaryDraft(e.target.value)}
               onBlur={() => { if (node.id != null && summaryDraft !== (node.summary || '')) updateNode(node.id, { summary: summaryDraft }) }}
               rows={3}
               placeholder="章节大纲/摘要(可手动编辑,失焦自动保存)"
-              className="w-full px-2 py-1.5 bg-bg-base border border-border rounded text-sm text-text-secondary leading-relaxed resize-y focus:outline-none focus:border-accent"
+              className="w-full px-2 py-1.5 bg-bg-base border border-border rounded text-sm text-text-secondary leading-relaxed focus:outline-none focus:border-accent"
             />
           </div>
         )}

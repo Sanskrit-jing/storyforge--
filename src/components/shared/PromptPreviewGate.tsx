@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 import { useEffect, useMemo, useState } from 'react'
 import { Eye, RotateCcw, Send } from 'lucide-react'
 import { estimateTokens } from '../../lib/ai/context-budget'
@@ -73,12 +74,12 @@ export default function PromptPreviewGate({
             <span className="text-[10px] font-medium text-text-secondary">
               {ROLE_LABEL[message.role]}
             </span>
-            <textarea
+            <FullScreenTextarea
               aria-label={`${ROLE_LABEL[message.role]} ${index + 1}`}
               value={message.content}
               onChange={event => updateContent(index, event.target.value)}
               rows={message.role === 'system' ? 8 : 14}
-              className="w-full resize-y rounded border border-border bg-bg-base px-2.5 py-2 font-mono text-[11px] leading-5 text-text-primary focus:border-accent focus:outline-none"
+              className="w-full rounded border border-border bg-bg-base px-2.5 py-2 font-mono text-[11px] leading-5 text-text-primary focus:border-accent focus:outline-none"
             />
           </label>
         ))}

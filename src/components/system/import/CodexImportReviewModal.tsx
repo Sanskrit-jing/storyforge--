@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../../shared/FullScreenTextarea'
 import { useMemo, useState } from 'react'
 import { AlertTriangle, BookOpenCheck, CheckSquare, Square, X } from 'lucide-react'
 import type { CodexImportCategoryOption } from '../../../lib/import/codex-classification'
@@ -57,8 +58,8 @@ export default function CodexImportReviewModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4">
-      <div className="bg-bg-surface border border-border rounded-2xl max-w-4xl w-full max-h-[92vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4 pt-[max(1rem,var(--safe-area-inset-top))] pb-[max(1rem,var(--safe-area-inset-bottom))] xl:pt-4 xl:pb-4">
+      <div className="bg-bg-surface border border-border rounded-2xl max-w-4xl w-full max-h-[92dvh] overflow-hidden flex flex-col xl:max-h-[92vh]">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div>
             <div className="flex items-center gap-2 text-text-primary font-semibold">
@@ -150,20 +151,20 @@ export default function CodexImportReviewModal({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pl-7">
                   <label className="text-[11px] text-text-muted">
                     一句话简介
-                    <textarea
+                    <FullScreenTextarea
                       value={candidate.summary}
                       onChange={event => updateDraft(index, { summary: event.target.value })}
                       rows={2}
-                      className="mt-1 w-full px-2.5 py-2 bg-bg-base border border-border rounded text-xs text-text-primary resize-y"
+                      className="mt-1 w-full px-2.5 py-2 bg-bg-base border border-border rounded text-xs text-text-primary"
                     />
                   </label>
                   <label className="text-[11px] text-text-muted">
                     详细描述
-                    <textarea
+                    <FullScreenTextarea
                       value={candidate.description}
                       onChange={event => updateDraft(index, { description: event.target.value })}
                       rows={2}
-                      className="mt-1 w-full px-2.5 py-2 bg-bg-base border border-border rounded text-xs text-text-primary resize-y"
+                      className="mt-1 w-full px-2.5 py-2 bg-bg-base border border-border rounded text-xs text-text-primary"
                     />
                   </label>
                 </div>

@@ -36,7 +36,7 @@ export default function StateDiffModal({ diffs, chapterTitle, onConfirm, onCance
 
   if (diffs.length === 0) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 pt-[max(1rem,var(--safe-area-inset-top))] pb-[max(1rem,var(--safe-area-inset-bottom))] xl:py-4">
         <div className="bg-bg-surface border border-border rounded-xl p-6 max-w-lg w-full mx-4">
           <div className="flex items-center gap-2 text-text-muted mb-4">
             <AlertCircle className="w-5 h-5" />
@@ -52,8 +52,8 @@ export default function StateDiffModal({ diffs, chapterTitle, onConfirm, onCance
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-bg-surface border border-border rounded-xl max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 pt-[max(1rem,var(--safe-area-inset-top))] pb-[max(1rem,var(--safe-area-inset-bottom))] xl:py-4">
+      <div className="bg-bg-surface border border-border rounded-xl max-w-2xl w-full mx-4 max-h-[80dvh] flex flex-col">
         {/* 头部 */}
         <div className="p-5 border-b border-border">
           <h3 className="text-lg font-bold text-text-primary">📋 状态变更审核</h3>

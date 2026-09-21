@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 /**
  * Phase 25.3 — 重要地点面板
  * 树状图 / 列表双视图 + 多标签组合 + 树状父子层级
@@ -270,22 +271,22 @@ export default function LocationPanel({ project }: Props) {
               {/* 描述 */}
               <div>
                 <label className="block text-xs text-text-muted mb-1">描述</label>
-                <textarea
+                <FullScreenTextarea
                   value={loc.description}
                   onChange={e => updateLocation(loc.id!, { description: e.target.value })}
                   placeholder="地点的详细描述、外观、氛围…"
-                  className="w-full h-20 p-2 bg-bg-base border border-border rounded text-sm text-text-primary resize-y focus:outline-none focus:border-accent"
+                  className="w-full h-20 p-2 bg-bg-base border border-border rounded text-sm text-text-primary focus:outline-none focus:border-accent"
                 />
               </div>
 
               {/* 剧情重要性 */}
               <div>
                 <label className="block text-xs text-text-muted mb-1">剧情重要性</label>
-                <textarea
+                <FullScreenTextarea
                   value={loc.significance}
                   onChange={e => updateLocation(loc.id!, { significance: e.target.value })}
                   placeholder="此地点在故事中的作用、关键事件、与角色的关联…"
-                  className="w-full h-16 p-2 bg-bg-base border border-border rounded text-sm text-text-primary resize-y focus:outline-none focus:border-accent"
+                  className="w-full h-16 p-2 bg-bg-base border border-border rounded text-sm text-text-primary focus:outline-none focus:border-accent"
                 />
               </div>
 

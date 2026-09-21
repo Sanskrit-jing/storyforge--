@@ -1,11 +1,15 @@
 import { useRef, useState, useEffect, useCallback, type TextareaHTMLAttributes } from 'react'
+import { Maximize2 } from 'lucide-react'
 import { containTextareaWheel, parseCssPixels } from './textarea-scroll'
+import FullScreenViewer from './FullScreenViewer'
 
 interface Props extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'rows'> {
   /** 最小行数 */
   minRows?: number
-  /** 最大行数（超过后出现滚动条） */
+  /** 最大行数（超过后显示滚动条） */
   maxRows?: number
+  /** 全屏查看器标题；不传时取 aria-label / placeholder */
+  fullscreenTitle?: string
 }
 
 /**
@@ -17,15 +21,20 @@ interface Props extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'rows'
 export default function AutoResizeTextarea({
   minRows = 2,
   maxRows = 20,
+  fullscreenTitle,
   value: externalValue,
   onChange,
   onWheel,
+  onBlur,
+  disabled,
   className = '',
   ...rest
 }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null)
+  const viewerRef = useRef<HTMLTextAreaElement>(null)
   const composingRef = useRef(false)
   const [localValue, setLocalValue] = useState(String(externalValue ?? ''))
+  const [fullscreen, setFullscreen] = useState(false)
 
   // 外部值变化时同步（仅非组合状态）
   useEffect(() => {
@@ -51,29 +60,93 @@ export default function AutoResizeTextarea({
   useEffect(() => { resize() }, [localValue, resize])
   useEffect(() => { resize() }, [resize])
 
+  const compositionProps = {
+    value: localValue,
+    disabled,
+    onCompositionStart: () => { composingRef.current = true },
+    onCompositionEnd: (e: React.CompositionEvent<HTMLTextAreaElement>) => {
+      composingRef.current = false
+      const val = (e.target as HTMLTextAreaElement).value
+      setLocalValue(val)
+      onChange?.({ ...e, target: { ...e.target, value: val } } as unknown as React.ChangeEvent<HTMLTextAreaElement>)
+    },
+    onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setLocalValue(e.target.value)
+      if (!composingRef.current) {
+        onChange?.(e)
+      }
+    },
+    onWheel: (e: React.WheelEvent<HTMLTextAreaElement>) => {
+      onWheel?.(e)
+      if (!e.defaultPrevented) containTextareaWheel(e)
+    },
+  }
+
+  const title = fullscreenTitle
+    || (typeof rest['aria-label'] === 'string' ? rest['aria-label'] : undefined)
+    || (typeof rest.placeholder === 'string' ? rest.placeholder.replace(/…+$/, '').trim() : '')
+    || '全屏编辑'
+
+  const closeFullscreen = () => {
+    viewerRef.current?.blur()
+    setFullscreen(false)
+  }
+
   return (
-    <textarea
-      ref={ref}
-      {...rest}
-      value={localValue}
-      className={`resize-none ${className}`}
-      onCompositionStart={() => { composingRef.current = true }}
-      onCompositionEnd={(e) => {
-        composingRef.current = false
-        const val = (e.target as HTMLTextAreaElement).value
-        setLocalValue(val)
-        onChange?.({ ...e, target: { ...e.target, value: val } } as unknown as React.ChangeEvent<HTMLTextAreaElement>)
-      }}
-      onChange={(e) => {
-        setLocalValue(e.target.value)
-        if (!composingRef.current) {
-          onChange?.(e)
+    <>
+      <div className="relative min-w-0 flex-1">
+        <textarea
+          ref={ref}
+          {...rest}
+          {...compositionProps}
+          onBlur={onBlur}
+          className={`w-full resize-none ${className}`}
+        />
+        {/* 同 FullScreenTextarea：手机竖屏 / HD 版右下角全屏入口，PC（≥1280px）隐藏 */}
+        {!disabled && (
+          <button
+            type="button"
+            tabIndex={-1}
+            onClick={event => {
+              event.preventDefault()
+              event.stopPropagation()
+              setFullscreen(true)
+            }}
+            title="点击全屏查看并编辑"
+            aria-label="点击全屏查看并编辑"
+            className="absolute bottom-1 right-1 flex h-6 w-6 items-center justify-center rounded border border-border bg-bg-surface/90 text-text-muted shadow-sm hover:text-accent xl:hidden"
+          >
+            <Maximize2 className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+
+      <FullScreenViewer
+        open={fullscreen}
+        title={title}
+        subtitle="可直接全屏查看与编辑，点击「完成」返回"
+        onClose={closeFullscreen}
+        footer={
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={closeFullscreen}
+              className="rounded-md bg-accent px-4 py-2 text-xs text-white hover:bg-accent-hover"
+            >
+              完成
+            </button>
+          </div>
         }
-      }}
-      onWheel={(e) => {
-        onWheel?.(e)
-        if (!e.defaultPrevented) containTextareaWheel(e)
-      }}
-    />
+      >
+        <textarea
+          ref={viewerRef}
+          {...rest}
+          {...compositionProps}
+          onBlur={onBlur}
+          autoFocus
+          className="min-h-[60dvh] w-full resize-none rounded border border-accent/30 bg-bg-base p-3 text-sm leading-relaxed text-text-primary outline-none focus:border-accent"
+        />
+      </FullScreenViewer>
+    </>
   )
 }

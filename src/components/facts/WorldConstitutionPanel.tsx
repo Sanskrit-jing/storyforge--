@@ -135,13 +135,13 @@ export default function WorldConstitutionPanel({ project, onShowFacts }: {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between gap-3 mb-1">
-        <div className="flex items-center gap-2">
-          <Landmark className="w-5 h-5 text-amber-400" />
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-1">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <Landmark className="w-5 h-5 text-amber-400 shrink-0" />
           <h1 className="text-lg font-bold text-text-primary">世界宪法（CONSISTENCY-3）</h1>
         </div>
         <button onClick={onShowFacts}
-          className="px-3 py-1.5 text-xs rounded-md bg-bg-elevated text-text-secondary hover:text-text-primary">
+          className="w-full justify-self-end px-3 py-1.5 text-xs rounded-md bg-bg-elevated text-text-secondary hover:text-text-primary xl:w-auto xl:shrink-0">
           查看世界事实
         </button>
       </div>

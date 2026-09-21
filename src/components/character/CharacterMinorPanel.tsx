@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 import { useState, useEffect } from 'react'
 import { Plus, Trash2, User } from 'lucide-react'
 import { useCharacterStore } from '../../stores/character'
@@ -5,7 +6,7 @@ import type { Project, Character } from '../../lib/types'
 import { filterCharactersByRoleWeight } from '../../lib/character/character-axes'
 import CharacterDimensionFields from './CharacterDimensionFields'
 import CharacterSupplementAction from './CharacterSupplementAction'
-import { CInput, CTextarea } from '../shared/CompositionInput'
+import { CInput } from '../shared/CompositionInput'
 
 interface Props {
   project: Project
@@ -86,7 +87,7 @@ export default function CharacterMinorPanel({ project }: Props) {
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <CTextarea
+              <FullScreenTextarea
                 value={c.shortDescription}
                 onChange={e => update(c.id!, { shortDescription: e.target.value })}
                 placeholder="一句话简介..."

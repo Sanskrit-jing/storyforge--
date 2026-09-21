@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 /**
  * 便签面板 — Phase H3
  *
@@ -97,7 +98,7 @@ function NoteCard({ note, onUpdate, onDelete, onTogglePin }: {
   return (
     <div className={`rounded-lg p-3 ${colorStyle.bg} ${colorStyle.text} transition-all`}>
       <div className="flex items-start gap-2">
-        <textarea
+        <FullScreenTextarea
           value={note.content}
           onChange={e => onUpdate({ content: e.target.value })}
           placeholder="写点什么..."

@@ -76,8 +76,8 @@ export default function CultivationSystemsPanel({ project }: { project: Project 
 
   return (
     <section className="mt-8 border-t border-border pt-6">
-      <div className="flex items-start justify-between gap-4 mb-4">
-        <div>
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 mb-4">
+        <div className="min-w-0 flex-1">
           <h2 className="text-lg font-bold text-text-primary flex items-center gap-2">
             <GitBranch className="w-5 h-5 text-accent" /> 修炼体系
           </h2>
@@ -88,7 +88,7 @@ export default function CultivationSystemsPanel({ project }: { project: Project 
         <button
           onClick={handleAdd}
           disabled={worldGroupId === undefined}
-          className="px-3 py-1.5 text-xs rounded-md bg-accent text-white disabled:opacity-40 inline-flex items-center gap-1"
+          className="self-start px-3 py-1.5 text-xs rounded-md bg-accent text-white disabled:opacity-40 inline-flex items-center gap-1 xl:shrink-0"
         >
           <Plus className="w-3.5 h-3.5" /> 新增体系
         </button>

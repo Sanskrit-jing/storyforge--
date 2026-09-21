@@ -200,8 +200,9 @@ export default function CultivationProgressPanel({ project }: { project: Project
 
   return (
     <div className="max-w-5xl space-y-5">
-      <header className="flex items-start justify-between gap-4 border-b border-border/40 pb-4">
-        <div>
+      {/* 手机竖屏 / HD：标题描述占满整行，反哺开关换行右对齐；PC 保持单行 */}
+      <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 border-b border-border/40 pb-4">
+        <div className="min-w-0 flex-1">
           <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
             <GitBranch className="w-5 h-5" /> 修炼进度
           </h2>
@@ -209,7 +210,7 @@ export default function CultivationProgressPanel({ project }: { project: Project
             这里是正文确认后的下游历程；角色卡“当前设定境界”仍是上游预设，两者不会互相冒充。
           </p>
         </div>
-        <label className="flex items-center gap-2 text-xs text-text-secondary border border-border rounded-lg px-3 py-2">
+        <label className="flex w-full items-center justify-end gap-2 whitespace-nowrap text-xs text-text-secondary border border-border rounded-lg px-3 py-2 xl:w-auto xl:shrink-0">
           <input
             type="checkbox"
             checked={Boolean(project.includeCultivationProgressInAI)}

@@ -1,4 +1,4 @@
-import { Columns2, Eye, Loader2, Save } from 'lucide-react'
+import { Columns2, Eye, Loader2, Save, Volume2 } from 'lucide-react'
 import type { ChapterStatus } from '../../lib/types'
 
 const STATUS_OPTIONS: { value: ChapterStatus; label: string }[] = [
@@ -27,8 +27,13 @@ interface Props {
   saving: boolean
   saveError: string
   isSaved: boolean
+  /** 是否支持/允许语音朗读（浏览器支持且当前不是对照润色模式） */
+  canRead: boolean
+  /** 朗读会话是否进行中（按钮高亮） */
+  reading: boolean
   onStatusChange: (status: ChapterStatus) => void
   onToggleContext: () => void
+  onToggleReader: () => void
   onOpenCompare: () => void
   onSave: () => void
 }
@@ -43,8 +48,11 @@ export default function ChapterEditorHeader({
   saving,
   saveError,
   isSaved,
+  canRead,
+  reading,
   onStatusChange,
   onToggleContext,
+  onToggleReader,
   onOpenCompare,
   onSave,
 }: Props) {
@@ -74,6 +82,19 @@ export default function ChapterEditorHeader({
         </select>
       </div>
       <div className="flex items-center gap-1 md:gap-2">
+        {canRead && (
+          <button
+            type="button"
+            onClick={onToggleReader}
+            aria-pressed={reading}
+            title={reading ? '显示/隐藏朗读控制条（停止请用控制条 ×）' : '语音朗读本章正文'}
+            className={`flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs hover:bg-bg-hover ${
+              reading ? 'bg-accent/10 text-accent' : 'text-text-muted hover:text-text-primary'
+            }`}
+          >
+            <Volume2 className="h-3.5 w-3.5" /> 朗读
+          </button>
+        )}
         <button
           type="button"
           onClick={onToggleContext}

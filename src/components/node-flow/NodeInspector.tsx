@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 import { Plus, Trash2 } from 'lucide-react'
 import { nanoid } from 'nanoid'
 import { CONTEXT_SOURCES } from '../../lib/registry/context-sources'
@@ -16,11 +17,11 @@ function TextArea(props: {
   return (
     <label className="block">
       <span className="mb-1 block text-[10px] font-medium text-text-secondary">{props.label}</span>
-      <textarea
+      <FullScreenTextarea
         value={props.value}
         rows={props.rows ?? 4}
         onChange={event => props.onChange(event.target.value)}
-        className="w-full resize-y rounded border border-border bg-bg-base px-2 py-1.5 text-[11px] leading-4 text-text-primary outline-none focus:border-accent"
+        className="w-full rounded border border-border bg-bg-base px-2 py-1.5 text-[11px] leading-4 text-text-primary outline-none focus:border-accent"
       />
     </label>
   )

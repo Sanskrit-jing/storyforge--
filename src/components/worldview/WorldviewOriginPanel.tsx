@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Sparkles, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { useWorldviewStore } from '../../stores/worldview'
 import { useWorldGroupStore } from '../../stores/world-group'
 import { useAIConfigStore } from '../../stores/ai-config'
@@ -14,7 +14,7 @@ import AIStreamOutput from '../shared/AIStreamOutput'
 import CodexPanel from '../codex/CodexPanel'
 import CodexSearchBar from '../codex/CodexSearchBar'
 import PromptRunPanel from '../shared/PromptRunPanel'
-import AIFieldModeTabs from '../shared/AIFieldModeTabs'
+import FieldGenerationBar from '../shared/FieldGenerationBar'
 import WorldviewOriginSidebar, {
   WORLDVIEW_ORIGIN_FIELDS,
   type WorldviewOriginFieldKey,
@@ -120,11 +120,11 @@ export default function WorldviewOriginPanel({ project }: Props) {
     <div className="flex flex-col w-full max-w-5xl space-y-4">
       {/* 顶部 */}
       <div className="pb-4 border-b border-border/40">
-        <div className="flex items-start justify-between gap-3">
-          <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
+        <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+          <h2 className="min-w-0 flex-1 text-xl font-bold text-text-primary flex items-center gap-2">
             🌌 世界起源与核心设定
           </h2>
-          {project.enableMultiWorld && <WorldGroupSwitcher />}
+          {project.enableMultiWorld && <div className="shrink-0"><WorldGroupSwitcher /></div>}
         </div>
         <p className="text-xs text-text-muted mt-0.5">
           定义世界的起源、力量体系与信仰体系。如需声明真实与幻想的规则，请前往「⚖️ 真实与幻想」面板。
@@ -275,18 +275,14 @@ function TextFieldEditor({
         <InlineTextarea value={value} onChange={onChange} placeholder={field.desc} />
       </div>
 
-      <div className="flex items-center gap-2">
-        <AIFieldModeTabs value={mode} onChange={setMode} />
-        <input
-          value={hint} onChange={e => setHint(e.target.value)}
-          placeholder="给 AI 的补充说明（可选）"
-          className="min-w-0 flex-1 px-2 py-1.5 bg-bg-base border border-border rounded text-xs text-text-primary focus:outline-none focus:border-accent"
-        />
-        <button onClick={handleGenerate} disabled={ai.isStreaming}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded disabled:opacity-50 bg-accent/10 text-accent hover:bg-accent/20">
-          <Sparkles className="w-3.5 h-3.5" /> AI 生成
-        </button>
-      </div>
+      <FieldGenerationBar
+        mode={mode}
+        onModeChange={setMode}
+        hint={hint}
+        onHintChange={setHint}
+        onGenerate={handleGenerate}
+        generating={ai.isStreaming}
+      />
 
       <PromptRunPanel moduleKey="worldview.dimension" parameterValues={parameterValues}
         onParamChange={setParameterValues} systemOverride={systemOverride}
@@ -467,18 +463,15 @@ function DivineFieldEditor({
       )}
 
       {/* AI 生成 */}
-      <div className="flex items-center gap-2">
-        <AIFieldModeTabs value={mode} onChange={setMode} />
-        <input
-          value={hint} onChange={e => setHint(e.target.value)}
-          placeholder="给 AI 的补充说明（可选）"
-          className="min-w-0 flex-1 px-2 py-1.5 bg-bg-base border border-border rounded text-xs text-text-primary focus:outline-none focus:border-accent"
-        />
-        <button onClick={handleGenerate} disabled={ai.isStreaming}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded disabled:opacity-50 bg-accent/10 text-accent hover:bg-accent/20">
-          <Sparkles className="w-3.5 h-3.5" /> AI 生成信仰体系
-        </button>
-      </div>
+      <FieldGenerationBar
+        mode={mode}
+        onModeChange={setMode}
+        hint={hint}
+        onHintChange={setHint}
+        onGenerate={handleGenerate}
+        generating={ai.isStreaming}
+        generateLabel="AI 生成信仰体系"
+      />
 
       <PromptRunPanel moduleKey="worldview.dimension" parameterValues={parameterValues}
         onParamChange={setParameterValues} systemOverride={systemOverride}

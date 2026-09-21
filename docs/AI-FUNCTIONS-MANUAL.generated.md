@@ -195,28 +195,28 @@ AI 输出经 `adopt({ target, data })` 写回,只有这里登记的字段可写(
 | `chapter.content` | `src/lib/generation/chapter-generation-node.ts:22` |
 | `chapter.content.batch` | `src/lib/ai/batch-detail-runner.ts:256` |
 | `chapter.continue` | `src/lib/generation/chapter-generation-node.ts:23` |
-| `chapter.deai` | `src/components/editor/ChapterEditor.tsx:753` |
-| `chapter.expand` | `src/components/editor/ChapterEditor.tsx:733` |
-| `chapter.memory` | `src/components/editor/ChapterEditor.tsx:471` |
-| `chapter.organize` | `src/components/editor/ChapterEditor.tsx:836` |
-| `chapter.polish` | `src/components/editor/ChapterEditor.tsx:725` |
-| `chapter.toolbar` | `src/components/editor/FloatingToolbar.tsx:105` |
+| `chapter.deai` | `src/components/editor/ChapterEditor.tsx:823` |
+| `chapter.expand` | `src/components/editor/ChapterEditor.tsx:803` |
+| `chapter.memory` | `src/components/editor/ChapterEditor.tsx:541` |
+| `chapter.organize` | `src/components/editor/ChapterEditor.tsx:906` |
+| `chapter.polish` | `src/components/editor/ChapterEditor.tsx:795` |
+| `chapter.toolbar` | `src/components/editor/FloatingToolbar.tsx:142` |
 | `character.generate` | `src/components/character/CharacterPanel.tsx:160` |
 | `character.structure` | `src/lib/ai/parse-character-output.ts:80` |
 | `character.supplement` | `src/components/character/CharacterSupplementAction.tsx:80` |
-| `codex.extract` | `src/components/codex/CodexPanel.tsx:240` |
+| `codex.extract` | `src/components/codex/CodexPanel.tsx:255` |
 | `cultivation.progress` | `src/components/cultivation/CultivationProgressPanel.tsx:143` |
-| `detail.scene` | `src/components/outline/DetailedOutlinePanel.tsx:151`<br/>`src/components/outline/ScenePanel.tsx:126`<br/>`src/lib/ai/batch-detail-runner.ts:109` |
+| `detail.scene` | `src/components/outline/DetailedOutlinePanel.tsx:151`<br/>`src/components/outline/ScenePanel.tsx:127`<br/>`src/lib/ai/batch-detail-runner.ts:109` |
 | `emotion.beat` | `src/components/editor/EmotionBeatCard.tsx:66` |
-| `foreshadow.structure` | `src/components/foreshadow/ForeshadowPanel.tsx:67` |
-| `foreshadow.suggest` | `src/components/foreshadow/ForeshadowPanel.tsx:216` |
-| `geography.concept-map` | `src/components/geography/GeographyPanel.tsx:128` |
+| `foreshadow.structure` | `src/components/foreshadow/ForeshadowPanel.tsx:68` |
+| `foreshadow.suggest` | `src/components/foreshadow/ForeshadowPanel.tsx:217` |
+| `geography.concept-map` | `src/components/geography/GeographyPanel.tsx:129` |
 | `geography.world-map` | `src/components/geography/WorldMapPanel.tsx:107` |
 | `history.consult` | `src/components/history/useHistoryAI.ts:118` |
 | `history.storm` | `src/components/history/useHistoryAI.ts:120` |
 | `inspiration.reverse` | `src/hooks/useIncrementalInspiration.ts:226` |
 | `inventory.extract` | `src/components/items/InventoryPanel.tsx:150` |
-| `location.extract` | `src/components/location/LocationPanel.tsx:108` |
+| `location.extract` | `src/components/location/LocationPanel.tsx:109` |
 | `node.creation` | `src/lib/node-flow/executor.ts:203` |
 | `outline.chapter` | `src/lib/ai/batch-outline-runner.ts:123`<br/>`src/lib/outline/generation-node.ts:55` |
 | `outline.character-driven` | `src/components/outline/CharacterDrivenPlotPanel.tsx:202` |
@@ -229,25 +229,25 @@ AI 输出经 `adopt({ target, data })` 写回,只有这里登记的字段可写(
 | `prompt.examples` | `src/components/settings/prompt/PromptExamplesEditor.tsx:108` |
 | `reference.characters` | `src/components/project/AnalysisReportViewer.tsx:151` |
 | `reference.summary` | `src/components/project/AnalysisReportViewer.tsx:119` |
-| `relation.extract` | `src/components/relations/CharacterRelationPanel.tsx:98` |
+| `relation.extract` | `src/components/relations/CharacterRelationPanel.tsx:99` |
 | `review.anti-ai` | `src/components/editor/ReviewPanel.tsx:106` |
 | `review.outline-workshop` | `src/lib/outline/workshop.ts:451` |
 | `review.quality` | `src/components/editor/ReviewPanel.tsx:98` |
 | `review.readability` | `src/components/editor/ReviewPanel.tsx:115` |
-| `review.revise` | `src/components/editor/ChapterEditor.tsx:768` |
+| `review.revise` | `src/components/editor/ChapterEditor.tsx:838` |
 | `rules.generate` | `src/components/rules/CreativeRulesPanel.tsx:80` |
 | `scene.verify` | `src/components/scene/SceneVerifyPanel.tsx:81` |
 | `story-arc.generate` | `src/components/outline/StoryArcPanel.tsx:85` |
-| `story.generate` | `src/components/worldview/StoryCorePanel.tsx:200` |
+| `story.generate` | `src/components/worldview/StoryCorePanel.tsx:199` |
 | `story.timeline` | `src/components/timeline/StoryTimelinePanel.tsx:85` |
 | `storyline-progress.map` | `src/components/outline/StorylineProgressPanel.tsx:79` |
-| `style.calibrate` | `src/components/style/StyleCalibrationPanel.tsx:63` |
-| `style.learn` | `src/components/style/StyleLearningPanel.tsx:125` |
-| `world-group.expand` | `src/components/world-group/WorldGroupDetail.tsx:98` |
-| `world-group.suggest` | `src/components/world-group/WorldGroupOverview.tsx:57` |
-| `worldview.dimension` | `src/components/worldview/WorldviewHumanityPanel.tsx:352`<br/>`src/components/worldview/WorldviewNaturalPanel.tsx:284`<br/>`src/components/worldview/WorldviewOriginPanel.tsx:262` |
-| `worldview.divine` | `src/components/worldview/WorldviewOriginPanel.tsx:361` |
-| `worldview.divine.split` | `src/components/worldview/WorldviewOriginPanel.tsx:385` |
+| `style.calibrate` | `src/components/style/StyleCalibrationPanel.tsx:64` |
+| `style.learn` | `src/components/style/StyleLearningPanel.tsx:126` |
+| `world-group.expand` | `src/components/world-group/WorldGroupDetail.tsx:99` |
+| `world-group.suggest` | `src/components/world-group/WorldGroupOverview.tsx:58` |
+| `worldview.dimension` | `src/components/worldview/WorldviewHumanityPanel.tsx:352`<br/>`src/components/worldview/WorldviewNaturalPanel.tsx:283`<br/>`src/components/worldview/WorldviewOriginPanel.tsx:262` |
+| `worldview.divine` | `src/components/worldview/WorldviewOriginPanel.tsx:357` |
+| `worldview.divine.split` | `src/components/worldview/WorldviewOriginPanel.tsx:381` |
 
 ### 动态 category 调用
 
@@ -262,4 +262,4 @@ AI 输出经 `adopt({ target, data })` 写回,只有这里登记的字段可写(
 
 ---
 
-生成时间基准:commit `0215f5c`
+生成时间基准:commit `1f70856`

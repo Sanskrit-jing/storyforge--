@@ -130,8 +130,9 @@ export default function StoryTimelinePanel({ project, onOpenChapter }: Props) {
   return (
     <div className="max-w-3xl space-y-5">
       <div className="pb-4 border-b border-border/40">
-        <div className="flex items-start justify-between gap-3">
-          <div>
+        {/* 手机竖屏 / HD：标题描述占满整行，操作按钮换行右对齐，避免描述被挤成窄列右侧大片空白；PC 保持单行 */}
+        <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+          <div className="min-w-0 flex-1">
             <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
               <CalendarClock className="w-5 h-5" /> 故事进程年表
             </h2>
@@ -139,7 +140,7 @@ export default function StoryTimelinePanel({ project, onOpenChapter }: Props) {
               AI 从已写正文中提取剧情大事，按故事进程排列。区别于「历史年表」（世界背景）和「故事线」（结构）。
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex w-full items-center justify-end gap-2 xl:w-auto xl:shrink-0">
             <button onClick={handleManualAdd}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-bg-elevated text-text-secondary border border-border hover:text-text-primary transition-colors">
               <Plus className="w-3.5 h-3.5" /> 手动添加

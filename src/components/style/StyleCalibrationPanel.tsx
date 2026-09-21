@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 import { useMemo, useState } from 'react'
 import { Check, Loader2, MessageSquareText, Save, Sparkles, Wrench } from 'lucide-react'
 import { buildStyleCalibrationPrompt } from '../../lib/ai/adapters/style-adapter'
@@ -121,12 +122,12 @@ export default function StyleCalibrationPanel({ projectId, profile }: Props) {
         </p>
       </div>
 
-      <textarea
+      <FullScreenTextarea
         value={sourceText}
         onChange={event => setSourceText(event.target.value.slice(0, MAX_CALIBRATION_SOURCE_CHARS))}
         rows={6}
         placeholder="粘贴一段待校准短文（最多 1600 字符）"
-        className="w-full resize-y rounded border border-border bg-bg-base px-3 py-2 text-sm leading-relaxed text-text-secondary focus:border-accent focus:outline-none"
+        className="w-full rounded border border-border bg-bg-base px-3 py-2 text-sm leading-relaxed text-text-secondary focus:border-accent focus:outline-none"
       />
       <div className="flex items-center justify-between gap-3">
         <span className="text-[10px] text-text-muted">
@@ -151,12 +152,12 @@ export default function StyleCalibrationPanel({ projectId, profile }: Props) {
           <label className="text-xs font-medium text-text-secondary" htmlFor="style-calibration-result">
             校准稿（可继续手改）
           </label>
-          <textarea
+          <FullScreenTextarea
             id="style-calibration-result"
             value={resultText}
             onChange={event => setResultText(event.target.value)}
             rows={7}
-            className="w-full resize-y rounded border border-accent/30 bg-accent/5 px-3 py-2 text-sm leading-relaxed text-text-secondary focus:border-accent focus:outline-none"
+            className="w-full rounded border border-accent/30 bg-accent/5 px-3 py-2 text-sm leading-relaxed text-text-secondary focus:border-accent focus:outline-none"
           />
           <div className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
             <MessageSquareText className="h-3.5 w-3.5" /> 你的判断

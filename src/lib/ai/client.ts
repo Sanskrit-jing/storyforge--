@@ -57,6 +57,15 @@ function usageEntry(
   }
 }
 
+/**
+ * 可重试的 HTTP 状态码：429（频率限制）与 5xx 服务端/网关偶发错误。
+ * 中转网关（one-api/new-api 类）常把上游偶发波动包装成 500「操作失败」，
+ * 纯生成调用无副作用，重试安全。
+ */
+const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504])
+/** 自动重试次数上限（额外尝试次数，不含首次请求） */
+const MAX_RETRIES = 2
+
 /** 可变容器，streamChat 写入 usage，调用方读取 */
 export interface StreamResult {
   usage?: TokenUsage
@@ -167,9 +176,8 @@ export async function* streamChat(
   const startTime = Date.now()
 
   try {
-    // 自动重试：遇到 429（频率限制）或 503（服务不可用）时，最多重试 2 次
+    // 自动重试：遇到 429（频率限制）或 5xx（服务端/网关偶发错误）时，最多重试 2 次
     let response: Response | null = null
-    const MAX_RETRIES = 2
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       response = await fetch(req.url, {
         method: 'POST',
@@ -180,8 +188,7 @@ export async function* streamChat(
 
       if (response.ok) break
 
-      // 429/503 可重试
-      if ((response!.status === 429 || response!.status === 503) && attempt < MAX_RETRIES) {
+      if (RETRYABLE_STATUS.has(response!.status) && attempt < MAX_RETRIES) {
         const wait = (attempt + 1) * 2000 // 2s, 4s
         console.warn(`[AI] HTTP ${response!.status}，${wait / 1000}s 后重试（${attempt + 1}/${MAX_RETRIES}）`)
         await new Promise(r => setTimeout(r, wait))
@@ -281,19 +288,34 @@ export async function chat(
   }
   const req = buildRequest(config, trimmed.messages, false)
 
-  const response = await fetch(req.url, {
-    method: 'POST',
-    headers: req.headers,
-    body: req.body,
-    signal,
-  })
+  // 自动重试：与 streamChat 同策略，429/5xx（含中转网关把上游波动包装成的 500）最多重试 2 次
+  let response: Response | null = null
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    response = await fetch(req.url, {
+      method: 'POST',
+      headers: req.headers,
+      body: req.body,
+      signal,
+    })
 
-  if (!response.ok) {
-    const errorText = await response.text()
+    if (response.ok) break
+
+    if (RETRYABLE_STATUS.has(response!.status) && attempt < MAX_RETRIES) {
+      const wait = (attempt + 1) * 2000 // 2s, 4s
+      console.warn(`[AI] HTTP ${response!.status}，${wait / 1000}s 后重试（${attempt + 1}/${MAX_RETRIES}）`)
+      await new Promise(r => setTimeout(r, wait))
+      continue
+    }
+
+    break
+  }
+
+  if (!response!.ok) {
+    const errorText = await response!.text()
     throw new AIError(response!.status, errorText)
   }
 
-  const json = await response.json()
+  const json = await response!.json()
   if (json.usage) {
     const usage = {
       inputTokens: json.usage.prompt_tokens ?? 0,

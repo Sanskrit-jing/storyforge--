@@ -124,16 +124,29 @@ export default function PanelLayout({
       {/* 主编辑区 */}
       <div className="relative flex-1 min-w-0 overflow-y-auto">
         {collapsed && (
-          <div className="sticky top-3 z-40 h-0 pointer-events-none">
+          <>
+            {/* PC（≥1280px）：保持原左上角吸附标签 */}
+            <div className="sticky top-3 z-40 h-0 pointer-events-none hidden xl:block">
+              <button
+                onClick={() => setCollapsed(false)}
+                className="pointer-events-auto -ml-px inline-flex items-center gap-1.5 rounded-r-xl border border-l-0 border-border bg-bg-elevated/95 px-2.5 py-2 text-xs font-medium text-text-secondary shadow-theme-md backdrop-blur transition-colors hover:border-accent/60 hover:text-text-primary"
+                title="展开侧栏"
+              >
+                <PanelLeft className="h-4 w-4" />
+                {sidebarTitle && <span className="max-w-16 truncate">{sidebarTitle.replace(/^[^\p{L}\p{N}]+/u, '')}</span>}
+              </button>
+            </div>
+            {/* 手机竖屏 / HD：左上角标签会压在正文输入框上显突兀；
+                改为底部居中悬浮胶囊（避开顶部输入区，拇指可达，留安全区距离） */}
             <button
               onClick={() => setCollapsed(false)}
-              className="pointer-events-auto -ml-px inline-flex items-center gap-1.5 rounded-r-xl border border-l-0 border-border bg-bg-elevated/95 px-2.5 py-2 text-xs font-medium text-text-secondary shadow-theme-md backdrop-blur transition-colors hover:border-accent/60 hover:text-text-primary"
+              className="fixed bottom-[max(0.875rem,var(--safe-area-inset-bottom))] left-1/2 z-40 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-border bg-bg-elevated/95 px-4 py-2 text-xs font-medium text-text-secondary shadow-lg backdrop-blur transition-colors hover:border-accent/60 hover:text-text-primary xl:hidden"
               title="展开侧栏"
             >
               <PanelLeft className="h-4 w-4" />
-              {sidebarTitle && <span className="max-w-16 truncate">{sidebarTitle.replace(/^[^\p{L}\p{N}]+/u, '')}</span>}
+              {sidebarTitle && <span className="max-w-40 truncate">{sidebarTitle.replace(/^[^\p{L}\p{N}]+/u, '')}</span>}
             </button>
-          </div>
+          </>
         )}
         {children}
       </div>

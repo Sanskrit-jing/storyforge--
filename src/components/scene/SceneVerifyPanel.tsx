@@ -88,8 +88,8 @@ export default function SceneVerifyPanel({ project }: Props) {
     <div className="max-w-3xl space-y-5">
       {/* 顶部 */}
       <div className="pb-4 border-b border-border/40">
-        <div className="flex items-start justify-between gap-3">
-          <div>
+        <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+          <div className="min-w-0 flex-1">
             <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
               <ScanSearch className="w-5 h-5" /> 场景考证
             </h2>
@@ -97,7 +97,7 @@ export default function SceneVerifyPanel({ project }: Props) {
               描述你正在构思的场景，AI 结合本作品的世界观、历史年表与「真实与幻想」规则，给出符合背景的细节、设定校验与情节灵感。
             </p>
           </div>
-          {project.enableMultiWorld && <WorldGroupSwitcher />}
+          {project.enableMultiWorld && <div className="w-full flex justify-end xl:w-auto xl:shrink-0"><WorldGroupSwitcher /></div>}
         </div>
       </div>
 

@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, ChevronRight, ChevronUp, CornerDownRight, GripVertical, LayoutList, Plus, Sparkles, Trash2 } from 'lucide-react'
 import { CInput } from '../shared/CompositionInput'
@@ -89,7 +90,7 @@ export function OutlineChapterRow({
         }
         baseDropProps?.onDrop(event)
       }}
-      className={`flex items-start gap-1 px-2 py-2 bg-bg-surface border rounded-md group transition-colors ${
+      className={`flex items-start gap-1 px-2 py-2 bg-bg-surface border rounded-md group transition-colors max-xl:flex-wrap max-xl:gap-y-1 ${
         isOver ? 'border-accent ring-1 ring-accent/50' : 'border-border hover:border-accent/30'
       } ${dnd?.isDragging ? 'opacity-40' : ''}`}
     >
@@ -119,13 +120,14 @@ export function OutlineChapterRow({
         </span>
       )}
       <span className="text-xs text-text-muted mt-1.5 shrink-0 w-5 text-right">{idx + 1}</span>
-      <div className="flex-1 min-w-0">
+      {/* 手机竖屏 / HD：标题占满首行剩余宽，章节摘要随该容器换到第二行占满整行；PC 保持原列布局 */}
+      <div className="flex-1 min-w-0 max-xl:order-3 max-xl:basis-[calc(100%-2.625rem)]">
         <CInput
           value={ch.title}
           onChange={event => onUpdate(ch.id!, { title: event.target.value })}
           className="w-full bg-transparent text-text-primary text-sm font-medium outline-none"
         />
-        <textarea
+        <FullScreenTextarea
           ref={textareaRef}
           value={summaryDraft}
           onChange={event => setSummaryDraft(event.target.value)}
@@ -139,7 +141,7 @@ export function OutlineChapterRow({
       </div>
       {/* 触摸端没有鼠标拖拽，用上移/下移按钮替代；鼠标设备仍走原来的拖动 */}
       {onMoveStep && ch.id != null && (
-        <div className="hidden [@media(hover:none)]:flex items-center gap-0.5 shrink-0 mt-1">
+        <div className="hidden [@media(hover:none)]:flex items-center gap-0.5 shrink-0 mt-1 max-xl:order-4">
           <button onClick={() => onMoveStep(ch.id!, -1)} title="上移一章" className="p-1 text-text-muted rounded active:text-accent">
             <ChevronUp className="w-3.5 h-3.5" />
           </button>
@@ -148,7 +150,7 @@ export function OutlineChapterRow({
           </button>
         </div>
       )}
-      <div className={`flex items-center gap-0.5 transition-opacity shrink-0 mt-1 ${
+      <div className={`flex items-center gap-0.5 transition-opacity shrink-0 mt-1 max-xl:order-5 max-xl:ml-auto ${
         !ch.summary.trim() && onGenerate ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
       }`}>
         {!ch.summary.trim() && onGenerate && (

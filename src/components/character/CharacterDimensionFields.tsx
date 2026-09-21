@@ -1,6 +1,6 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 import type { Character } from '../../lib/types'
 import { dimensionsByGroup, type CharacterDimensionKey, type CharacterDimensionSpec } from '../../lib/character/character-dimensions'
-import { CTextarea } from '../shared/CompositionInput'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 interface Props {
@@ -57,7 +57,7 @@ function CharacterDimensionField({ dimension, value, onCommit }: DimensionFieldP
   }, [])
 
   return (
-    <CTextarea
+    <FullScreenTextarea
       value={draft}
       onChange={e => {
         const next = e.target.value
@@ -70,7 +70,7 @@ function CharacterDimensionField({ dimension, value, onCommit }: DimensionFieldP
       onBlur={flushDraft}
       placeholder={`${dimension.label}…`}
       rows={dimension.rows}
-      className="flex-1 px-2 py-1 bg-bg-base border border-border rounded text-xs text-text-primary resize-y focus:outline-none focus:border-accent"
+      className="flex-1 px-2 py-1 bg-bg-base border border-border rounded text-xs text-text-primary focus:outline-none focus:border-accent"
     />
   )
 }

@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../../shared/FullScreenTextarea'
 import { useEffect, useState } from 'react'
 import {
   Check,
@@ -99,7 +100,7 @@ export function WorkflowStepCard({
       {expanded && (
         <div className="border-t border-border p-3 space-y-2 bg-bg-base">
           {step.userHint && <p className="text-xs text-text-muted">💡 {step.userHint}</p>}
-          <textarea
+          <FullScreenTextarea
             value={userInput}
             onChange={event => {
               setUserInput(event.target.value)
@@ -107,7 +108,7 @@ export function WorkflowStepCard({
             }}
             rows={2}
             placeholder="你的输入(可选)：在此写本步内容,AI 会在你写的基础上生成/扩展"
-            className="w-full px-2 py-1.5 bg-bg-surface border border-border rounded text-xs text-text-primary resize-y focus:outline-none focus:border-accent"
+            className="w-full px-2 py-1.5 bg-bg-surface border border-border rounded text-xs text-text-primary focus:outline-none focus:border-accent"
           />
           {result.status === 'pending' && <p className="text-xs text-text-muted">待执行</p>}
           {result.status === 'running' && (
@@ -122,7 +123,7 @@ export function WorkflowStepCard({
           )}
           {result.status === 'done' && (
             <>
-              <textarea
+              <FullScreenTextarea
                 value={editedOutput}
                 disabled={actionsDisabled}
                 onChange={event => {
@@ -130,7 +131,7 @@ export function WorkflowStepCard({
                   onOutputChange(event.target.value)
                 }}
                 rows={8}
-                className="w-full max-h-72 resize-y rounded border border-border bg-bg-surface p-2 font-sans text-xs text-text-primary focus:border-accent focus:outline-none disabled:opacity-60"
+                className="w-full max-h-72 rounded border border-border bg-bg-surface p-2 font-sans text-xs text-text-primary focus:border-accent focus:outline-none disabled:opacity-60"
               />
               <p className="text-[10px] text-text-muted">AI 输出可直接编辑,保存/复制将使用编辑后的内容。</p>
             </>

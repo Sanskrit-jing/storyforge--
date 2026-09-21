@@ -169,7 +169,7 @@ export default function CharacterPanel({ project, view = 'generator' }: Props) {
             <div className="relative">
               <button
                 onClick={() => setShowRolePicker(!showRolePicker)}
-                className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white text-sm rounded-md hover:bg-accent-hover transition-colors"
+                className="flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-2 bg-accent text-white text-sm rounded-md hover:bg-accent-hover transition-colors"
               >
                 <Plus className="w-4 h-4" /> 新建角色 <ChevronDown className="w-3 h-3 ml-0.5" />
               </button>
@@ -190,17 +190,17 @@ export default function CharacterPanel({ project, view = 'generator' }: Props) {
                 </>
               )}
             </div>
-            <div className="flex items-center gap-2 flex-1">
+            <div className="flex min-w-0 w-full flex-wrap items-center gap-2 xl:w-auto xl:flex-1">
               <CInput
                 value={hint}
                 onChange={e => setHint(e.target.value)}
                 placeholder="角色要求（可选）"
-                className="w-48 px-2 py-1.5 bg-bg-surface border border-border rounded text-xs text-text-primary focus:outline-none focus:border-accent"
+                className="w-full min-w-0 px-2 py-1.5 bg-bg-surface border border-border rounded text-xs text-text-primary focus:outline-none focus:border-accent sm:w-48 sm:flex-none"
               />
               <div className="relative">
                 <button
                   onClick={() => setShowDimPicker(!showDimPicker)}
-                  className="flex items-center gap-1 px-2.5 py-2 bg-bg-surface text-text-secondary text-xs rounded-md hover:text-accent transition-colors border border-border"
+                  className="flex items-center gap-1 whitespace-nowrap px-2.5 py-2 bg-bg-surface text-text-secondary text-xs rounded-md hover:text-accent transition-colors border border-border"
                   title="选择 AI 这次要设计哪些维度"
                 >
                   维度 {genDims.size}/{CHARACTER_DIMENSIONS.length} <ChevronDown className="w-3 h-3" />
@@ -218,14 +218,14 @@ export default function CharacterPanel({ project, view = 'generator' }: Props) {
               <button
                 onClick={handleAIGenerate}
                 disabled={ai.isStreaming}
-                className="flex items-center gap-1.5 px-3 py-2 bg-bg-elevated text-text-secondary text-sm rounded-md hover:text-accent disabled:opacity-50 transition-colors border border-border hover:border-accent/50"
+                className="flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-2 bg-bg-elevated text-text-secondary text-sm rounded-md hover:text-accent disabled:opacity-50 transition-colors border border-border hover:border-accent/50"
               >
-                <Sparkles className="w-3.5 h-3.5" /> AI 设计角色
+                <Sparkles className="h-3.5 w-3.5" /> AI 设计角色
               </button>
             </div>
           </>
         )}
-        <span className="text-xs text-text-muted ml-auto">
+        <span className="order-1 text-xs text-text-muted ml-auto xl:order-none">
           {view === 'main' ? '主要角色' : '角色生成'} · {displayedChars.length}
         </span>
       </div>

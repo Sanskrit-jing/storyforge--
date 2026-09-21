@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Sparkles } from 'lucide-react'
 import { useWorldviewStore } from '../../stores/worldview'
 import { useWorldGroupStore } from '../../stores/world-group'
 import { useAIStream } from '../../hooks/useAIStream'
@@ -8,7 +7,7 @@ import { buildStoryGeneratePrompt } from '../../lib/ai/adapters/story-adapter'
 import AIStreamOutput from '../shared/AIStreamOutput'
 import PromptRunPanel from '../shared/PromptRunPanel'
 import { InlineTextarea } from '../shared/InlineEdit'
-import AIFieldModeTabs from '../shared/AIFieldModeTabs'
+import FieldGenerationBar from '../shared/FieldGenerationBar'
 import { assembleContext } from '../../lib/registry/assemble-context'
 import type { Project } from '../../lib/types'
 import type { FieldGenerationMode } from '../../lib/ai/field-generation-context'
@@ -221,22 +220,16 @@ function FieldEditor({
 
       {/* AI 生成区 */}
       <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <AIFieldModeTabs value={mode} onChange={setMode} />
-          <input
-            value={hint}
-            onChange={e => setHint(e.target.value)}
-            placeholder="补充提示（可选）"
-            className="min-w-0 flex-1 px-2 py-1.5 bg-bg-surface border border-border rounded text-xs text-text-primary focus:outline-none focus:border-accent"
-          />
-          <button
-            onClick={handleGenerate}
-            disabled={ai.isStreaming}
-            className="flex items-center gap-1.5 px-3 py-2 bg-bg-elevated text-text-secondary text-sm rounded-md hover:text-accent disabled:opacity-50 transition-colors border border-border hover:border-accent/50"
-          >
-            <Sparkles className="w-3.5 h-3.5" /> AI 生成
-          </button>
-        </div>
+        <FieldGenerationBar
+          mode={mode}
+          onModeChange={setMode}
+          hint={hint}
+          onHintChange={setHint}
+          onGenerate={handleGenerate}
+          generating={ai.isStreaming}
+          variant="outline"
+          hintPlaceholder="补充提示（可选）"
+        />
 
         <PromptRunPanel
           moduleKey="story.generate"

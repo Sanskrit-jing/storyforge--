@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Sparkles } from 'lucide-react'
 import { useWorldviewStore } from '../../stores/worldview'
 import { useWorldGroupStore } from '../../stores/world-group'
 import WorldGroupSwitcher from '../world-group/WorldGroupSwitcher'
@@ -12,7 +11,7 @@ import { buildWorldviewPrompt } from '../../lib/ai/adapters/worldview-adapter'
 import { assembleContext } from '../../lib/registry/assemble-context'
 import AIStreamOutput from '../shared/AIStreamOutput'
 import PromptRunPanel from '../shared/PromptRunPanel'
-import AIFieldModeTabs from '../shared/AIFieldModeTabs'
+import FieldGenerationBar from '../shared/FieldGenerationBar'
 import type { Project, NaturalResources } from '../../lib/types'
 import type { FieldGenerationMode } from '../../lib/ai/field-generation-context'
 
@@ -114,11 +113,11 @@ export default function WorldviewNaturalPanel({ project }: Props) {
     <div className="flex flex-col w-full h-full space-y-4">
       {/* 顶部 */}
       <div className="pb-4 border-b border-border/40 px-6 pt-4 shrink-0">
-        <div className="flex items-start justify-between gap-3">
-          <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
+        <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+          <h2 className="min-w-0 flex-1 text-xl font-bold text-text-primary flex items-center gap-2">
             🏔️ 自然环境与地理
           </h2>
-          {project.enableMultiWorld && <WorldGroupSwitcher />}
+          {project.enableMultiWorld && <div className="shrink-0"><WorldGroupSwitcher /></div>}
         </div>
         <p className="text-xs text-text-muted mt-0.5">
           定义世界的地理、气候与自然资源。如需声明真实与幻想的规则，请前往「⚖️ 真实与幻想」面板。
@@ -295,16 +294,14 @@ function SimpleFieldEditor({ field, value, onChange, project, contextSummary, on
         <InlineTextarea value={value} onChange={onChange} placeholder={field.desc} />
       </div>
 
-      <div className="flex items-center gap-2">
-        <AIFieldModeTabs value={mode} onChange={setMode} />
-        <input value={hint} onChange={e => setHint(e.target.value)}
-          placeholder="给 AI 的补充说明（可选）"
-          className="flex-1 px-2 py-1.5 bg-bg-base border border-border rounded text-xs text-text-primary focus:outline-none focus:border-accent" />
-        <button onClick={handleGenerate} disabled={ai.isStreaming}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded disabled:opacity-50 shrink-0 bg-accent/10 text-accent hover:bg-accent/20">
-          <Sparkles className="w-3.5 h-3.5" /> AI 生成
-        </button>
-      </div>
+      <FieldGenerationBar
+        mode={mode}
+        onModeChange={setMode}
+        hint={hint}
+        onHintChange={setHint}
+        onGenerate={handleGenerate}
+        generating={ai.isStreaming}
+      />
 
       <PromptRunPanel moduleKey="worldview.dimension" parameterValues={parameterValues}
         onParamChange={setParameterValues} systemOverride={systemOverride}

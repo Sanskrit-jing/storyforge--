@@ -138,8 +138,8 @@ export default function ChapterOrganizationModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4">
-      <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-border bg-bg-surface shadow-2xl">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4 pt-[max(1rem,var(--safe-area-inset-top))] pb-[max(1rem,var(--safe-area-inset-bottom))] xl:pt-4 xl:pb-4">
+      <div className="flex max-h-[92dvh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-border bg-bg-surface shadow-2xl xl:max-h-[92vh]">
         <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div>
             <h3 className="flex items-center gap-2 text-lg font-bold text-text-primary">

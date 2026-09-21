@@ -232,8 +232,9 @@ export default function InventoryPanel({ project }: Props) {
     <div className="max-w-3xl space-y-5">
       {/* 顶部 */}
       <div className="pb-4 border-b border-border/40">
-        <div className="flex items-start justify-between gap-3">
-          <div>
+        {/* 手机竖屏 / HD：标题描述占满整行，操作按钮换行右对齐，避免描述被挤成窄列右侧大片空白；PC 保持单行 */}
+        <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+          <div className="min-w-0 flex-1">
             <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
               <Package className="w-5 h-5" /> 物品栏
             </h2>
@@ -241,7 +242,7 @@ export default function InventoryPanel({ project }: Props) {
               AI 从已写正文中按角色提取物品获得/消耗，自动统计持有数量和历程。
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex w-full items-center justify-end gap-2 xl:w-auto xl:shrink-0">
             <button
               onClick={handleManualAdd}
               disabled={!selectedCharacter}

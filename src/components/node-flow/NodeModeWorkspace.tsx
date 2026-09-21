@@ -1,3 +1,4 @@
+import FullScreenTextarea from '../shared/FullScreenTextarea'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Check,
@@ -496,7 +497,7 @@ export default function NodeModeWorkspace(props: {
               ) : (
                 <>
                   {selectedResult.error && <p className="mb-2 rounded bg-error/10 p-2 text-[10px] text-error">{selectedResult.error}</p>}
-                  <textarea
+                  <FullScreenTextarea
                     aria-label="节点输出内容"
                     value={selectedResult.output}
                     onChange={event => setResults({
@@ -510,7 +511,7 @@ export default function NodeModeWorkspace(props: {
                         output: results[selectedResult.nodeId].output,
                       }).catch(error => toast.error(error instanceof Error ? error.message : String(error)))
                     }}
-                    className="h-28 w-full resize-y rounded border border-border bg-bg-base p-2 text-[10px] leading-4 text-text-primary outline-none focus:border-accent"
+                    className="h-28 w-full rounded border border-border bg-bg-base p-2 text-[10px] leading-4 text-text-primary outline-none focus:border-accent"
                   />
                   {selectedNode?.kind === 'output.preview' && selectedNode.config.adoptTarget !== 'none' && (
                     <button
