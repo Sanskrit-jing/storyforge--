@@ -1,5 +1,10 @@
 # Changelog
 
+## v3.9.4 — 2026-09-22 · 全端应用图标更换为圆角新版
+
+- 应用图标全端更换为新的浅色底火焰图，并统一采用圆角造型：以 `public/icon.png`（1024px，22% 圆角）为唯一事实源，重新生成 `icon-512.png`、`icon-192.png`——favicon、PWA 安装图标、Windows 安装器/桌面图标（electron-builder）与鸿蒙 `app_icon.png` 均由此派生，自动同步。
+- Android 端重生成全密度图标（mdpi–xxxhdpi）：`ic_launcher.png` 圆角方形、`ic_launcher_round.png` 正圆、自适应图标前景层 `ic_launcher_foreground.png` 重绘为新图（108dp 全出血，由启动器蒙版呈现圆角/圆形）。
+
 ## v3.9.3 — 2026-09-21 · 首页简介截断修复
 
 - 修复首页项目列表卡片简介显示异常（全端）：简介此前以内联 `span.truncate` 与流派标签拼在同一行文本流，`white-space: nowrap` 生效但 `overflow: hidden` 对内联元素无效，导致简介强制单行横向溢出卡片——手机/HD/鸿蒙版溢出屏幕并叠在「字数/删除」列下遮挡功能，PC 版在容器边缘被硬裁且无省略号。现简介从流派行拆出独立成行，改用块级 `line-clamp-2` 两行截断（超出显示省略号，悬停 `title` 可看全文），`break-words` 兜底长英文/URL，JS 层超 80 字保护性截断；三端布局一并生效。
