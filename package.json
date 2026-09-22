@@ -1,7 +1,7 @@
 {
   "name": "storyforge",
   "private": true,
-  "version": "3.9.4",
+  "version": "3.9.5",
   "license": "MIT",
   "type": "module",
   "main": "electron/main.cjs",

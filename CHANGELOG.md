@@ -1,5 +1,11 @@
 # Changelog
 
+## v3.9.5 — 2026-09-22 · 全屏编辑按钮融合修正 + 图标事实源修正
+
+- 修复全屏编辑按钮视觉突兀的问题（全端）：`FullScreenTextarea`/`AutoResizeTextarea` 右下角按钮此前是白底方块 + 边框 + 阴影，贴在圆角输入框右下角与框体割裂。现按钮去边框去阴影，底色改为与框内一致的 `bg-bg-base/85` + 轻微背景模糊，悬停恢复 accent 高亮，视觉完全融入输入框。
+- 修复 PC 版（≥1280px）没有全屏按钮的问题：按钮此前带 `xl:hidden` 只在手机/HD 显示、PC 保留原生拉伸手柄，现全端统一显示全屏按钮；多行输入框统一 `resize-none`，原生拉伸手柄由全屏按钮取代（全屏层内即可查看并编辑长文本，不再依赖拖拽拉伸）。
+- 修正图标事实源：v3.9.4 实际发布中 `public/icon.png` 仍是 444×586 的裁剪原图（favicon 引用它），与 CHANGELOG 描述不符。现 `icon.png` 统一替换为与 `icon-512.png` 同源的 512×512 圆角版，favicon、PWA 图标、Windows 安装器图标、鸿蒙 rawfile 产物全端同图。
+
 ## v3.9.4 — 2026-09-22 · 全端应用图标更换为圆角新版
 
 - 应用图标全端更换为新的浅色底火焰图，并统一采用圆角造型：以 `public/icon.png`（1024px，22% 圆角）为唯一事实源，重新生成 `icon-512.png`、`icon-192.png`——favicon、PWA 安装图标、Windows 安装器/桌面图标（electron-builder）与鸿蒙 `app_icon.png` 均由此派生，自动同步。

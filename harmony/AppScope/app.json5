@@ -2,8 +2,8 @@
   "app": {
     "bundleName": "com.storyforge.app",
     "vendor": "storyforge",
-    "versionCode": 3904,
-    "versionName": "3.9.4",
+    "versionCode": 3905,
+    "versionName": "3.9.5",
     "icon": "$media:app_icon",
     "label": "$string:app_name"
   }
