@@ -282,8 +282,16 @@ export default function HomePage() {
                       </div>
                       <div className="text-text-muted text-xs">
                         {genres.slice(0, 2).map(g => GENRE_OPTIONS.find(o => o.value === g)?.label ?? g).join(' · ')}
-                        {project.description && <> · <span className="truncate">{project.description.slice(0, 30)}</span></>}
                       </div>
+                      {/* 简介独立成行：inline truncate 不裁剪会横向溢出卡片（移动端遮挡字数/删除列），改用块级 line-clamp 两行截断 */}
+                      {project.description && (
+                        <p
+                          className="text-text-muted text-xs mt-0.5 leading-relaxed line-clamp-2 break-words"
+                          title={project.description}
+                        >
+                          {project.description.length > 80 ? `${project.description.slice(0, 80)}…` : project.description}
+                        </p>
+                      )}
                     </div>
 
                     {/* 字数 */}
