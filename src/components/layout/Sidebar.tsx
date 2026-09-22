@@ -1,5 +1,5 @@
 import { useState, type ComponentType, type ReactElement } from 'react'
-import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, Settings } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react'
 import { APP_PLATFORM_BUILD_ID } from '../../lib/version'
 import {
   MODULE_CONTENT_TYPE_DEFINITIONS, NAV_TREE, getBranchChain,
@@ -120,19 +120,8 @@ export default function Sidebar({
         ))}
       </nav>
 
-      {/* 底部：设置快捷入口 + 折叠切换 */}
+      {/* 底部：版本号 + 折叠切换（设置入口已移至首页顶栏） */}
       <div className="border-t border-border p-2 flex items-center justify-between">
-        <button
-          onClick={() => onSelect('settings')}
-          title="设置"
-          className={`p-1.5 rounded transition-colors ${
-            normActive === 'settings'
-              ? 'text-accent bg-accent/10'
-              : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'
-          }`}
-        >
-          <Settings className="w-4 h-4" />
-        </button>
         {!collapsed && (
           <span className="text-[10px] text-text-muted font-mono" title="当前版本号">
             {APP_PLATFORM_BUILD_ID}
@@ -141,7 +130,7 @@ export default function Sidebar({
         <button
           onClick={onToggleCollapse}
           title={collapsed ? '展开侧边栏' : '折叠侧边栏'}
-          className="hidden p-1.5 rounded text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors md:block"
+          className="hidden p-1.5 rounded text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors md:block ml-auto"
         >
           {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
         </button>
