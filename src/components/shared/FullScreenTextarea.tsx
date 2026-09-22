@@ -1,9 +1,9 @@
 /**
  * 全屏可编辑文本域（全项目统一）
  *
- * 替代原生 textarea 右下角的拉伸手柄：在手机竖屏 / HD 版（<1280px），
- * 右下角显示「全屏编辑」按钮，点击在 FullScreenViewer 中以大文本域查看和编辑；
- * PC（≥1280px）完全保留历史行为——按钮隐藏，原生 resize-y 拉伸手柄照旧。
+ * 替代原生 textarea 右下角的拉伸手柄：全端（含 PC）在右下角内嵌
+ * 「全屏编辑」按钮，点击在 FullScreenViewer 中以大文本域查看和编辑；
+ * 原生 resize 拉伸手柄由该按钮统一取代。
  *
  * 与 CTextarea 一样内置 IME 组合输入保护，属性与原生 textarea 完全兼容，
  * 因此全项目的 <CTextarea /> / <textarea /> 可直接替换为本组件。
@@ -46,9 +46,9 @@ const FullScreenTextarea = forwardRef<HTMLTextAreaElement, FullScreenTextareaPro
           {...rest}
           disabled={disabled}
           onBlur={onBlur}
-          className={`w-full resize-none xl:resize-y ${className}`}
+          className={`w-full resize-none ${className}`}
         />
-        {/* 仅手机竖屏 / HD 版出现；PC（≥1280px）隐藏并沿用原生拉伸手柄 */}
+        {/* 全端统一：右下角内嵌全屏入口，底色与框内一致、无边框，视觉融入文本域 */}
         {!disabled && (
           <button
             type="button"
@@ -60,7 +60,7 @@ const FullScreenTextarea = forwardRef<HTMLTextAreaElement, FullScreenTextareaPro
             }}
             title="点击全屏查看并编辑"
             aria-label="点击全屏查看并编辑"
-            className="absolute bottom-1 right-1 flex h-6 w-6 items-center justify-center rounded border border-border bg-bg-surface/90 text-text-muted shadow-sm hover:text-accent xl:hidden"
+            className="absolute bottom-2 right-2 flex h-6 w-6 items-center justify-center rounded-md bg-bg-base/85 text-text-muted/70 backdrop-blur-[2px] transition-colors hover:bg-bg-hover hover:text-accent"
           >
             <Maximize2 className="h-3.5 w-3.5" />
           </button>

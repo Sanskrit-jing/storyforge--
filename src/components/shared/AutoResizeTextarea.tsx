@@ -102,7 +102,7 @@ export default function AutoResizeTextarea({
           onBlur={onBlur}
           className={`w-full resize-none ${className}`}
         />
-        {/* 同 FullScreenTextarea：手机竖屏 / HD 版右下角全屏入口，PC（≥1280px）隐藏 */}
+        {/* 同 FullScreenTextarea：全端统一右下角内嵌全屏入口，底色与框内一致、无边框 */}
         {!disabled && (
           <button
             type="button"
@@ -114,7 +114,7 @@ export default function AutoResizeTextarea({
             }}
             title="点击全屏查看并编辑"
             aria-label="点击全屏查看并编辑"
-            className="absolute bottom-1 right-1 flex h-6 w-6 items-center justify-center rounded border border-border bg-bg-surface/90 text-text-muted shadow-sm hover:text-accent xl:hidden"
+            className="absolute bottom-2 right-2 flex h-6 w-6 items-center justify-center rounded-md bg-bg-base/85 text-text-muted/70 backdrop-blur-[2px] transition-colors hover:bg-bg-hover hover:text-accent"
           >
             <Maximize2 className="h-3.5 w-3.5" />
           </button>
