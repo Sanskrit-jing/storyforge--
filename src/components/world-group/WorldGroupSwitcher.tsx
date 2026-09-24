@@ -38,7 +38,7 @@ export default function WorldGroupSwitcher() {
       </button>
 
       {open && (
-        <div className="absolute top-full right-0 mt-1 w-56 bg-bg-surface border border-border rounded-lg shadow-lg z-30 overflow-hidden">
+        <div className="absolute top-full right-0 mt-1 max-h-[60vh] w-56 overflow-y-auto bg-bg-surface border border-border rounded-lg shadow-lg z-30">
           {groups.map(g => (
             <button
               key={g.id}

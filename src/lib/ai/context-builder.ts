@@ -69,43 +69,50 @@ function formatNaturalResources(nr: Worldview['naturalResources']): string {
  * 覆盖所有面板可填的 v3 字段；v3 全空时回退 v2 旧字段（极老项目）。
  * 注：naturalResources / itemDesign 现以自由文本注入；Phase 35-b 迁到词条后由 codex 承载，届时从此移除避免双轨。
  */
-export function formatWorldviewBlock(wv: Worldview | null): string {
+/**
+ * 格式化世界观为【世界观】块（全字段，无字段级硬截断——预算由注册表管理）。
+ * excludeKeys：按 worldview 字段键排除对应行（面板字段级生成时排除「正在生成的字段」自身）。
+ */
+export function formatWorldviewBlock(wv: Worldview | null, excludeKeys?: string[]): string {
   if (!wv) return ''
   // 放开字段级硬截断:核心设定完整注入,不再每字段砍成 150-300 字。
   // 每个上下文源仍有 token 软上限(assembleContext 的 capBySourceBudget),真超模型窗口才软裁。
+  const excluded = new Set(excludeKeys ?? [])
+  const keep = (key: string, line: string | false | undefined) =>
+    line && !excluded.has(key) ? line : false
   const d = wv.divineDesign
   const divine = d?.hasDivinity
     ? `神明设定：${[d.divineRank, d.divineNames, d.divineRules].filter(Boolean).join('；')}`
     : ''
   const v3 = [
-    wv.summary && `摘要：${wv.summary}`,
-    wv.worldOrigin && `世界来源：${wv.worldOrigin}`,
-    wv.powerHierarchy && `力量体系：${wv.powerHierarchy}`,
-    divine,
-    wv.worldStructure && `世界结构：${wv.worldStructure}`,
-    wv.worldDimensions && `世界尺寸：${wv.worldDimensions}`,
-    wv.continentLayout && `地貌分布：${wv.continentLayout}`,
-    wv.regionDimensions && `重镇/区域分布：${wv.regionDimensions}`,
-    wv.mountainsRivers && `山川河流：${wv.mountainsRivers}`,
-    wv.climateByRegion && `气候环境：${wv.climateByRegion}`,
-    wv.naturalResourceOverview && `自然资源：${wv.naturalResourceOverview}`,
-    formatNaturalResources(wv.naturalResources),
-    wv.races && `种族民族：${wv.races}`,
-    wv.factionLayout && `势力分布：${wv.factionLayout}`,
-    wv.politicsOverview && `政治制度：${wv.politicsOverview}`,
-    wv.economyOverview && `经济制度：${wv.economyOverview}`,
-    wv.cultureOverview && `文化制度：${wv.cultureOverview}`,
-    !wv.politicsOverview && !wv.economyOverview && !wv.cultureOverview &&
-      wv.politicsEconomyCulture && `政经文化（旧版资料）：${wv.politicsEconomyCulture}`,
-    wv.internalConflicts && `矛盾冲突：${wv.internalConflicts}`,
-    wv.itemDesign && `道具设计：${wv.itemDesign}`,
-  ].filter(Boolean)
+    keep('summary', wv.summary && `摘要：${wv.summary}`),
+    keep('worldOrigin', wv.worldOrigin && `世界来源：${wv.worldOrigin}`),
+    keep('powerHierarchy', wv.powerHierarchy && `力量体系：${wv.powerHierarchy}`),
+    keep('divineDesign', divine),
+    keep('worldStructure', wv.worldStructure && `世界结构：${wv.worldStructure}`),
+    keep('worldDimensions', wv.worldDimensions && `世界尺寸：${wv.worldDimensions}`),
+    keep('continentLayout', wv.continentLayout && `地貌分布：${wv.continentLayout}`),
+    keep('regionDimensions', wv.regionDimensions && `重镇/区域分布：${wv.regionDimensions}`),
+    keep('mountainsRivers', wv.mountainsRivers && `山川河流：${wv.mountainsRivers}`),
+    keep('climateByRegion', wv.climateByRegion && `气候环境：${wv.climateByRegion}`),
+    keep('naturalResourceOverview', wv.naturalResourceOverview && `自然资源：${wv.naturalResourceOverview}`),
+    keep('naturalResources', formatNaturalResources(wv.naturalResources)),
+    keep('races', wv.races && `种族民族：${wv.races}`),
+    keep('factionLayout', wv.factionLayout && `势力分布：${wv.factionLayout}`),
+    keep('politicsOverview', wv.politicsOverview && `政治制度：${wv.politicsOverview}`),
+    keep('economyOverview', wv.economyOverview && `经济制度：${wv.economyOverview}`),
+    keep('cultureOverview', wv.cultureOverview && `文化制度：${wv.cultureOverview}`),
+    keep('politicsEconomyCulture', !wv.politicsOverview && !wv.economyOverview && !wv.cultureOverview &&
+      wv.politicsEconomyCulture && `政经文化（旧版资料）：${wv.politicsEconomyCulture}`),
+    keep('internalConflicts', wv.internalConflicts && `矛盾冲突：${wv.internalConflicts}`),
+    keep('itemDesign', wv.itemDesign && `道具设计：${wv.itemDesign}`),
+  ].filter(Boolean) as string[]
   if (v3.length) return `【世界观】\n${v3.join('\n')}`
   const v2 = [
-    wv.geography && `地理：${wv.geography}`,
-    wv.society && `社会：${wv.society}`,
-    wv.rules && `规则：${wv.rules}`,
-  ].filter(Boolean)
+    keep('geography', wv.geography && `地理：${wv.geography}`),
+    keep('society', wv.society && `社会：${wv.society}`),
+    keep('rules', wv.rules && `规则：${wv.rules}`),
+  ].filter(Boolean) as string[]
   return v2.length ? `【世界观】\n${v2.join('\n')}` : ''
 }
 

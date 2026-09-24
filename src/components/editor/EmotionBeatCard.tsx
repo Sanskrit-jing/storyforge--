@@ -9,6 +9,7 @@ import { useEmotionBeatStore } from '../../stores/emotion-beat'
 import { useAIStream } from '../../hooks/useAIStream'
 import { createAISessionKey } from '../../stores/ai-generation-session'
 import { buildEmotionBeatPrompt, parseEmotionBeats } from '../../lib/ai/adapters/emotion-beat-adapter'
+import { adopt } from '../../lib/registry/adopt'
 import type { EmotionBeat } from '../../lib/types'
 import { useDialog } from '../shared/Dialog'
 
@@ -67,14 +68,19 @@ export default function EmotionBeatCard({
       const { overallArc, beats, error } = parseEmotionBeats(raw)
       if (error) console.warn('[EmotionBeat] 解析警告:', error)
       if (beats.length > 0) {
-        await saveCard({
+        // AI 写回必须走 adopt() 统一入口（三注册表铁律）：字段白名单 + FK 校验 + 自动盖章
+        const result = await adopt({
           projectId,
-          chapterId,
-          chapterTitle,
-          overallArc,
-          beats,
-          source: 'ai',
+          target: 'emotionBeatCards',
+          mode: 'add',
+          data: { chapterId, chapterTitle, overallArc, beats, source: 'ai' },
         })
+        if (result.written.length === 0) {
+          console.error('[EmotionBeat] AI 写回被 adopt 拒绝:', result)
+          ai.reset()
+          return
+        }
+        await loadAll(projectId)
         console.log(`[EmotionBeat] 节拍卡已保存: ${beats.length} 个节拍`)
         setExpanded(true)
       }

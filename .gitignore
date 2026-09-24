@@ -36,6 +36,12 @@ android/app/*.jks
 android/app/*.keystore
 android/keystore.properties
 
+# hvigor 本机构建日志与临时截图（机器本地，不入库）
+.hvigor/
+
+# DevEco Studio IDE 配置
+harmony/.idea/
+
 # 鸿蒙（HarmonyOS NEXT）壳工程构建产物
 harmony/entry/build/
 harmony/build/

@@ -1,8 +1,9 @@
-import { useEffect, useState, useMemo, lazy, Suspense } from 'react'
+import { useEffect, useRef, useState, useMemo, lazy, Suspense } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { useProjectStore } from '../stores/project'
 import { useWorldviewStore } from '../stores/worldview'
 import { useCharacterStore } from '../stores/character'
+import { useDialog } from '../components/shared/Dialog'
 import { useOutlineStore } from '../stores/outline'
 import { useChapterStore } from '../stores/chapter'
 import { useForeshadowStore } from '../stores/foreshadow'
@@ -64,6 +65,7 @@ const FactLibraryPanel = lazy(() => import('../components/facts/FactLibraryPanel
 const StoryTimelinePanel = lazy(() => import('../components/timeline/StoryTimelinePanel'))
 const CultivationProgressPanel = lazy(() => import('../components/cultivation/CultivationProgressPanel'))
 const SceneVerifyPanel = lazy(() => import('../components/scene/SceneVerifyPanel'))
+const GlobalReplacePanel = lazy(() => import('../components/editor/GlobalReplacePanel'))
 const WorldGroupOverview = lazy(() => import('../components/world-group/WorldGroupOverview'))
 const ChatCopilotPanel = lazy(() => import('../components/agent/ChatCopilotPanel'))
 import { useLocationStore } from '../stores/location'
@@ -81,6 +83,10 @@ export default function WorkspacePage() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [showProperties, setShowProperties] = useState(false)
   const [showCopilot, setShowCopilot] = useState(false)
+  const [globalReplaceSeed, setGlobalReplaceSeed] = useState<{ query: string; replacement: string } | null>(null)
+  const renameEvent = useCharacterStore(state => state.renameEvent)
+  const clearRenameEvent = useCharacterStore(state => state.clearRenameEvent)
+  const dialog = useDialog()
   const activeWorldGroupId = useWorldGroupStore(state => state.activeGroupId)
   const worldGroups = useWorldGroupStore(state => state.groups)
 
@@ -160,6 +166,31 @@ export default function WorkspacePage() {
     }
     load()
   }, [projectId, loadProject, navigate])
+
+  // 角色直接改名后：检测到旧名残留时弹窗引导前往「全局替换」
+  // StrictMode 会 double-invoke effect，用 ref 保证同一事件只弹一次
+  const handledRenameAtRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (!renameEvent || handledRenameAtRef.current === renameEvent.at) return
+    handledRenameAtRef.current = renameEvent.at
+    const event = renameEvent
+    clearRenameEvent()
+    void dialog.confirm({
+      title: `「${event.oldName}」已改名为「${event.newName}」`,
+      message: [
+        `其他模块仍有 ${event.residualMatches} 处旧名残留，分布在 ${event.residualRecords} 条记录（含正文、设定、大纲等）。`,
+        '是否前往「全局替换」预览并一并更新？',
+      ].join('\n'),
+      confirmText: '前往全局替换',
+      cancelText: '暂不处理',
+      tone: 'info',
+    }).then(ok => {
+      if (ok) {
+        setGlobalReplaceSeed({ query: event.oldName, replacement: event.newName })
+        setActiveModule('global-replace')
+      }
+    })
+  }, [renameEvent, clearRenameEvent, dialog])
 
   if (loading || !project) {
     return (
@@ -283,6 +314,13 @@ export default function WorkspacePage() {
         return <CultivationProgressPanel project={project} />
       case 'scene-verify':
         return <SceneVerifyPanel project={project} />
+      case 'global-replace':
+        return <GlobalReplacePanel
+          projectId={project.id!}
+          onOpenChapter={handleOpenChapter}
+          initialQuery={globalReplaceSeed?.query}
+          initialReplacement={globalReplaceSeed?.replacement}
+        />
 
       // 作品学习已整合进项目参考 → 深度分析 tab（Phase 20）
       case 'master-studies':

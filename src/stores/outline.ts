@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { db } from '../lib/db/schema'
 import type { OutlineNode } from '../lib/types'
 import { normalizeOutlineNode } from '../lib/outline/normalize'
+import { transactionTablesFor } from '../lib/registry/lifecycle'
 import { useChapterStore } from './chapter'
 
 interface OutlineStore {
@@ -83,20 +84,34 @@ export const useOutlineStore = create<OutlineStore>((set, get) => ({
   },
 
   deleteNode: async (id) => {
-    // 级联删除子节点
-    const children = get().nodes.filter(n => n.parentId === id)
-    for (const child of children) {
-      if (child.id) await get().deleteNode(child.id)
+    // 先从 DB 收集整棵子树(含自身):不依赖内存 nodes,未 loadAll 也能删干净
+    const subtree = new Set<number>([id])
+    let frontier: number[] = [id]
+    while (frontier.length) {
+      const childIds = (await db.outlineNodes
+        .where('parentId').anyOf(frontier).primaryKeys()) as number[]
+      frontier = childIds.filter(cid => !subtree.has(cid))
+      for (const cid of frontier) subtree.add(cid)
     }
-    // 级联删除挂在本节点上的正文章节 + 细纲（按 outlineNodeId），否则删大纲后正文内容会成孤儿
-    // Phase 0.7: 章节删除必须走 chapter store 的唯一入口 cascadeDeleteChapters,
-    //            否则会绕过级联 → 章节关联的 emotionBeatCards 残留(孤儿数据)。
-    const orphanChapters = (await db.chapters.where('outlineNodeId').equals(id).primaryKeys()) as number[]
-    if (orphanChapters.length) await useChapterStore.getState().cascadeDeleteChapters(orphanChapters)
-    const orphanDetails = (await db.detailedOutlines.where('outlineNodeId').equals(id).primaryKeys()) as number[]
-    if (orphanDetails.length) await db.detailedOutlines.bulkDelete(orphanDetails)
-    await db.outlineNodes.delete(id)
-    set({ nodes: get().nodes.filter(n => n.id !== id) })
+    // 整棵子树 + 章节级联 + 细纲 + 节点删除包进单个事务:
+    // 中途失败整体回滚,不留"节点删了章节还在"或反向的部分删除状态。
+    // 内层 cascadeDeleteChapters 的事务表是本事务表的子集,会自动并入外层事务。
+    await db.transaction('rw', transactionTablesFor('deleteOutlineNode'), async () => {
+      for (const nodeId of subtree) {
+        // 级联删除挂在本节点上的正文章节 + 细纲(按 outlineNodeId),否则删大纲后正文内容会成孤儿
+        // Phase 0.7: 章节删除必须走 chapter store 的唯一入口 cascadeDeleteChapters,
+        //            否则会绕过级联 → 章节关联的 emotionBeatCards 残留(孤儿数据)。
+        const orphanChapters = (await db.chapters
+          .where('outlineNodeId').equals(nodeId).primaryKeys()) as number[]
+        if (orphanChapters.length) await useChapterStore.getState().cascadeDeleteChapters(orphanChapters)
+        const orphanDetails = (await db.detailedOutlines
+          .where('outlineNodeId').equals(nodeId).primaryKeys()) as number[]
+        if (orphanDetails.length) await db.detailedOutlines.bulkDelete(orphanDetails)
+        await db.outlineNodes.delete(nodeId)
+      }
+    })
+    // 事务成功后才更新内存,失败回滚时内存不误删
+    set({ nodes: get().nodes.filter(n => n.id == null || !subtree.has(n.id)) })
   },
 
   addNodes: async (nodes) => {

@@ -1,6 +1,7 @@
 import { useState, type ComponentType, type ReactElement } from 'react'
-import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, MessageSquareQuote } from 'lucide-react'
 import { APP_PLATFORM_BUILD_ID } from '../../lib/version'
+import CommonPhrasesPicker from '../shared/CommonPhrasesPicker'
 import {
   MODULE_CONTENT_TYPE_DEFINITIONS, NAV_TREE, getBranchChain,
   type SidebarModule, type TreeLeaf, type TreeNode,
@@ -57,6 +58,10 @@ export default function Sidebar({
       return next
     })
   }
+
+  // 常用语弹层（侧边栏底部全局查找/复制入口）
+  const [phrasesOpen, setPhrasesOpen] = useState(false)
+  const [phrasesBtn, setPhrasesBtn] = useState<HTMLButtonElement | null>(null)
 
   return (
     <aside
@@ -120,20 +125,43 @@ export default function Sidebar({
         ))}
       </nav>
 
-      {/* 底部：版本号 + 折叠切换（设置入口已移至首页顶栏） */}
+      {/* 底部：版本号 + 常用语入口 + 折叠切换（设置入口已移至首页顶栏） */}
       <div className="border-t border-border p-2 flex items-center justify-between">
         {!collapsed && (
           <span className="text-[10px] text-text-muted font-mono" title="当前版本号">
             {APP_PLATFORM_BUILD_ID}
           </span>
         )}
-        <button
-          onClick={onToggleCollapse}
-          title={collapsed ? '展开侧边栏' : '折叠侧边栏'}
-          className="hidden p-1.5 rounded text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors md:block ml-auto"
-        >
-          {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-        </button>
+        <div className={`flex items-center gap-0.5 ${collapsed ? '' : 'ml-auto'}`}>
+          <button
+            ref={setPhrasesBtn}
+            onMouseDown={event => event.stopPropagation()}
+            onClick={() => setPhrasesOpen(open => !open)}
+            title="常用语"
+            aria-label="常用语"
+            className={`p-1.5 rounded transition-colors ${
+              phrasesOpen
+                ? 'bg-accent/10 text-accent'
+                : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'
+            }`}
+          >
+            <MessageSquareQuote className="w-4 h-4" />
+          </button>
+          {phrasesOpen && (
+            <CommonPhrasesPicker
+              anchor={phrasesBtn}
+              align="right"
+              onClose={() => setPhrasesOpen(false)}
+            />
+          )}
+          <button
+            onClick={onToggleCollapse}
+            title={collapsed ? '展开侧边栏' : '折叠侧边栏'}
+            className="hidden p-1.5 rounded text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors md:block"
+          >
+            {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          </button>
+        </div>
       </div>
     </aside>
   )

@@ -1,5 +1,5 @@
 import FullScreenTextarea from '../shared/FullScreenTextarea'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Check,
   ChevronDown,
@@ -57,6 +57,7 @@ function defaultNode(kind: NodeFlowKind, index: number): NodeFlowNode {
       config: {
         selectionMode: 'exact',
         ragEntryKeys: [],
+        knowledgeEntryKeys: [],
         sourceKeys: [],
         inputBudgetTokens: 12_000,
         chapterId: 0,
@@ -142,6 +143,23 @@ export default function NodeModeWorkspace(props: {
     isNarrow && narrowPane !== pane ? 'hidden md:block' : ''
   )
 
+  // 未保存变更的最新快照：切流程/卸载时据此把旧流程编辑直接写库。
+  const draftRef = useRef(draft)
+  draftRef.current = draft
+  const graphRef = useRef(graph)
+  graphRef.current = graph
+  const dirtyRef = useRef(dirty)
+  dirtyRef.current = dirty
+
+  // 把当前未落盘的流程编辑直接写库（fire-and-forget）。
+  // 不复用 save()：save 完成后会 setDraft 回写，切流程场景会把刚加载的新流程覆盖掉。
+  const flushPendingFlowSave = useCallback(() => {
+    if (!dirtyRef.current || !draftRef.current) return
+    dirtyRef.current = false
+    const next: NodeFlow = { ...draftRef.current, graphJson: JSON.stringify(graphRef.current), updatedAt: Date.now() }
+    void useNodeFlowStore.getState().saveFlow(next).catch(() => {})
+  }, [])
+
   useEffect(() => {
     void useNodeFlowStore.getState().load(projectId)
   }, [projectId])
@@ -151,6 +169,9 @@ export default function NodeModeWorkspace(props: {
   }, [flows, selectedFlowId])
 
   useEffect(() => {
+    // 切流程/切项目前，先把当前流程未落盘的编辑写库（此时 draft/graph refs 仍持旧流程快照），
+    // 否则下方 setDraft/setGraph 会直接覆盖旧流程的未保存变更。
+    flushPendingFlowSave()
     if (selectedFlowId == null) {
       setDraft(null)
       setGraph(structuredClone(EMPTY_NODE_FLOW_GRAPH))
@@ -171,7 +192,10 @@ export default function NodeModeWorkspace(props: {
     // Deliberately reload only when the selected identity changes. Store refreshes after
     // autosave must not replace newer local edits with the just-returned row.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedFlowId, projectId])
+  }, [selectedFlowId, projectId, flushPendingFlowSave])
+
+  // 组件卸载（切项目/切视图）时落盘未保存的流程编辑
+  useEffect(() => () => flushPendingFlowSave(), [flushPendingFlowSave])
 
   useEffect(() => {
     const latest = runs.find(item => item.flowId === selectedFlowId) ?? null

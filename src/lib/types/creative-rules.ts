@@ -31,6 +31,22 @@ export interface CreativeRules {
   /** 选中的大师洞察 ID 列表，其方法论会注入 AI prompt 上下文 */
   citedInsightIds?: string     // JSON number[]
 
+  // ── CUSTOM-CONSTRAINT —— 自定义写法约束 ─────────────────────
+  /**
+   * 作者自定义的写法约束条目（作品级，正文五处链路按 guard 追加注入）。
+   * JSON CustomWritingConstraint[]，空数组 '[]' 表示未配置。
+   */
+  customConstraints?: string
+
   createdAt: number
   updatedAt: number
+}
+
+/** 自定义写法约束条目（CUSTOM-CONSTRAINT：作者手写，非 AI 写入；管理入口在创作规则页） */
+export interface CustomWritingConstraint {
+  id: string
+  title: string
+  /** 约束正文：写法要求，可含正反示例 */
+  content: string
+  enabled: boolean
 }

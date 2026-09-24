@@ -36,6 +36,8 @@ export interface RichEditorHandle {
   replaceSelection: (html: string) => void
   /** 获取选中文字（纯文本） */
   getSelectedText: () => string
+  /** 当前 DOM 选区是否位于编辑器内部（用于浮动工具条等过滤编辑器外的选区） */
+  containsSelection: () => boolean
   /** 获取全部 HTML */
   getHTML: () => string
   /** 获取全部纯文本 */
@@ -91,6 +93,9 @@ const RichEditor = forwardRef<RichEditorHandle, Props>(function RichEditor(
   const savedSelectionRef = useRef<{ from: number; to: number } | null>(null)
   const pendingTextStyleRef = useRef<PendingTextStyle>({})
   const [pendingTextStyle, setPendingTextStyle] = useState<PendingTextStyle>({})
+  // 字数缓存：只在文档变化（onUpdate / 命令式 setContent）时重算，
+  // 避免 render 期间对整篇正文反复 getText()+countWords（每次按键都全量统计）。
+  const [wordCount, setWordCount] = useState(0)
   const [, setThemeRevision] = useState(0)
   const [entityMenu, setEntityMenu] = useState<{ query: string; from: number; to: number; x: number; y: number } | null>(null)
   const [entityMenuIndex, setEntityMenuIndex] = useState(0)
@@ -187,6 +192,7 @@ const RichEditor = forwardRef<RichEditorHandle, Props>(function RichEditor(
     onUpdate: ({ editor }) => {
       const html = editor.getHTML()
       const plain = editor.getText()
+      setWordCount(countWords(plain))
       onChangeRef.current(html, plain)
       updateEntityMenu(editor)
     },
@@ -214,6 +220,11 @@ const RichEditor = forwardRef<RichEditorHandle, Props>(function RichEditor(
     setEntityMenuIndex(0)
   }
 
+  // 编辑器就绪后统计一次初值（初次 value / 外部 setContent 都不触发 onUpdate）
+  useEffect(() => {
+    if (editor && !editor.isDestroyed) setWordCount(countWords(editor.getText()))
+  }, [editor])
+
   useEffect(() => {
     if (!editor || editor.isDestroyed) return
     const pluginKey = new PluginKey('storyforgeEntityReferences')
@@ -223,11 +234,13 @@ const RichEditor = forwardRef<RichEditorHandle, Props>(function RichEditor(
         decorations(state) {
           if (entityReferencesRef.current.length === 0) return DecorationSet.empty
           const decorations: Decoration[] = []
+          // 预过滤 + 按名称长度降序只算一次；filter 返回新数组，不会改动 ref 原数组
+          const references = entityReferencesRef.current
+            .filter(reference => reference.name.length >= 2)
+            .sort((a, b) => b.name.length - a.name.length)
           state.doc.descendants((node, pos) => {
             if (!node.isText || !node.text) return
-            const matches = entityReferencesRef.current
-              .filter(reference => reference.name.length >= 2 && node.text!.includes(reference.name))
-              .sort((a, b) => b.name.length - a.name.length)
+            const matches = references.filter(reference => node.text!.includes(reference.name))
             const occupied = new Set<number>()
             for (const reference of matches) {
               let index = node.text.indexOf(reference.name)
@@ -355,6 +368,8 @@ const RichEditor = forwardRef<RichEditorHandle, Props>(function RichEditor(
     const incoming = normalizeThemeAdaptiveColorHtml(toHtml(value))
     if (incoming !== current) {
       editor.commands.setContent(incoming, { emitUpdate: false })
+      // emitUpdate: false 不触发 onUpdate，需在此补字数刷新（切章 / AI 整段替换路径）
+      setWordCount(countWords(editor.getText()))
     }
   }, [value, editor])
 
@@ -402,6 +417,12 @@ const RichEditor = forwardRef<RichEditorHandle, Props>(function RichEditor(
         if (empty) return ''
         return editor.state.doc.textBetween(from, to, '\n')
       },
+      containsSelection: () => {
+        if (!editor || editor.isDestroyed) return false
+        const sel = window.getSelection()
+        if (!sel || !sel.anchorNode) return false
+        return editor.view.dom.contains(sel.anchorNode)
+      },
       getHTML: () => editor && !editor.isDestroyed ? editor.getHTML() : '',
       getPlainText: () => editor && !editor.isDestroyed ? editor.getText() : '',
       getWordCount: () => countWords(editor && !editor.isDestroyed ? editor.getText() : ''),
@@ -420,6 +441,7 @@ const RichEditor = forwardRef<RichEditorHandle, Props>(function RichEditor(
       setContent: (content) => {
         if (!editor || editor.isDestroyed) return
         editor.commands.setContent(toHtml(content), { emitUpdate: false })
+        setWordCount(countWords(editor.getText()))
       },
       focus: () => {
         if (!editor || editor.isDestroyed) return
@@ -516,7 +538,7 @@ const RichEditor = forwardRef<RichEditorHandle, Props>(function RichEditor(
           typography={typography}
           colorInputValue={colorInputValue}
           backgroundColorInputValue={backgroundColorInputValue}
-          wordCount={countWords(editor.getText())}
+          wordCount={wordCount}
           active={{
             bold: editor.isActive('bold'),
             italic: editor.isActive('italic'),

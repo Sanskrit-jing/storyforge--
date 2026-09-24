@@ -102,13 +102,41 @@ export function parseImportedWorkflow(value: unknown, now = Date.now()): PromptW
   return workflow
 }
 
+/** 工作流导出包裹格式（v1）：带 format 标识，导入侧可区分旧版裸数组。 */
+export interface PromptWorkflowsExportFile {
+  format: 'storyforge-prompt-workflows'
+  version: 1
+  exportedAt: number
+  workflows: PromptWorkflow[]
+}
+
+export const WORKFLOWS_EXPORT_FORMAT = 'storyforge-prompt-workflows'
+
+/**
+ * 解析导入的工作流集合：
+ * - 新格式（本模块导出的包裹结构）取 workflows 节，版本不符直接报错；
+ * - 旧格式（裸数组 / 单个工作流对象）原样兼容。
+ */
 export function parseImportedWorkflows(value: unknown, now = Date.now()): PromptWorkflow[] {
-  const items = Array.isArray(value) ? value : [value]
-  return items
+  let items: unknown = value
+  if (isRecord(value) && value.format === WORKFLOWS_EXPORT_FORMAT) {
+    if (value.version !== 1 || !Array.isArray(value.workflows)) {
+      throw new Error('工作流备份文件版本不受支持或内容为空。')
+    }
+    items = value.workflows
+  }
+  const arr = Array.isArray(items) ? items : [items]
+  return arr
     .map(item => parseImportedWorkflow(item, now))
     .filter((item): item is PromptWorkflow => item != null)
 }
 
 export function serializeWorkflows(workflows: PromptWorkflow[]): string {
-  return JSON.stringify(workflows, null, 2)
+  const file: PromptWorkflowsExportFile = {
+    format: WORKFLOWS_EXPORT_FORMAT,
+    version: 1,
+    exportedAt: Date.now(),
+    workflows,
+  }
+  return JSON.stringify(file, null, 2)
 }

@@ -5,7 +5,15 @@ import {
   CONTINUITY_CORE_END,
   CONTINUITY_CORE_START,
 } from '../chapter-memory/continuity-envelope'
-import { appendSimplifiedChineseOutputConstraint } from './prompt-guards'
+import {
+  appendCustomConstraintsGuard,
+  appendEmotionExternalizationGuard,
+  appendImageryGuard,
+  appendSimplifiedChineseOutputConstraint,
+  appendSensoryImmersionGuard,
+  appendStyleContext,
+} from './prompt-guards'
+import { isEmotionExternalizationEnabled, isImageryEnabled, isSensoryImmersionEnabled } from '../writing-preferences'
 
 export interface RunOptions {
   parameterValues?: Record<string, unknown>
@@ -19,6 +27,10 @@ export interface RunOptions {
   continuityBudgetTokens?: number
   /** 仅用于冻结旧生产基线，正常创作不得设置。 */
   skipContinuityEnvelope?: boolean
+  /** STYLE-SHORT-PATH:作者文风画像（readUserStyleProfile 产出）。润色/扩写/去AI味等改写短链路注入；空/缺省不注入。 */
+  styleContext?: string
+  /** CUSTOM-CONSTRAINT:作者自定义写法约束段（readCustomConstraintsGuard 产出）。五处正文链路统一注入，位于内置三约束之后；空/缺省不注入。 */
+  customConstraints?: string
 }
 
 const QUARANTINED_GENERATION_MARKERS = ['未来计划', '尚未发生', '异世界档案']
@@ -41,6 +53,15 @@ function trimPart(text: string, maxChars: number, keepTail = false): string {
   return keepTail
     ? `…（前部压缩）\n${text.slice(-maxChars)}`
     : `${text.slice(0, maxChars)}\n…（后部压缩）`
+}
+
+/** PROSE-CRAFT:默认开启的真人感写作约束组（情绪外化/画面感/代入感，设置页「写作偏好」可分别关）+ 作者自定义约束段。 */
+function appendProseCraftGuardsIfEnabled(messages: ChatMessage[], customConstraints?: string): ChatMessage[] {
+  if (isEmotionExternalizationEnabled()) messages = appendEmotionExternalizationGuard(messages)
+  if (isImageryEnabled()) messages = appendImageryGuard(messages)
+  if (isSensoryImmersionEnabled()) messages = appendSensoryImmersionGuard(messages)
+  messages = appendCustomConstraintsGuard(messages, customConstraints)
+  return messages
 }
 
 function buildContinuityEnvelope(args: {
@@ -130,7 +151,7 @@ export function buildChapterContentPrompt(
     continuity: options?.continuity,
     budgetTokens: options?.continuityBudgetTokens,
   })
-  const guarded = appendSimplifiedChineseOutputConstraint(messages)
+  const guarded = appendProseCraftGuardsIfEnabled(appendSimplifiedChineseOutputConstraint(messages), options?.customConstraints)
   return options?.skipContinuityEnvelope
     ? guarded
     : injectContinuityEnvelope(guarded, tpl.continuityMode, envelope)
@@ -159,7 +180,7 @@ export function buildContinuePrompt(
     currentDraftTail: existingContent.slice(-1600),
     budgetTokens: options?.continuityBudgetTokens,
   })
-  const guarded = appendSimplifiedChineseOutputConstraint(messages)
+  const guarded = appendProseCraftGuardsIfEnabled(appendSimplifiedChineseOutputConstraint(messages), options?.customConstraints)
   return options?.skipContinuityEnvelope
     ? guarded
     : injectContinuityEnvelope(guarded, tpl.continuityMode, envelope)
@@ -168,17 +189,17 @@ export function buildContinuePrompt(
 export function buildPolishPrompt(text: string, instruction: string, options?: RunOptions): ChatMessage[] {
   const tpl = usePromptStore.getState().getActive('chapter.polish')
   const { messages } = renderPrompt(tpl, { text, instruction }, options)
-  return messages
+  return appendProseCraftGuardsIfEnabled(appendStyleContext(messages, options?.styleContext), options?.customConstraints)
 }
 
 export function buildExpandPrompt(text: string, hint?: string, options?: RunOptions): ChatMessage[] {
   const tpl = usePromptStore.getState().getActive('chapter.expand')
   const { messages } = renderPrompt(tpl, { text, userHint: hint }, options)
-  return messages
+  return appendProseCraftGuardsIfEnabled(appendStyleContext(messages, options?.styleContext), options?.customConstraints)
 }
 
 export function buildDeAIPrompt(text: string, options?: RunOptions): ChatMessage[] {
   const tpl = usePromptStore.getState().getActive('chapter.de-ai')
   const { messages } = renderPrompt(tpl, { text }, options)
-  return messages
+  return appendProseCraftGuardsIfEnabled(appendStyleContext(messages, options?.styleContext), options?.customConstraints)
 }

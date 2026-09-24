@@ -38,7 +38,7 @@ const FIELDS: FieldDef[] = [
 interface Props { project: Project }
 
 export default function StoryCorePanel({ project }: Props) {
-  const { storyCore, worldview, saveStoryCore, loadAll } = useWorldviewStore()
+  const { storyCore, saveStoryCore, loadAll } = useWorldviewStore()
   const activeGroupId = useWorldGroupStore(s => s.activeGroupId)
 
   const [values, setValues] = useState<Record<string, string>>({})
@@ -66,21 +66,6 @@ export default function StoryCorePanel({ project }: Props) {
   const save = (key: string, v: string) => {
     const field = FIELDS.find(f => f.key === key)!
     saveStoryCore({ projectId: project.id!, [field.saveKey]: v })
-  }
-
-  const worldCtx = (): string => {
-    if (!worldview) return ''
-    const parts: string[] = []
-    if (worldview.summary) parts.push(`【世界观摘要】${worldview.summary.slice(0, 300)}`)
-    // 不只取一个字段——故事核心需要世界关键设定（此前仅 worldOrigin，过薄）
-    const fields: [string, string | undefined][] = [
-      ['世界起源', worldview.worldOrigin], ['力量体系', worldview.powerHierarchy],
-      ['种族民族', worldview.races], ['势力分布', worldview.factionLayout],
-    ]
-    for (const [label, val] of fields) {
-      if (val) parts.push(`【${label}】${val.slice(0, 180)}`)
-    }
-    return parts.join('\n')
   }
 
   const handleStreamingChange = useCallback((key: string, streaming: boolean) => {
@@ -142,7 +127,6 @@ export default function StoryCorePanel({ project }: Props) {
                 save(f.key, v)
               }}
               project={project}
-              worldCtx={worldCtx}
               sessionEntity={`${activeGroupId ?? 'global'}:${f.key}`}
               onStreamingChange={streaming => handleStreamingChange(f.key, streaming)}
             />
@@ -156,13 +140,12 @@ export default function StoryCorePanel({ project }: Props) {
 // ── 单字段编辑器（各自独立的 AI 流） ──────────────────────────
 
 function FieldEditor({
-  field, value, onChange, project, worldCtx, sessionEntity, onStreamingChange,
+  field, value, onChange, project, sessionEntity, onStreamingChange,
 }: {
   field: FieldDef
   value: string
   onChange: (v: string) => void
   project: Project
-  worldCtx: () => string
   sessionEntity: string
   onStreamingChange: (streaming: boolean) => void
 }) {
@@ -180,12 +163,12 @@ function FieldEditor({
 
   const activeGroupId = useWorldGroupStore(state => state.activeGroupId)
   const handleGenerate = async () => {
-    const historical = await assembleContext({
+    // 世界观全量字段 + 历史年表一次性走注册表装配（世界关键设定不只取摘要，由预算软裁兜底）
+    const ctx = await assembleContext({
       projectId: project.id!,
       worldGroupId: project.enableMultiWorld ? activeGroupId : null,
-      sourceKeys: ['historical'],
+      sourceKeys: ['worldview', 'historical'],
     })
-    const fullWorldContext = [worldCtx(), historical.text].filter(Boolean).join('\n\n')
     const opts = {
       parameterValues: Object.keys(parameterValues).length > 0 ? parameterValues : undefined,
       overrides: (systemOverride != null || userOverride != null) ? {
@@ -194,7 +177,7 @@ function FieldEditor({
       } : undefined,
     }
     const messages = buildStoryGeneratePrompt(
-      field.dimension, project.name, project.genre || '', fullWorldContext, hint, opts, value, mode,
+      field.dimension, project.name, project.genre || '', ctx.text, hint, opts, value, mode,
     )
     ai.start(messages, undefined, { category: 'story.generate', projectId: project.id! })
   }

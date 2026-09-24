@@ -344,7 +344,7 @@ export default function CharacterPanel({ project, view = 'generator' }: Props) {
         <div className="flex flex-col gap-3 md:flex-row md:gap-4">
           {/* 窄屏（手机竖屏）纵向堆叠，列表横向滑动；md 起恢复左右双栏 */}
           {/* 左侧角色列表：窄屏为横向滑动条，md 起固定窄列 */}
-          <div className="flex gap-1 overflow-x-auto pb-1 md:w-40 md:shrink-0 md:flex-col md:gap-0 md:overflow-x-visible md:pb-0 md:space-y-0.5">
+          <div className="flex gap-1 overflow-x-auto pb-1 md:w-40 md:shrink-0 md:flex-col md:gap-0 md:overflow-x-visible md:overflow-y-auto md:max-h-[60vh] md:pb-0 md:space-y-0.5">
             {displayedChars.map((c, i) => {
               const active = selected === c.id
               const colorClass = GLYPH_COLORS[i % GLYPH_COLORS.length]

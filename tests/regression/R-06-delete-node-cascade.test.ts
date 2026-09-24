@@ -12,7 +12,7 @@
  *   章节删除统一走 chapter store 的 cascadeDeleteChapters(单一入口);
  *   删大纲节点后,chapters / detailedOutlines / emotionBeatCards 全部清空。
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { db } from '../../src/lib/db/schema'
 import { useOutlineStore } from '../../src/stores/outline'
 import { useChapterStore } from '../../src/stores/chapter'
@@ -161,5 +161,68 @@ describe('R-06: deleteNode 级联 emotionBeatCards', () => {
     expect(await db.outlineNodes.count(), '所有节点清空').toBe(0)
     expect(await db.chapters.count(), '所有章节清空').toBe(0)
     expect(await db.emotionBeatCards.count(), '所有节拍卡清空(递归级联)').toBe(0)
+  })
+
+  it('删除中途失败时整体回滚,不留部分删除状态(事务原子性)', async () => {
+    const now = Date.now()
+    const projectId = await db.projects.add({
+      name: 'R-06c', genre: '', description: '', targetWordCount: 0,
+      enableMultiWorld: false, createdAt: now, updatedAt: now,
+    } as any) as number
+
+    // 卷 + 两章(每章挂章节/细纲/节拍卡)
+    const volId = await db.outlineNodes.add({
+      projectId, parentId: null, type: 'volume',
+      title: '第一卷', summary: '', order: 0,
+      createdAt: now, updatedAt: now,
+    } as any) as number
+
+    const makeChapter = async (order: number) => {
+      const nodeId = await db.outlineNodes.add({
+        projectId, parentId: volId, type: 'chapter',
+        title: `第${order + 1}章`, summary: '', order,
+        createdAt: now, updatedAt: now,
+      } as any) as number
+      const chId = await db.chapters.add({
+        projectId, outlineNodeId: nodeId, title: `第${order + 1}章`,
+        content: '正文', summary: '', wordCount: 2, status: 'draft', order,
+        createdAt: now, updatedAt: now,
+      } as any) as number
+      await db.detailedOutlines.add({
+        projectId, outlineNodeId: nodeId, scenes: [] as any,
+        createdAt: now, updatedAt: now,
+      } as any)
+      await db.emotionBeatCards.add({
+        projectId, chapterId: chId, beats: [] as any, overallArc: '',
+        createdAt: now, updatedAt: now,
+      } as any)
+    }
+    await makeChapter(0)
+    await makeChapter(1)
+
+    await useChapterStore.getState().loadAll(projectId)
+    await useOutlineStore.getState().loadAll(projectId)
+
+    // 注入故障:第一个子节点删细纲时磁盘写入失败
+    const spy = vi.spyOn(db.detailedOutlines, 'bulkDelete')
+      .mockRejectedValueOnce(new Error('模拟磁盘故障'))
+
+    await expect(
+      useOutlineStore.getState().deleteNode(volId),
+    ).rejects.toThrow('模拟磁盘故障')
+
+    spy.mockRestore()
+
+    // 断言:DB 完整回滚,无"删了一半"的孤儿状态
+    expect(await db.outlineNodes.count(), '节点应全部还在').toBe(3)
+    expect(await db.chapters.count(), '章节应全部还在').toBe(2)
+    expect(await db.detailedOutlines.count(), '细纲应全部还在').toBe(2)
+    expect(
+      await db.emotionBeatCards.count(),
+      '节拍卡应全部还在(级联中的删除也一并回滚)',
+    ).toBe(2)
+
+    // 断言:outline store 内存同样未被误删(内存更新在事务成功后才执行)
+    expect(useOutlineStore.getState().nodes.length).toBe(3)
   })
 })

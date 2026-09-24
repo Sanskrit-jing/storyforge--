@@ -300,11 +300,11 @@ export default function ForeshadowPanel({ project }: Props) {
         <ForeshadowKanban onSelectForeshadow={(id) => { setSelected(id); setViewMode('list') }} />
       ) : (
       <div className="flex flex-col gap-4 md:flex-row">
-      {/* 左侧列表 */}
-      <div className="w-full shrink-0 space-y-2 md:w-60">
+      {/* 左侧列表：md 起定高滚动，条目多时不再把右侧编辑区推出视口 */}
+      <div className="w-full shrink-0 space-y-2 md:w-60 md:max-h-[60vh] md:flex md:flex-col">
 
         {/* 状态筛选 */}
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1 shrink-0">
           <button onClick={() => setFilterStatus('all')}
             className={`px-2 py-1 text-xs rounded ${filterStatus === 'all' ? 'bg-accent text-white' : 'bg-bg-elevated text-text-muted'}`}>
             全部
@@ -317,18 +317,20 @@ export default function ForeshadowPanel({ project }: Props) {
           ))}
         </div>
 
-        {filtered.map(f => (
-          <button key={f.id} onClick={() => { setSelected(f.id!); setShowAI(false) }}
-            className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
-              selected === f.id ? 'bg-accent/10 text-accent border border-accent/30' : 'bg-bg-surface text-text-secondary hover:bg-bg-hover'
-            }`}>
-            <div className="font-medium truncate">{f.name}</div>
-            <div className="flex items-center gap-2 text-xs text-text-muted">
-              <span>{TYPE_LABELS[f.type]?.split(' ')[0]}</span>
-              <span className={STATUS_LABELS[f.status].color}>{STATUS_LABELS[f.status].label}</span>
-            </div>
-          </button>
-        ))}
+        <div className="space-y-2 md:min-h-0 md:flex-1 md:overflow-y-auto">
+          {filtered.map(f => (
+            <button key={f.id} onClick={() => { setSelected(f.id!); setShowAI(false) }}
+              className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                selected === f.id ? 'bg-accent/10 text-accent border border-accent/30' : 'bg-bg-surface text-text-secondary hover:bg-bg-hover'
+              }`}>
+              <div className="font-medium truncate">{f.name}</div>
+              <div className="flex items-center gap-2 text-xs text-text-muted">
+                <span>{TYPE_LABELS[f.type]?.split(' ')[0]}</span>
+                <span className={STATUS_LABELS[f.status].color}>{STATUS_LABELS[f.status].label}</span>
+              </div>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* 右侧编辑 */}

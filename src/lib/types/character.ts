@@ -54,6 +54,8 @@ export interface Character extends RagDocumentMetadata {
   keyEvents?: string         // 关键经历/转折事件
   powerLevel?: string        // 实力定位/境界等级
   speechStyle?: string       // 语言风格/口头禅
+  /** VOICE-SAMPLE:作者确认的代表性台词摘录（每行一条，可带章节/场景标注）。AI 摘录候选经作者勾选后经 adopt() 写回。 */
+  voiceSamples?: string
   habits?: string            // 习惯/小动作/癖好
   signatureItem?: string     // 标志性物品/形象符号
 

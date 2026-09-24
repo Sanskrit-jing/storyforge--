@@ -6,6 +6,7 @@ import {
   FileCog, History, Upload, Download, Settings,
   Map, ClipboardList, GitBranch, Clock, MapPin, Scale,
   Drama, Package, CalendarClock, ScanSearch, Coins, Feather, Database, TrendingUp, Workflow,
+  ReplaceAll,
   Gamepad2,
 } from 'lucide-react'
 
@@ -81,6 +82,9 @@ export type SidebarModule =
 
   // 场景考证（Phase 27.2a）
   | 'scene-verify'
+
+  // 全局查找替换（跨模块文本联动）
+  | 'global-replace'
 
   // 全局故事线（Phase B）
   | 'story-arc'
@@ -173,6 +177,7 @@ export const MODULE_CONTENT_TYPES: Record<SidebarModule, ModuleContentType> = {
   'story-timeline': 'downstream',
   'cultivation-progress': 'downstream',
   'scene-verify': 'tool',
+  'global-replace': 'tool',
   'story-arc': 'upstream',
   'world-map': 'upstream',
   'power-system': 'upstream',
@@ -287,6 +292,7 @@ export const NAV_TREE: TreeSection[] = [
       leaf('story-timeline',   '故事年表', CalendarClock),
       leaf('cultivation-progress', '修炼进度', TrendingUp),
       leaf('scene-verify',     '场景考证', ScanSearch),
+      leaf('global-replace',   '全局替换', ReplaceAll),
     ],
   },
   {

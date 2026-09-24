@@ -109,7 +109,7 @@ export default function WelcomeGuide({ onGoSettings, onDismiss }: Props) {
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200"
       onClick={e => e.target === e.currentTarget && handleSkip()}>
-      <div className="bg-bg-surface border border-border rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl">
+      <div className="flex max-h-[85dvh] bg-bg-surface border border-border rounded-2xl w-full max-w-lg flex-col overflow-hidden shadow-2xl">
         {/* 进度条 */}
         <div className="h-1 bg-bg-elevated">
           <div
@@ -119,7 +119,7 @@ export default function WelcomeGuide({ onGoSettings, onDismiss }: Props) {
         </div>
 
         {/* 头部 */}
-        <div className="px-6 pt-6 pb-2 flex items-center justify-between">
+        <div className="px-6 pt-6 pb-2 flex shrink-0 items-center justify-between">
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-bg-elevated ${current.color}`}>
               <Icon className="w-5 h-5" />
@@ -139,7 +139,7 @@ export default function WelcomeGuide({ onGoSettings, onDismiss }: Props) {
         </div>
 
         {/* 内容 */}
-        <div className="px-6 py-4 space-y-3 min-h-[200px]">
+        <div className="px-6 py-4 space-y-3 min-h-0 flex-1 overflow-y-auto">
           {current.content.map((text, idx) => (
             <p key={idx} className="text-sm text-text-secondary leading-relaxed">{text}</p>
           ))}
@@ -165,7 +165,7 @@ export default function WelcomeGuide({ onGoSettings, onDismiss }: Props) {
         </div>
 
         {/* 底部按钮 */}
-        <div className="px-6 py-4 border-t border-border flex items-center justify-between">
+        <div className="px-6 py-4 border-t border-border flex shrink-0 items-center justify-between">
           <button
             onClick={handleSkip}
             className="text-xs text-text-muted hover:text-text-primary transition-colors"

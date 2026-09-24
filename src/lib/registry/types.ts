@@ -306,6 +306,12 @@ export interface AssembleContextInput {
   searchKinds?: string[]
   /** RAG-1: 节点/Agent 明确选择的稳定资料字段键。 */
   ragEntryKeys?: string[]
+  /** 世界观面板字段级生成：按 worldview 字段键排除「正在生成的字段」自身，其余字段全量走 worldview 源。 */
+  worldviewExcludeKeys?: string[]
+  /** KB-1: 节点/Agent 明确勾选的全局知识库条目键（字符串化条目 ID）。 */
+  knowledgeEntryKeys?: string[]
+  /** KB-1: search_knowledge 工具的知识库主题查询词。 */
+  knowledgeQuery?: string
   /** RAG-1 内部执行证据收集器；调用结束后由节点运行快照冻结。 */
   ragSelectionTrace?: RagSelectionTraceCollector
   /** assembleContext 内部批量预取；调用方无需传。 */

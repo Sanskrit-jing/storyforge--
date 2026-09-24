@@ -407,6 +407,52 @@
 - 协同编辑、账号、云同步、发布发现和社区治理不属于当前纯前端架构的增量功能，必须另立 PLATFORM 架构阶段。
 - 新手转化、加密云备份、帮助系统、国际化和开源信任仍需独立治理/产品组合。
 
+## KB-1 全局知识库
+
+### 已有能力
+
+- 作者手写的跨项目**查阅式参考手册**（如「喜欢」→ 描写范例、「文风」→ 语言约定）：
+  DB v49 表 `globalKnowledgeEntries` 登记 `PROJECT_TABLES`（owner=global），删项目/删世界
+  不级联，不进项目导出；首页独立知识库页（/knowledge）提供条目增删改、启用开关和
+  独立 JSON 导出导入（v2 含触发词；导入兼容 v1 并丢弃旧 weight/tokenCap）。
+- 条目结构 = 主题（title，AI 查询的主要匹配目标）+ 可选触发词（triggers，最多 12 个、
+  单个 30 字）+ 范例/约定正文（content）+ 分类（仅 UI 分组）。知识条目**不常驻注入**。
+- AI 主动查询：只读工具 `search_knowledge`（query/limit，经 tool-registry 校验）触发
+  `CONTEXT_SOURCES` 的 `knowledgeQuery` 源（L2、6000 tokens）；匹配引擎按 主题精确=100 >
+  触发词精确=90 > 主题双向包含=80 > 触发词包含=60 > 正文包含=30 计分，同分按创建顺序，
+  最多返回 10 条；未命中返回显式提示。
+- 作者显式勾选：节点模式 `source.context` 与 Agent 输入支持 `knowledgeEntryKeys`（键 =
+  字符串化条目 ID），经 `knowledgeSelection` 源（L0、50_000 tokens）按勾选顺序精确注入；
+  停用/已删/未知键跳过。
+- 两条进入上下文的路径都由 `assembleContext()` 统一装配；不带勾选键或查询词时两个源
+  因 enabled 守卫自动省略，默认装配绝不包含知识内容。
+
+### 当前边界
+
+- 查询为本地包含匹配（零网络、零 embedding）；不生效于模型侧语义泛化，触发词靠作者
+  维护覆盖面。
+- 知识库是参考素材而非规则：AI 取回范例后由当次生成自行贴合成文，不做逐条校验。
+
+### 禁止重复建设
+
+- 不得绕过 `CONTEXT_SOURCES` 手拼知识库文本，或在组件/ service 中直读
+  `globalKnowledgeEntries` 拼上下文。
+- 不得恢复常驻注入（如把知识库塞回 ALWAYS_INCLUDE / weight 预算分配）；知识内容只能经
+  `knowledgeSelection`（显式勾选）或 `knowledgeQuery`（search_knowledge 查询）进入上下文。
+- 不得为「全局约定」另建平行表、第二套导入导出或项目级复制；作者当次一次性指示仍走
+  manualText（L0），不入库。
+
+### 代码与测试入口
+
+- `src/lib/knowledge/global-knowledge.ts`（匹配引擎、查询/勾选读取、导入导出）、
+  `src/lib/types/global-knowledge.ts`（类型与触发词归一化）、
+  `src/lib/agent/tool-registry.ts`（search_knowledge 工具）、知识库页
+  `src/components/knowledge/GlobalKnowledgePanel.tsx`（路由 `/knowledge`）、
+  `src/components/node-flow/NodeInspector.tsx`（节点勾选器）。
+- `tests/registry/kb1-global-knowledge.test.ts`：注册表完整性、不注入反例（默认/定向/
+  守卫）、匹配引擎计分、search_knowledge 工具与参数校验、勾选注入、删项目隔离与
+  v1/v2 JSON 往返反例。
+
 ## 新开发前的最小核对清单
 
 - [ ] 已读本文件中对应体系的“已有能力 / 当前边界 / 禁止重复建设”。

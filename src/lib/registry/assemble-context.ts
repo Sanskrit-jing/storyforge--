@@ -104,7 +104,7 @@ export async function assembleContext(input: AssembleContextInput): Promise<Asse
 }
 
 function selectSources(input: AssembleContextInput): ContextSource[] {
-  if (!input.sourceKeys?.length) return CONTEXT_SOURCES
+  if (!input.sourceKeys?.length) return [...CONTEXT_SOURCES]
   return input.sourceKeys
     .map(key => CONTEXT_SOURCE_BY_KEY.get(key))
     .filter((source): source is ContextSource => !!source)

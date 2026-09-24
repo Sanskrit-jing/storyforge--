@@ -19,12 +19,23 @@ import type {
   ReverseWorldview,
 } from '../../lib/ai/inspiration-reverse'
 import { characterAxesLabel } from '../../lib/character/character-axes'
+import { useAIConfigStore } from '../../stores/ai-config'
+import { useFieldRegenerate } from '../../hooks/useFieldRegenerate'
 import EditableFieldRow from '../shared/EditableFieldRow'
 import FullScreenViewer from '../shared/FullScreenViewer'
 import { InlineInput } from '../shared/InlineEdit'
 
+/** 行级重生成 props（由 useFieldRegenerate().rowProps 产出） */
+interface RegenRowProps {
+  onRegenerate: (userHint?: string) => void
+  regenerating: boolean
+  regenerateError?: string
+  onClearRegenerateError: () => void
+}
+
 interface Props {
   result: ReverseResult
+  projectId?: number | null
   expandedSections: ReadonlySet<string>
   adoptedSections: ReadonlySet<string>
   selectedChars: ReadonlySet<number>
@@ -48,6 +59,7 @@ type FullscreenSection = 'worldview' | 'storyCore' | 'characters'
 
 export default function InspirationSingleResult({
   result,
+  projectId,
   expandedSections,
   adoptedSections,
   selectedChars,
@@ -64,31 +76,51 @@ export default function InspirationSingleResult({
   onAdoptAll,
 }: Props) {
   const [fullscreen, setFullscreen] = useState<FullscreenSection | null>(null)
+  const aiConfig = useAIConfigStore(s => s.config)
+  const fieldRegen = useFieldRegenerate({ aiConfig, projectId, category: 'inspiration.reverse' })
 
   const allAdopted = adoptedSections.has('worldview')
     && adoptedSections.has('storyCore')
     && adoptedSections.has('characters')
 
+  // ── 行级重生成的上下文摘要（保持与整体设定一致）──
+  const worldviewContext = `一句话故事：${result.storyCore.logline}\n主题：${result.storyCore.theme}`
+  const storyCoreContext = `世界来源：${result.worldview.worldOrigin}`
+  const charContext = (char: ReverseCharacter) =>
+    `世界来源：${result.worldview.worldOrigin}\n一句话故事：${result.storyCore.logline}\n角色名：${char.name}（简介：${char.shortDescription}）`
+
   // ── 各分区内容渲染（卡片内嵌与全屏共用同一份）──
   const renderWorldview = () => (
     <div className="space-y-2 text-sm">
-      <EditableFieldRow label="世界来源" value={result.worldview.worldOrigin} placeholder="点击编辑…" onChange={v => onUpdateWorldview('worldOrigin', v)} />
-      <EditableFieldRow label="力量体系" value={result.worldview.powerHierarchy} placeholder="点击编辑…" onChange={v => onUpdateWorldview('powerHierarchy', v)} />
-      <EditableFieldRow label="地貌分布" value={result.worldview.continentLayout} placeholder="点击编辑…" onChange={v => onUpdateWorldview('continentLayout', v)} />
-      <EditableFieldRow label="气候环境" value={result.worldview.climateByRegion} placeholder="点击编辑…" onChange={v => onUpdateWorldview('climateByRegion', v)} />
-      <EditableFieldRow label="世界历史" value={result.worldview.historyLine} placeholder="点击编辑…" onChange={v => onUpdateWorldview('historyLine', v)} />
-      <EditableFieldRow label="种族民族" value={result.worldview.races} placeholder="点击编辑…" onChange={v => onUpdateWorldview('races', v)} />
-      <EditableFieldRow label="势力分布" value={result.worldview.factionLayout} placeholder="点击编辑…" onChange={v => onUpdateWorldview('factionLayout', v)} />
+      <EditableFieldRow label="世界来源" value={result.worldview.worldOrigin} placeholder="点击编辑…" onChange={v => onUpdateWorldview('worldOrigin', v)}
+        {...fieldRegen.rowProps('worldview-worldOrigin', '世界来源', result.worldview.worldOrigin, v => onUpdateWorldview('worldOrigin', v), worldviewContext)} />
+      <EditableFieldRow label="力量体系" value={result.worldview.powerHierarchy} placeholder="点击编辑…" onChange={v => onUpdateWorldview('powerHierarchy', v)}
+        {...fieldRegen.rowProps('worldview-powerHierarchy', '力量体系', result.worldview.powerHierarchy, v => onUpdateWorldview('powerHierarchy', v), worldviewContext)} />
+      <EditableFieldRow label="地貌分布" value={result.worldview.continentLayout} placeholder="点击编辑…" onChange={v => onUpdateWorldview('continentLayout', v)}
+        {...fieldRegen.rowProps('worldview-continentLayout', '地貌分布', result.worldview.continentLayout, v => onUpdateWorldview('continentLayout', v), worldviewContext)} />
+      <EditableFieldRow label="气候环境" value={result.worldview.climateByRegion} placeholder="点击编辑…" onChange={v => onUpdateWorldview('climateByRegion', v)}
+        {...fieldRegen.rowProps('worldview-climateByRegion', '气候环境', result.worldview.climateByRegion, v => onUpdateWorldview('climateByRegion', v), worldviewContext)} />
+      <EditableFieldRow label="世界历史" value={result.worldview.historyLine} placeholder="点击编辑…" onChange={v => onUpdateWorldview('historyLine', v)}
+        {...fieldRegen.rowProps('worldview-historyLine', '世界历史', result.worldview.historyLine, v => onUpdateWorldview('historyLine', v), worldviewContext)} />
+      <EditableFieldRow label="种族民族" value={result.worldview.races} placeholder="点击编辑…" onChange={v => onUpdateWorldview('races', v)}
+        {...fieldRegen.rowProps('worldview-races', '种族民族', result.worldview.races, v => onUpdateWorldview('races', v), worldviewContext)} />
+      <EditableFieldRow label="势力分布" value={result.worldview.factionLayout} placeholder="点击编辑…" onChange={v => onUpdateWorldview('factionLayout', v)}
+        {...fieldRegen.rowProps('worldview-factionLayout', '势力分布', result.worldview.factionLayout, v => onUpdateWorldview('factionLayout', v), worldviewContext)} />
     </div>
   )
 
   const renderStoryCore = () => (
     <div className="space-y-2 text-sm">
-      <EditableFieldRow label="一句话故事" value={result.storyCore.logline} highlight placeholder="点击编辑…" onChange={v => onUpdateStoryCore('logline', v)} />
-      <EditableFieldRow label="主题" value={result.storyCore.theme} placeholder="点击编辑…" onChange={v => onUpdateStoryCore('theme', v)} />
-      <EditableFieldRow label="核心冲突" value={result.storyCore.centralConflict} placeholder="点击编辑…" onChange={v => onUpdateStoryCore('centralConflict', v)} />
-      <EditableFieldRow label="情节模式" value={result.storyCore.plotPattern} placeholder="点击编辑…" onChange={v => onUpdateStoryCore('plotPattern', v)} />
-      <EditableFieldRow label="主线" value={result.storyCore.mainPlot} placeholder="点击编辑…" onChange={v => onUpdateStoryCore('mainPlot', v)} />
+      <EditableFieldRow label="一句话故事" value={result.storyCore.logline} highlight placeholder="点击编辑…" onChange={v => onUpdateStoryCore('logline', v)}
+        {...fieldRegen.rowProps('storyCore-logline', '一句话故事', result.storyCore.logline, v => onUpdateStoryCore('logline', v), storyCoreContext)} />
+      <EditableFieldRow label="主题" value={result.storyCore.theme} placeholder="点击编辑…" onChange={v => onUpdateStoryCore('theme', v)}
+        {...fieldRegen.rowProps('storyCore-theme', '主题', result.storyCore.theme, v => onUpdateStoryCore('theme', v), storyCoreContext)} />
+      <EditableFieldRow label="核心冲突" value={result.storyCore.centralConflict} placeholder="点击编辑…" onChange={v => onUpdateStoryCore('centralConflict', v)}
+        {...fieldRegen.rowProps('storyCore-centralConflict', '核心冲突', result.storyCore.centralConflict, v => onUpdateStoryCore('centralConflict', v), storyCoreContext)} />
+      <EditableFieldRow label="情节模式" value={result.storyCore.plotPattern} placeholder="点击编辑…" onChange={v => onUpdateStoryCore('plotPattern', v)}
+        {...fieldRegen.rowProps('storyCore-plotPattern', '情节模式', result.storyCore.plotPattern, v => onUpdateStoryCore('plotPattern', v), storyCoreContext)} />
+      <EditableFieldRow label="主线" value={result.storyCore.mainPlot} placeholder="点击编辑…" onChange={v => onUpdateStoryCore('mainPlot', v)}
+        {...fieldRegen.rowProps('storyCore-mainPlot', '主线', result.storyCore.mainPlot, v => onUpdateStoryCore('mainPlot', v), storyCoreContext)} />
     </div>
   )
 
@@ -102,6 +134,14 @@ export default function InspirationSingleResult({
           onToggle={() => onToggleCharacter(index)}
           adopted={adoptedSections.has('characters')}
           onUpdate={field => value => onUpdateCharacter(index, field, value)}
+          regen={(field, label, value) =>
+            fieldRegen.rowProps(
+              `char-${index}-${field}`,
+              label,
+              value,
+              v => onUpdateCharacter(index, field, v),
+              charContext(character),
+            )}
         />
       ))}
     </div>
@@ -267,6 +307,7 @@ function CharacterCard({
   onToggle,
   adopted,
   onUpdate,
+  regen,
 }: {
   char: ReverseCharacter
   selected: boolean
@@ -274,6 +315,8 @@ function CharacterCard({
   adopted: boolean
   /** 单个角色字段的编辑入口（已绑定角色下标） */
   onUpdate: (field: ReverseCharacterTextField) => (value: string) => void
+  /** 单个角色字段的行级 AI 重生成 props 工厂（已绑定角色下标与上下文） */
+  regen?: (field: ReverseCharacterTextField, label: string, value: string) => RegenRowProps
 }) {
   return (
     <div className={`border rounded-lg p-3 transition-colors ${selected ? 'border-accent bg-accent/10' : 'border-border'}`}>
@@ -297,11 +340,16 @@ function CharacterCard({
         </span>
       </div>
       <div className="space-y-1">
-        <EditableFieldRow label="简介" compact displayClassName="!text-xs !text-accent" value={char.shortDescription} placeholder="点击编辑…" onChange={onUpdate('shortDescription')} />
-        <EditableFieldRow label="性格" compact value={char.personality} placeholder="点击编辑…" onChange={onUpdate('personality')} />
-        <EditableFieldRow label="动机" compact value={char.motivation} placeholder="点击编辑…" onChange={onUpdate('motivation')} />
-        <EditableFieldRow label="背景" compact value={char.background} placeholder="点击编辑…" onChange={onUpdate('background')} />
-        <EditableFieldRow label="弧光" compact value={char.arc} placeholder="点击编辑…" onChange={onUpdate('arc')} />
+        <EditableFieldRow label="简介" compact displayClassName="!text-xs !text-accent" value={char.shortDescription} placeholder="点击编辑…" onChange={onUpdate('shortDescription')}
+          {...regen?.('shortDescription', '简介', char.shortDescription)} />
+        <EditableFieldRow label="性格" compact value={char.personality} placeholder="点击编辑…" onChange={onUpdate('personality')}
+          {...regen?.('personality', '性格', char.personality)} />
+        <EditableFieldRow label="动机" compact value={char.motivation} placeholder="点击编辑…" onChange={onUpdate('motivation')}
+          {...regen?.('motivation', '动机', char.motivation)} />
+        <EditableFieldRow label="背景" compact value={char.background} placeholder="点击编辑…" onChange={onUpdate('background')}
+          {...regen?.('background', '背景', char.background)} />
+        <EditableFieldRow label="弧光" compact value={char.arc} placeholder="点击编辑…" onChange={onUpdate('arc')}
+          {...regen?.('arc', '弧光', char.arc)} />
       </div>
     </div>
   )

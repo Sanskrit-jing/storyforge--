@@ -51,6 +51,12 @@ export function useMasterCopilot(input: {
   const abortRef = useRef<AbortController | null>(null)
   const runtimeCandidates = useRef(new Map<number, ExecutedMasterCandidate>())
   const scopeKey = `${project.id}:${worldGroupId ?? 'global'}`
+  // 跟踪最新作用域：生成流程跨多个 await，期间用户可能已切换项目/世界组。
+  const scopeKeyRef = useRef(scopeKey)
+
+  useEffect(() => {
+    scopeKeyRef.current = scopeKey
+  }, [scopeKey])
 
   const reload = useCallback(async (id: number) => {
     setEvents(await readAgentEvents(id))
@@ -120,6 +126,7 @@ export function useMasterCopilot(input: {
   const runRequest = useCallback(async (request: string) => {
     if (!request || busy || conversationId == null) return
     if (pendingCandidates.length) return
+    const requestScopeKey = scopeKey
     const controller = new AbortController()
     abortRef.current?.abort()
     abortRef.current = controller
@@ -195,7 +202,9 @@ export function useMasterCopilot(input: {
         kind: 'message',
         role: 'assistant',
         content: [
-          `后台领域 Agent 已完成，生成了 ${candidates.length} 份候选。请检查、编辑并决定是否采纳。`,
+          candidates.length === plan.tasks.length
+            ? `后台领域 Agent 已完成，生成了 ${candidates.length} 份候选。请检查、编辑并决定是否采纳。`
+            : `后台领域 Agent 部分完成，生成了 ${candidates.length} / ${plan.tasks.length} 份候选（失败任务见上方任务事件）。请检查、编辑并决定是否采纳。`,
           `本轮团队约使用 ${teamBudget.snapshot().usedTokens.toLocaleString()} / `
           + `${teamBudget.snapshot().maxTokens.toLocaleString()} tokens，`
           + `${teamBudget.snapshot().calls} 次调用，`
@@ -222,7 +231,10 @@ export function useMasterCopilot(input: {
     } finally {
       if (abortRef.current === controller) abortRef.current = null
       setBusy(false)
-      await reload(conversationId)
+      // 作用域已变（切项目/切世界组）时不再回写旧会话事件，避免跨项目污染当前面板。
+      if (scopeKeyRef.current === requestScopeKey) {
+        await reload(conversationId)
+      }
     }
   }, [
     busy,
@@ -230,6 +242,7 @@ export function useMasterCopilot(input: {
     pendingCandidates.length,
     project.id,
     reload,
+    scopeKey,
     worldGroupId,
   ])
 

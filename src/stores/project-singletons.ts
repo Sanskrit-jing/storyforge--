@@ -60,5 +60,6 @@ export const useCreativeRulesStore = createProjectSingletonStore<
     consistencyRules: '[]',
     specialRequirements: '',
     referenceWorks: '[]',
+    customConstraints: '[]',
   },
 })

@@ -12,6 +12,7 @@ import { chat } from './client'
 import { useAIConfigStore } from '../../stores/ai-config'
 import { buildEnhancedDetailPrompt, parseEnhancedDetailSmart } from './adapters/detail-scene-adapter'
 import { buildChapterContentPrompt } from './adapters/chapter-adapter'
+import { readCustomConstraintsGuard } from './custom-constraints'
 import type { OutlineNode, DetailedOutline } from '../types'
 import type { ScenePace } from '../types/detailed-outline'
 import { nanoid } from '../utils/id'
@@ -216,6 +217,8 @@ export async function batchGenerateChapters(
   } = opts
   const config = useAIConfigStore.getState().config
   const start = Date.now()
+  // CUSTOM-CONSTRAINT:批量生成同样注入作者自定义写法约束（无配置时为空串，不注入）
+  const customConstraints = await readCustomConstraintsGuard(opts.projectId)
 
   const todo = chapters.filter(ch => (ch.content || '').length < minWordThreshold)
 
@@ -251,6 +254,9 @@ export async function batchGenerateChapters(
         chWorldContext,
         characterContext,
         prevEnding,
+        undefined,
+        undefined,
+        { customConstraints },
       )
 
       const content = await chat(messages, config, { category: 'chapter.content.batch', projectId: opts.projectId ?? null })

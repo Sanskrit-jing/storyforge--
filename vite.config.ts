@@ -209,6 +209,16 @@ export default defineConfig(({ mode }) => ({
           // 上下文装配被首页、写作与多个懒加载面板共同引用；单独缓存可避免
           // 每次扩展项目数据源都推高首屏入口包，同时不改变其同步调用语义。
           'ai-context': ['./src/lib/ai/context-builder.ts'],
+          // 角色页 AI 弹层动作组件与各自 adapter（声纹提取/补全设定/维度重写）：
+          // 仅角色相关面板使用，独立分块避免角色 AI 功能扩展持续推高首屏入口包。
+          'character-ai-actions': [
+            './src/components/character/VoiceSampleExtractAction.tsx',
+            './src/components/character/CharacterSupplementAction.tsx',
+            './src/components/character/CharacterDimensionRewriteAction.tsx',
+            './src/lib/ai/adapters/voice-sample-adapter.ts',
+            './src/lib/ai/adapters/character-supplement-adapter.ts',
+            './src/lib/ai/adapters/character-rewrite-adapter.ts',
+          ],
         },
       },
     },

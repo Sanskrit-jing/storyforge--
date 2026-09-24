@@ -49,6 +49,16 @@ function normalize(data: any) {
     delete row.characterId
     delete row._characterExportId
   }
+  // R-INV2: foreshadows/stateCards/notes 的章节软引用影子字段晚于旧 v3 fixture；
+  // 导出格式变更 + 往返契约由 R-INV2-chapter-ref-export-remap 单独锁定。
+  for (const row of data.foreshadows ?? []) {
+    delete row._plantChapterExportId
+    delete row._resolveChapterExportId
+    delete row._expectedResolveChapterExportId
+    delete row._echoChapterIndexes
+  }
+  for (const row of data.stateCards ?? []) delete row._lastChapterExportId
+  for (const row of data.notes ?? []) delete row._chapterExportId
   // CONSISTENCY-3: temporalFacts 新增四类可移植设定来源 FK。旧 fixture 没有这些
   // 影子字段；新格式的实际往返由 R-CONSISTENCY3-world-constitution 锁定。
   for (const row of data.temporalFacts ?? []) {

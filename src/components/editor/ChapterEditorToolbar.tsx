@@ -1,5 +1,6 @@
 import { BookOpenCheck, ClipboardList, Loader2, ShieldCheck, StickyNote } from 'lucide-react'
 import { CInput } from '../shared/CompositionInput'
+import WritingPrefsQuickToggle from './WritingPrefsQuickToggle'
 
 interface Props {
   isStreaming: boolean
@@ -140,6 +141,7 @@ export default function ChapterEditorToolbar({
         <StickyNote className="w-3 h-3" />
         便签
       </button>
+      <WritingPrefsQuickToggle />
       </div>
       <CInput value={customInstruction} onChange={event => onCustomInstructionChange(event.target.value)}
         placeholder="自定义指令..."

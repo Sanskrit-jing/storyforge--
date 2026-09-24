@@ -505,6 +505,7 @@ export default function InspirationPanel({ project }: Props) {
         {isMW && mwResult && !ai.isStreaming && (
           <InspirationMultiWorldResult
             result={mwResult}
+            projectId={project.id}
             adopted={mwAdopted}
             adopting={adopting}
             adoptionLocked={pendingDiff !== null}
@@ -519,6 +520,7 @@ export default function InspirationPanel({ project }: Props) {
         {result && !ai.isStreaming && (
           <InspirationSingleResult
             result={result}
+            projectId={project.id}
             expandedSections={expandedSections}
             adoptedSections={adoptedSections}
             selectedChars={selectedChars}

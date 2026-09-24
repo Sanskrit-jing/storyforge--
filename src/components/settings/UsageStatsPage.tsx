@@ -125,17 +125,17 @@ export default function UsageStatsPage({ project }: Props) {
         />
       </div>
 
-      {/* 明细表：外层保留圆角边框，内部横向滚动，窄屏不裁掉最右侧「花费」列 */}
-      <div className="rounded-xl border border-border overflow-x-auto">
+      {/* 明细表：外层保留圆角边框，内部双向滚动（纵向限高 + 表头 sticky，数千条不拉长页面；横向窄屏不裁掉最右侧「花费」列） */}
+      <div className="rounded-xl border border-border overflow-x-auto max-h-[60vh] overflow-y-auto">
         <table className="w-full min-w-[640px] text-sm">
           <thead>
-            <tr className="bg-bg-elevated text-text-muted text-xs">
-              <th className="text-left font-medium px-3 py-2">时间</th>
-              <th className="text-left font-medium px-3 py-2">消耗类型</th>
-              <th className="text-left font-medium px-3 py-2">模型</th>
-              <th className="text-right font-medium px-3 py-2">输入</th>
-              <th className="text-right font-medium px-3 py-2">输出</th>
-              <th className="text-right font-medium px-3 py-2">花费</th>
+            <tr className="text-text-muted text-xs">
+              <th className="sticky top-0 z-10 bg-bg-elevated text-left font-medium px-3 py-2">时间</th>
+              <th className="sticky top-0 z-10 bg-bg-elevated text-left font-medium px-3 py-2">消耗类型</th>
+              <th className="sticky top-0 z-10 bg-bg-elevated text-left font-medium px-3 py-2">模型</th>
+              <th className="sticky top-0 z-10 bg-bg-elevated text-right font-medium px-3 py-2">输入</th>
+              <th className="sticky top-0 z-10 bg-bg-elevated text-right font-medium px-3 py-2">输出</th>
+              <th className="sticky top-0 z-10 bg-bg-elevated text-right font-medium px-3 py-2">花费</th>
             </tr>
           </thead>
           <tbody>

@@ -1,7 +1,7 @@
 import FullScreenTextarea from '../components/shared/FullScreenTextarea'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { Flame, Github, Settings, X, ChevronDown, ChevronRight, FolderOpen, Loader2 } from 'lucide-react'
+import { Flame, Github, Settings, BookMarked, MessageSquareQuote, X, ChevronDown, ChevronRight, FolderOpen, Loader2 } from 'lucide-react'
 import { useProjectStore } from '../stores/project'
 import WelcomeGuide from '../components/guide/WelcomeGuide'
 import {
@@ -168,10 +168,26 @@ export default function HomePage() {
           </div>
         </div>
 
+        {/* 全局知识库入口 */}
+        <button
+          onClick={() => navigate('/knowledge')}
+          className="p-2 rounded-lg hover:bg-bg-hover text-text-secondary hover:text-text-primary transition-colors ml-auto"
+          title="全局知识库"
+        >
+          <BookMarked className="w-4 h-4" />
+        </button>
+        {/* 常用语页面入口（跨项目共享，独立管理页） */}
+        <button
+          onClick={() => navigate('/phrases')}
+          className="p-2 rounded-lg hover:bg-bg-hover text-text-secondary hover:text-text-primary transition-colors"
+          title="常用语"
+        >
+          <MessageSquareQuote className="w-4 h-4" />
+        </button>
         {/* 全局设置入口 */}
         <button
           onClick={() => navigate('/settings')}
-          className="p-2 rounded-lg hover:bg-bg-hover text-text-secondary hover:text-text-primary transition-colors ml-auto"
+          className="p-2 rounded-lg hover:bg-bg-hover text-text-secondary hover:text-text-primary transition-colors"
           title="全局设置"
         >
           <Settings className="w-4 h-4" />

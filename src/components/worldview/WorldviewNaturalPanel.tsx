@@ -9,6 +9,7 @@ import { useAIStream } from '../../hooks/useAIStream'
 import { createAISessionKey } from '../../stores/ai-generation-session'
 import { buildWorldviewPrompt } from '../../lib/ai/adapters/worldview-adapter'
 import { assembleContext } from '../../lib/registry/assemble-context'
+import { assembleWorldviewPeerContext } from '../../lib/registry/worldview-peer-context'
 import AIStreamOutput from '../shared/AIStreamOutput'
 import PromptRunPanel from '../shared/PromptRunPanel'
 import FieldGenerationBar from '../shared/FieldGenerationBar'
@@ -24,6 +25,19 @@ async function buildRulesSourceContext(projectId: number, worldGroupId: number |
 }
 
 interface Props { project: Project }
+
+/**
+ * 面板 ctxKey → worldview 源排除键：生成某字段时排除该字段自身，
+ * 其余世界观字段全量走注册表（assembleWorldviewPeerContext）。
+ */
+const NATURAL_EXCLUDE_BY_CTX_KEY: Record<string, string[]> = {
+  structure: ['worldStructure'],
+  dim: ['worldDimensions'],
+  continent: ['continentLayout'],
+  mountains: ['mountainsRivers'],
+  climate: ['climateByRegion'],
+  resources: ['naturalResourceOverview'],
+}
 
 // ── 字段定义（统一标签，兼容幻想与历史） ─────────────────────────
 
@@ -81,23 +95,6 @@ export default function WorldviewNaturalPanel({ project }: Props) {
 
   const save = (patch: Partial<typeof worldview>) =>
     saveWorldview({ projectId: project.id!, ...patch })
-
-  const buildCtx = useCallback((skipCtxKey: string): string => {
-    const parts: string[] = []
-    // ── 世界起源面板关键字段 ──
-    if (worldview?.worldOrigin)    parts.push(`【世界来源】${worldview.worldOrigin.slice(0, 200)}`)
-    if (worldview?.powerHierarchy) parts.push(`【力量体系】${worldview.powerHierarchy.slice(0, 150)}`)
-    // ── 本面板内互参 ──
-    for (const f of FIELDS) {
-      if (f.ctxKey !== skipCtxKey && values[f.key]) {
-        parts.push(`【${f.ctxLabel}】${values[f.key].slice(0, 150)}`)
-      }
-    }
-    // ── 人文环境面板关键字段 ──
-    if (worldview?.races)         parts.push(`【种族与民族】${worldview.races.slice(0, 100)}`)
-    if (worldview?.factionLayout) parts.push(`【势力分布】${worldview.factionLayout.slice(0, 100)}`)
-    return parts.join('\n')
-  }, [worldview, values])
 
   const handleStreamingChange = useCallback((key: string, streaming: boolean) => {
     setStreamingKeys(prev => {
@@ -173,7 +170,7 @@ export default function WorldviewNaturalPanel({ project }: Props) {
                   save({ [f.key]: v })
                 }}
                 project={project}
-                contextSummary={buildCtx(f.ctxKey)}
+                worldviewExcludeKeys={NATURAL_EXCLUDE_BY_CTX_KEY[f.ctxKey] ?? []}
                 onStreamingChange={streaming => handleStreamingChange(f.key, streaming)}
               />
               {/* 全貌之下:本方面的专属词条(只显示对应那一类) */}
@@ -201,7 +198,7 @@ export default function WorldviewNaturalPanel({ project }: Props) {
                 save({ naturalResourceOverview: v })
               }}
               project={project}
-              contextSummary={buildCtx('resources')}
+              worldviewExcludeKeys={NATURAL_EXCLUDE_BY_CTX_KEY.resources}
               onStreamingChange={streaming => handleStreamingChange('naturalResources', streaming)}
             />
             {/* 自然资源:矿物/草药/异兽 三类词条 */}
@@ -241,12 +238,12 @@ export default function WorldviewNaturalPanel({ project }: Props) {
 
 // ── 单字段编辑器（各自独立的 AI 流） ──────────────────────────
 
-function SimpleFieldEditor({ field, value, onChange, project, contextSummary, onStreamingChange }: {
+function SimpleFieldEditor({ field, value, onChange, project, worldviewExcludeKeys, onStreamingChange }: {
   field: { key: string; emoji: string; label: string; desc: string }
   value: string
   onChange: (v: string) => void
   project: Project
-  contextSummary: string
+  worldviewExcludeKeys: string[]
   onStreamingChange: (streaming: boolean) => void
 }) {
   const [hint, setHint] = useState('')
@@ -266,6 +263,10 @@ function SimpleFieldEditor({ field, value, onChange, project, contextSummary, on
   }, [ai.isStreaming, onStreamingChange])
 
   const handleGenerate = async () => {
+    // 面板互参:其余世界观字段全量走注册表 worldview 源(排除当前字段自身)
+    const peerCtx = await assembleWorldviewPeerContext(
+      project.id!, project.enableMultiWorld ? activeGroupId : null, worldviewExcludeKeys,
+    )
     const rulesCtx = await buildRulesSourceContext(project.id!, project.enableMultiWorld ? activeGroupId : null)
     const opts = {
       parameterValues: {
@@ -278,7 +279,7 @@ function SimpleFieldEditor({ field, value, onChange, project, contextSummary, on
       } : undefined,
     }
     const messages = buildWorldviewPrompt(
-      field.label, project.name, project.genre || '', contextSummary, hint, opts, value, mode,
+      field.label, project.name, project.genre || '', peerCtx, hint, opts, value, mode,
     )
     ai.start(messages, undefined, { category: 'worldview.dimension', projectId: project.id! })
   }

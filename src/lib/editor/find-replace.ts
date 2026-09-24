@@ -9,6 +9,12 @@ export interface FindReplaceOptions {
   wholeWord?: boolean
   useRegex?: boolean
   protectedTerms?: string[]
+  /**
+   * 长名保护独立于 wholeWord 生效：命中位置被更长实体名/物品名覆盖时跳过。
+   * 仅全局替换等批量场景使用（批量误伤代价高）；章节内查找替换保持
+   * 「整词匹配附带保护」的既有契约，不传此字段行为不变。
+   */
+  protectLongerTerms?: boolean
 }
 
 export interface FindReplaceOccurrence {
@@ -32,7 +38,7 @@ export interface ChapterSearchTarget {
   content: string
 }
 
-interface TextMatch {
+export interface TextMatch {
   start: number
   end: number
   text: string
@@ -67,7 +73,7 @@ export function buildChapterSearchTargets(
     .filter((target): target is ChapterSearchTarget => !!target)
 }
 
-function escapeRegExp(input: string): string {
+export function escapeRegExp(input: string): string {
   return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
@@ -75,7 +81,7 @@ function isAsciiWordChar(char: string | undefined): boolean {
   return !!char && /[A-Za-z0-9_]/.test(char)
 }
 
-function createSearchRegExp(options: FindReplaceOptions): RegExp | null {
+export function createSearchRegExp(options: FindReplaceOptions): RegExp | null {
   const query = options.query.trim()
   if (!query) return null
   const source = options.useRegex ? query : escapeRegExp(query)
@@ -83,7 +89,7 @@ function createSearchRegExp(options: FindReplaceOptions): RegExp | null {
   return new RegExp(source, flags)
 }
 
-function findMatchesInText(text: string, options: FindReplaceOptions): TextMatch[] {
+export function findMatchesInText(text: string, options: FindReplaceOptions): TextMatch[] {
   const regex = createSearchRegExp(options)
   if (!regex) return []
 
@@ -97,7 +103,7 @@ function findMatchesInText(text: string, options: FindReplaceOptions): TextMatch
     const start = match.index
     const end = start + match[0].length
     if (options.wholeWord && (isAsciiWordChar(text[start - 1]) || isAsciiWordChar(text[end]))) continue
-    if (options.wholeWord && isInsideProtectedLongerTerm(text, start, end, options)) continue
+    if ((options.wholeWord || options.protectLongerTerms === true) && isInsideProtectedLongerTerm(text, start, end, options)) continue
     matches.push({ start, end, text: match[0], match })
   }
   return matches
@@ -152,7 +158,7 @@ function textNodesOf(root: Node): Text[] {
   return nodes
 }
 
-function snippetFor(text: string, match: TextMatch): string {
+export function snippetFor(text: string, match: TextMatch): string {
   const radius = 26
   const start = Math.max(0, match.start - radius)
   const end = Math.min(text.length, match.end + radius)
@@ -161,7 +167,7 @@ function snippetFor(text: string, match: TextMatch): string {
   return `${prefix}${text.slice(start, end)}${suffix}`.replace(/\s+/g, ' ').trim()
 }
 
-function expandReplacement(template: string, match: RegExpExecArray, matchedText: string): string {
+export function expandReplacement(template: string, match: RegExpExecArray, matchedText: string): string {
   return template.replace(/\$(\$|&|\d{1,2})/g, (token, key: string) => {
     if (key === '$') return '$'
     if (key === '&') return matchedText

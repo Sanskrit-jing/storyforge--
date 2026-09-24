@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Wand2, Loader2, X } from 'lucide-react'
 import { useAIConfigStore } from '../../stores/ai-config'
 import { useAIStream } from '../../hooks/useAIStream'
@@ -45,6 +46,58 @@ export default function CharacterSupplementAction({ character, projectId, worldG
     const empty = CHARACTER_DIMENSIONS.map(d => d.key).filter(k => !filled.has(k))
     return new Set(empty.length ? empty : CHARACTER_DIMENSIONS.map(d => d.key))
   })
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  // 弹层 Portal 到 body + fixed 定位（窄屏贴底抽屉,md+ 锚定按钮右对齐），
+  // 不受 WorkspacePage overflow 祖先裁剪。
+  const [isNarrow, setIsNarrow] = useState(false)
+  const [panelStyle, setPanelStyle] = useState<React.CSSProperties | undefined>(undefined)
+
+  // 定位：滚动 / 缩放跟随重算
+  useEffect(() => {
+    if (!open) return
+    const place = () => {
+      const button = buttonRef.current
+      if (!button) return
+      if (window.innerWidth < 768) {
+        setIsNarrow(true)
+        setPanelStyle({ left: 0, right: 0, bottom: 0, maxHeight: '70dvh' })
+        return
+      }
+      setIsNarrow(false)
+      const rect = button.getBoundingClientRect()
+      const width = Math.min(420, window.innerWidth - 16)
+      const left = Math.min(Math.max(8, rect.right - width), window.innerWidth - width - 8)
+      const top = rect.bottom + 4
+      setPanelStyle({ left, top, width, maxHeight: window.innerHeight - top - 16 })
+    }
+    place()
+    window.addEventListener('resize', place)
+    window.addEventListener('scroll', place, true)
+    return () => {
+      window.removeEventListener('resize', place)
+      window.removeEventListener('scroll', place, true)
+    }
+  }, [open])
+
+  // 点击外部 / Esc 关闭（原 fixed 遮罩已随 Portal 移除）
+  useEffect(() => {
+    if (!open) return
+    function onPointerDown(event: PointerEvent) {
+      const target = event.target as Node
+      if (panelRef.current && !panelRef.current.contains(target)
+        && buttonRef.current && !buttonRef.current.contains(target)) setOpen(false)
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [open])
 
   const run = async () => {
     const dims = [...selected]
@@ -91,8 +144,9 @@ export default function CharacterSupplementAction({ character, projectId, worldG
   const empties = CHARACTER_DIMENSIONS.map(d => d.key).filter(k => !new Set(filledDimensions(character)).has(k)).length
 
   return (
-    <div className="relative inline-block">
+    <>
       <button
+        ref={buttonRef}
         onClick={() => setOpen(v => !v)}
         className={compact
           ? 'p-1 text-text-muted hover:text-accent flex-shrink-0'
@@ -104,11 +158,12 @@ export default function CharacterSupplementAction({ character, projectId, worldG
         {!compact && <span className="hidden whitespace-nowrap xl:inline">AI 补全设定{empties > 0 && <span className="text-accent ml-0.5">·缺{empties}</span>}</span>}
       </button>
 
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          {/* 窄屏：贴底抽屉；md 起恢复右对齐浮层定位与宽度 */}
-          <div className="fixed left-0 right-0 bottom-0 z-50 bg-bg-surface border border-border rounded-t-xl shadow-lg p-3 max-h-[70dvh] overflow-y-auto md:absolute md:left-auto md:right-0 md:bottom-auto md:top-full md:mt-1 md:rounded-lg md:max-h-none md:overflow-visible md:w-[420px]">
+      {open && createPortal(
+        <div
+          ref={panelRef}
+          style={panelStyle}
+          className={`fixed z-50 bg-bg-surface border border-border shadow-lg p-3 overflow-y-auto ${isNarrow ? 'rounded-t-xl' : 'rounded-lg'}`}
+        >
             <div className="flex items-center justify-between mb-2">
               <div className="text-sm font-medium text-text-primary">
                 AI 补全设定 · <span className="text-text-secondary">{character.name || '未命名'}</span>
@@ -150,9 +205,9 @@ export default function CharacterSupplementAction({ character, projectId, worldG
             >
               {ai.isStreaming ? <><Loader2 className="w-4 h-4 animate-spin" /> 补全中…</> : <><Wand2 className="w-4 h-4" /> 补全选中的 {selected.size} 个维度</>}
             </button>
-          </div>
-        </>
+        </div>,
+        document.body,
       )}
-    </div>
+    </>
   )
 }

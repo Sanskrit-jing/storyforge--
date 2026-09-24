@@ -8,12 +8,23 @@ import type {
   ReverseWorldTextField,
 } from '../../lib/ai/inspiration-reverse'
 import { characterAxesLabel } from '../../lib/character/character-axes'
+import { useAIConfigStore } from '../../stores/ai-config'
+import { useFieldRegenerate } from '../../hooks/useFieldRegenerate'
 import EditableFieldRow from '../shared/EditableFieldRow'
 import FullScreenViewer from '../shared/FullScreenViewer'
 import { InlineInput } from '../shared/InlineEdit'
 
+/** 行级重生成 props（由 useFieldRegenerate().rowProps 产出） */
+interface RegenRowProps {
+  onRegenerate: (userHint?: string) => void
+  regenerating: boolean
+  regenerateError?: string
+  onClearRegenerateError: () => void
+}
+
 interface Props {
   result: ReverseMultiWorldResult
+  projectId?: number | null
   adopted: boolean
   adopting: boolean
   adoptionLocked?: boolean
@@ -59,6 +70,7 @@ const CHARACTER_FULL_FIELDS: Array<{ field: ReverseCharacterTextField; label: st
 
 export default function InspirationMultiWorldResult({
   result,
+  projectId,
   adopted,
   adopting,
   adoptionLocked = false,
@@ -68,6 +80,16 @@ export default function InspirationMultiWorldResult({
   onUpdateCharacter,
 }: Props) {
   const [fullscreen, setFullscreen] = useState<FullscreenSection | null>(null)
+  const aiConfig = useAIConfigStore(s => s.config)
+  const fieldRegen = useFieldRegenerate({ aiConfig, projectId, category: 'inspiration.reverse.multiworld' })
+
+  // ── 行级重生成的上下文摘要（保持与整体设定一致）──
+  const worldsSummary = result.worlds.map(w => w.name || '未命名世界').join('、')
+  const storyCoreContext = `多世界设定（共 ${result.worlds.length} 个）：${worldsSummary}`
+  const worldContext = (name: string, type: string) =>
+    `世界名：${name || '未命名世界'}（类型：${type}）\n一句话故事：${result.storyCore.logline}`
+  const charContext = (char: ReverseCharacterMW) =>
+    `多世界设定（共 ${result.worlds.length} 个）：${worldsSummary}\n所属世界：${char.isCrossWorld ? '跨世界' : char.homeWorld || '未分配'}\n角色名：${char.name}（简介：${char.shortDescription}）`
 
   const fullscreenTitle = fullscreen === 'storyCore'
     ? '故事主线'
@@ -102,9 +124,12 @@ export default function InspirationMultiWorldResult({
           </div>
           <FullscreenButton title="全屏查看故事主线" onClick={() => setFullscreen('storyCore')} />
         </div>
-        <EditableFieldRow label="一句话" value={result.storyCore.logline} highlight placeholder="点击编辑…" onChange={v => onUpdateStoryCore('logline', v)} />
-        <EditableFieldRow label="主线" value={result.storyCore.mainPlot} placeholder="点击编辑…" onChange={v => onUpdateStoryCore('mainPlot', v)} />
-        <EditableFieldRow label="核心冲突" value={result.storyCore.centralConflict} placeholder="点击编辑…" onChange={v => onUpdateStoryCore('centralConflict', v)} />
+        <EditableFieldRow label="一句话" value={result.storyCore.logline} highlight placeholder="点击编辑…" onChange={v => onUpdateStoryCore('logline', v)}
+          {...fieldRegen.rowProps('storyCore-logline', '一句话故事', result.storyCore.logline, v => onUpdateStoryCore('logline', v), storyCoreContext)} />
+        <EditableFieldRow label="主线" value={result.storyCore.mainPlot} placeholder="点击编辑…" onChange={v => onUpdateStoryCore('mainPlot', v)}
+          {...fieldRegen.rowProps('storyCore-mainPlot', '主线', result.storyCore.mainPlot, v => onUpdateStoryCore('mainPlot', v), storyCoreContext)} />
+        <EditableFieldRow label="核心冲突" value={result.storyCore.centralConflict} placeholder="点击编辑…" onChange={v => onUpdateStoryCore('centralConflict', v)}
+          {...fieldRegen.rowProps('storyCore-centralConflict', '核心冲突', result.storyCore.centralConflict, v => onUpdateStoryCore('centralConflict', v), storyCoreContext)} />
       </div>
 
       {result.worlds.map((world, index) => (
@@ -127,6 +152,7 @@ export default function InspirationMultiWorldResult({
               value={world[field]}
               placeholder="点击编辑…"
               onChange={v => onUpdateWorld(index, field, v)}
+              {...fieldRegen.rowProps(`world-${index}-${field}`, label, world[field], v => onUpdateWorld(index, field, v), worldContext(world.name, world.type))}
             />
           ))}
         </div>
@@ -145,6 +171,14 @@ export default function InspirationMultiWorldResult({
               key={index}
               character={character}
               onUpdate={field => value => onUpdateCharacter(index, field, value)}
+              regen={(field, label, value) =>
+                fieldRegen.rowProps(
+                  `char-${index}-${field}`,
+                  label,
+                  value,
+                  v => onUpdateCharacter(index, field, v),
+                  charContext(character),
+                )}
             />
           ))}
         </div>
@@ -164,11 +198,16 @@ export default function InspirationMultiWorldResult({
       >
         {fullscreen === 'storyCore' && (
           <div className="space-y-2 text-sm">
-            <EditableFieldRow label="一句话故事" value={result.storyCore.logline} highlight placeholder="点击编辑…" onChange={v => onUpdateStoryCore('logline', v)} />
-            <EditableFieldRow label="主题" value={result.storyCore.theme} placeholder="点击编辑…" onChange={v => onUpdateStoryCore('theme', v)} />
-            <EditableFieldRow label="核心冲突" value={result.storyCore.centralConflict} placeholder="点击编辑…" onChange={v => onUpdateStoryCore('centralConflict', v)} />
-            <EditableFieldRow label="情节模式" value={result.storyCore.plotPattern} placeholder="点击编辑…" onChange={v => onUpdateStoryCore('plotPattern', v)} />
-            <EditableFieldRow label="主线" value={result.storyCore.mainPlot} placeholder="点击编辑…" onChange={v => onUpdateStoryCore('mainPlot', v)} />
+            <EditableFieldRow label="一句话故事" value={result.storyCore.logline} highlight placeholder="点击编辑…" onChange={v => onUpdateStoryCore('logline', v)}
+              {...fieldRegen.rowProps('storyCore-logline', '一句话故事', result.storyCore.logline, v => onUpdateStoryCore('logline', v), storyCoreContext)} />
+            <EditableFieldRow label="主题" value={result.storyCore.theme} placeholder="点击编辑…" onChange={v => onUpdateStoryCore('theme', v)}
+              {...fieldRegen.rowProps('storyCore-theme', '主题', result.storyCore.theme, v => onUpdateStoryCore('theme', v), storyCoreContext)} />
+            <EditableFieldRow label="核心冲突" value={result.storyCore.centralConflict} placeholder="点击编辑…" onChange={v => onUpdateStoryCore('centralConflict', v)}
+              {...fieldRegen.rowProps('storyCore-centralConflict', '核心冲突', result.storyCore.centralConflict, v => onUpdateStoryCore('centralConflict', v), storyCoreContext)} />
+            <EditableFieldRow label="情节模式" value={result.storyCore.plotPattern} placeholder="点击编辑…" onChange={v => onUpdateStoryCore('plotPattern', v)}
+              {...fieldRegen.rowProps('storyCore-plotPattern', '情节模式', result.storyCore.plotPattern, v => onUpdateStoryCore('plotPattern', v), storyCoreContext)} />
+            <EditableFieldRow label="主线" value={result.storyCore.mainPlot} placeholder="点击编辑…" onChange={v => onUpdateStoryCore('mainPlot', v)}
+              {...fieldRegen.rowProps('storyCore-mainPlot', '主线', result.storyCore.mainPlot, v => onUpdateStoryCore('mainPlot', v), storyCoreContext)} />
           </div>
         )}
         {typeof fullscreen === 'number' && result.worlds[fullscreen] !== undefined && (
@@ -180,6 +219,13 @@ export default function InspirationMultiWorldResult({
                 value={result.worlds[fullscreen][field]}
                 placeholder="点击编辑…"
                 onChange={v => onUpdateWorld(fullscreen, field, v)}
+                {...fieldRegen.rowProps(
+                  `world-${fullscreen}-${field}`,
+                  label,
+                  result.worlds[fullscreen][field],
+                  v => onUpdateWorld(fullscreen, field, v),
+                  worldContext(result.worlds[fullscreen].name, result.worlds[fullscreen].type),
+                )}
               />
             ))}
           </div>
@@ -192,6 +238,14 @@ export default function InspirationMultiWorldResult({
                 character={character}
                 full
                 onUpdate={field => value => onUpdateCharacter(index, field, value)}
+                regen={(field, label, value) =>
+                  fieldRegen.rowProps(
+                    `char-${index}-${field}`,
+                    label,
+                    value,
+                    v => onUpdateCharacter(index, field, v),
+                    charContext(character),
+                  )}
               />
             ))}
           </div>
@@ -218,11 +272,14 @@ function FullscreenButton({ title, onClick }: { title: string; onClick: () => vo
 function CharacterRow({
   character,
   onUpdate,
+  regen,
   full = false,
 }: {
   character: ReverseCharacterMW
   /** 单个角色字段的编辑入口（已绑定角色下标） */
   onUpdate: (field: ReverseCharacterTextField) => (value: string) => void
+  /** 单个角色字段的行级 AI 重生成 props 工厂（已绑定角色下标与上下文） */
+  regen?: (field: ReverseCharacterTextField, label: string, value: string) => RegenRowProps
   /** 完整模式（全屏）：展示全部可编辑字段；默认紧凑模式仅简介 */
   full?: boolean
 }) {
@@ -255,6 +312,7 @@ function CharacterRow({
             value={character[field]}
             placeholder="点击编辑…"
             onChange={onUpdate(field)}
+            {...regen?.(field, label, character[field])}
           />
         ))}
       </div>

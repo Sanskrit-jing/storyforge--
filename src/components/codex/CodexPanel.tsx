@@ -666,7 +666,9 @@ export default function CodexPanel({ project, fixedDomain, fixedCategoryKeys, em
                     <Maximize2 className="w-3.5 h-3.5" /> 全屏查看
                   </button>
                 </div>
-                {candidates.map((item, index) => renderCandidateItem(item, index, false))}
+                <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+                  {candidates.map((item, index) => renderCandidateItem(item, index, false))}
+                </div>
                 <div className="flex justify-end gap-2">
                   <button onClick={() => setExtractOpen(false)} className="px-3 py-1.5 text-xs text-text-muted">取消</button>
                   <button onClick={handleAdoptCandidates} disabled={!selectedCandidates.size}

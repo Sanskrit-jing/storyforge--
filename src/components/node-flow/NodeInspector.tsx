@@ -1,8 +1,15 @@
 import FullScreenTextarea from '../shared/FullScreenTextarea'
-import { Plus, Trash2 } from 'lucide-react'
+import { Check, Loader2, Plus, Trash2 } from 'lucide-react'
 import { nanoid } from 'nanoid'
+import { useEffect, useState } from 'react'
 import { CONTEXT_SOURCES } from '../../lib/registry/context-sources'
-import type { NodeFlowGraph, NodeFlowNode, NodeValueType } from '../../lib/types'
+import { readAllKnowledgeEntries } from '../../lib/knowledge/global-knowledge'
+import type {
+  GlobalKnowledgeEntry,
+  NodeFlowGraph,
+  NodeFlowNode,
+  NodeValueType,
+} from '../../lib/types'
 import { removeSlotFromGraph } from '../../lib/node-flow/graph'
 import RagEntrySelector from '../retrieval/RagEntrySelector'
 
@@ -58,6 +65,9 @@ export default function NodeInspector(props: {
   const ragEntryKeys = Array.isArray(node.config.ragEntryKeys)
     ? node.config.ragEntryKeys.filter((value): value is string => typeof value === 'string')
     : []
+  const knowledgeEntryKeys = Array.isArray(node.config.knowledgeEntryKeys)
+    ? node.config.knowledgeEntryKeys.filter((value): value is string => typeof value === 'string')
+    : []
   const selectionMode = node.config.selectionMode === 'registered'
     || (node.config.selectionMode == null && sourceKeys.length > 0)
     ? 'registered'
@@ -103,12 +113,18 @@ export default function NodeInspector(props: {
               </button>
             </div>
             {selectionMode === 'exact' ? (
-              <RagEntrySelector
-                projectId={props.projectId}
-                worldGroupId={props.worldGroupId}
-                selectedKeys={ragEntryKeys}
-                onChange={keys => updateConfig('ragEntryKeys', keys)}
-              />
+              <>
+                <RagEntrySelector
+                  projectId={props.projectId}
+                  worldGroupId={props.worldGroupId}
+                  selectedKeys={ragEntryKeys}
+                  onChange={keys => updateConfig('ragEntryKeys', keys)}
+                />
+                <KnowledgeEntrySelector
+                  selectedKeys={knowledgeEntryKeys}
+                  onChange={keys => updateConfig('knowledgeEntryKeys', keys)}
+                />
+              </>
             ) : <section>
               <div className="mb-2">
                 <p className="text-[10px] font-medium text-text-secondary">项目元素来源</p>
@@ -117,7 +133,11 @@ export default function NodeInspector(props: {
                 </p>
               </div>
               <div className="max-h-64 space-y-1 overflow-y-auto rounded border border-border bg-bg-base p-2">
-                {CONTEXT_SOURCES.filter(source => source.key !== 'ragSelection').map(source => (
+                {CONTEXT_SOURCES.filter(source => ![
+                  'ragSelection',
+                  'knowledgeSelection',
+                  'knowledgeQuery',
+                ].includes(source.key)).map(source => (
                   <label key={source.key} className="flex cursor-pointer items-start gap-2 rounded px-1 py-1 hover:bg-bg-hover">
                     <input
                       type="checkbox"
@@ -380,5 +400,71 @@ export default function NodeInspector(props: {
         </section>
       </div>
     </aside>
+  )
+}
+
+function KnowledgeEntrySelector(props: {
+  selectedKeys: string[]
+  onChange: (keys: string[]) => void
+}) {
+  const [entries, setEntries] = useState<GlobalKnowledgeEntry[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    void readAllKnowledgeEntries()
+      .then(rows => { if (!cancelled) setEntries(rows) })
+      .catch(() => { if (!cancelled) setEntries([]) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  const selected = new Set(props.selectedKeys)
+  const toggle = (key: string) => {
+    props.onChange(selected.has(key)
+      ? props.selectedKeys.filter(item => item !== key)
+      : [...props.selectedKeys, key])
+  }
+  const available = entries.filter(entry => entry.enabled)
+
+  return (
+    <section>
+      <p className="text-[10px] font-medium text-text-secondary">知识库参考条目</p>
+      <p className="mb-2 text-[9px] leading-4 text-text-muted">
+        勾选的描写范例会作为上下文注入；未勾选时 AI 仍可用 search_knowledge 按主题查阅。
+      </p>
+      <div className="max-h-48 space-y-1 overflow-y-auto rounded border border-border bg-bg-base p-2">
+        {loading ? (
+          <p className="flex items-center justify-center gap-1 py-4 text-[10px] text-text-muted">
+            <Loader2 className="h-3 w-3 animate-spin" /> 正在读取知识库…
+          </p>
+        ) : !available.length ? (
+          <p className="py-4 text-center text-[10px] text-text-muted">
+            知识库暂无启用的条目；可在首页「知识库」中添加。
+          </p>
+        ) : available.map(entry => (
+          <button
+            key={entry.id}
+            type="button"
+            onClick={() => toggle(String(entry.id))}
+            title={entry.content}
+            className={`flex w-full items-start gap-1.5 rounded px-1.5 py-1 text-left ${
+              selected.has(String(entry.id)) ? 'bg-accent/10 text-accent' : 'text-text-secondary hover:bg-bg-hover'
+            }`}
+          >
+            <span className="mt-0.5 flex h-3 w-3 shrink-0 items-center justify-center rounded border border-current">
+              {selected.has(String(entry.id)) && <Check className="h-2.5 w-2.5" />}
+            </span>
+            <span className="min-w-0">
+              <span className="block text-[10px]">{entry.title}</span>
+              <span className="block truncate text-[9px] opacity-70">
+                {entry.category}
+                {entry.triggers?.length ? ` · ${entry.triggers.join('、')}` : ''}
+              </span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </section>
   )
 }

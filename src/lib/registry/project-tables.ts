@@ -166,7 +166,15 @@ export const PROJECT_TABLES: TableSpec[] = [
 
   // ───────────────────── 下游产物 / 工具 ─────────────────────
   { table: db.foreshadows, name: 'foreshadows', owner: 'project', exportable: true,
-    note: '可跨世界;plant/resolveChapterId 为软引用(删章不强删)' },
+    exportRemap: [
+      { field: 'plantChapterId', remapVia: 'chapters', exportAs: '_plantChapterExportId' },
+      { field: 'resolveChapterId', remapVia: 'chapters', exportAs: '_resolveChapterExportId' },
+      { field: 'expectedResolveChapterId', remapVia: 'chapters', exportAs: '_expectedResolveChapterExportId' },
+    ],
+    exportRefRemap: [
+      { field: 'echoChapterIds', remapVia: 'chapters', kind: 'id-array', exportAs: '_echoChapterIndexes', storage: 'json-string' },
+    ],
+    note: '可跨世界;plant/resolveChapterId 为软引用(删章不强删);导出按导出序号重映射,缺失置空' },
 
   { table: db.storyArcs, name: 'storyArcs', owner: 'project', exportable: true,
     exportIdField: true,
@@ -223,7 +231,9 @@ export const PROJECT_TABLES: TableSpec[] = [
     ],
     note: 'Phase 39 已确认的两条登记故事线交汇；删章保留证据与章节标题并 NULL 化引用' },
 
-  { table: db.stateCards, name: 'stateCards', owner: 'project', exportable: true },
+  { table: db.stateCards, name: 'stateCards', owner: 'project', exportable: true,
+    exportRemap: [{ field: 'lastChapterId', remapVia: 'chapters', exportAs: '_lastChapterExportId' }],
+    note: 'lastChapterId 为软引用(删章保留卡),导出按导出序号重映射,缺失置空' },
 
   { table: db.itemLedger, name: 'itemLedger', owner: 'project', exportable: true,
     refs: [
@@ -238,7 +248,9 @@ export const PROJECT_TABLES: TableSpec[] = [
   { table: db.storyTimelineEvents, name: 'storyTimelineEvents', owner: 'project', exportable: true,
     exportRemap: [{ field: 'chapterId', remapVia: 'chapters', exportAs: '_chapterExportId' }] },
 
-  { table: db.notes, name: 'notes', owner: 'project', exportable: true },
+  { table: db.notes, name: 'notes', owner: 'project', exportable: true,
+    exportRemap: [{ field: 'chapterId', remapVia: 'chapters', exportAs: '_chapterExportId' }],
+    note: 'chapterId 为软引用(笔记可全局),导出按导出序号重映射,缺失置空' },
 
   { table: db.creativeRules, name: 'creativeRules', owner: 'project', exportable: true,
     refs: [
@@ -504,6 +516,12 @@ export const PROJECT_TABLES: TableSpec[] = [
     note: '全局 scope=system|user' },
 
   { table: db.promptWorkflows, name: 'promptWorkflows', owner: 'global', exportable: false },
+
+  { table: db.globalKnowledgeEntries, name: 'globalKnowledgeEntries', owner: 'global', exportable: false,
+    note: 'KB-1 作者手写跨项目知识库;仅作 AI 只读上下文源;经设置页 JSON 导出导入' },
+
+  { table: db.commonPhrases, name: 'commonPhrases', owner: 'global', exportable: false,
+    note: 'PHRASE-1 作者手写跨项目常用语;不注入 AI 上下文;各输入入口查找填入/复制;设置页统一增删改' },
 
   { table: db.aiUsageLog, name: 'aiUsageLog', owner: 'project', exportable: false,
     note: '消耗统计;projectId 可空;体积大不导出' },

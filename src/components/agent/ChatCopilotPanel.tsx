@@ -10,6 +10,7 @@ import {
   History,
   Loader2,
   MessageSquarePlus,
+  MessageSquareQuote,
   RotateCcw,
   Send,
   ShieldCheck,
@@ -20,7 +21,9 @@ import {
 } from 'lucide-react'
 import type { Project } from '../../lib/types'
 import { parseAgentEventPayload } from '../../lib/types'
+import { joinPhrase } from '../../lib/phrases/common-phrases'
 import { useDialog } from '../shared/Dialog'
+import CommonPhrasesPicker from '../shared/CommonPhrasesPicker'
 import { useMasterCopilot } from './useMasterCopilot'
 
 interface Props {
@@ -46,6 +49,9 @@ export default function ChatCopilotPanel({
   const dialog = useDialog()
   const [showDetails, setShowDetails] = useState(false)
   const [showHistoryList, setShowHistoryList] = useState(false)
+  // 常用语弹层（输入框旁查找填入）
+  const [phrasesOpen, setPhrasesOpen] = useState(false)
+  const [phrasesBtn, setPhrasesBtn] = useState<HTMLButtonElement | null>(null)
   const endRef = useRef<HTMLDivElement | null>(null)
   const viewingHistory = copilot.viewingHistoryId != null
   const visibleEvents = viewingHistory ? copilot.historyEvents : copilot.events
@@ -504,9 +510,36 @@ export default function ChatCopilotPanel({
           className="w-full resize-none rounded-md border border-border bg-bg-base px-3 py-2 text-xs leading-5 text-text-primary outline-none focus:border-accent disabled:opacity-60"
         />
         <div className="mt-2 flex items-center justify-between gap-2">
-          <span className="min-w-0 truncate text-[10px] text-text-muted">
-            Enter 发送 · 记录自动保存在本地 · 撤销/重写按钮在对话末尾
-          </span>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <div className="shrink-0">
+              <button
+                type="button"
+                ref={setPhrasesBtn}
+                disabled={copilot.loading || copilot.busy || viewingHistory}
+                onMouseDown={event => event.stopPropagation()}
+                onClick={() => setPhrasesOpen(open => !open)}
+                title="常用语：查找并填入"
+                aria-label="插入常用语"
+                className={`rounded p-1 transition-colors disabled:opacity-40 ${
+                  phrasesOpen
+                    ? 'bg-accent/10 text-accent'
+                    : 'text-text-muted hover:bg-bg-hover hover:text-accent'
+                }`}
+              >
+                <MessageSquareQuote className="h-3.5 w-3.5" />
+              </button>
+              {phrasesOpen && (
+                <CommonPhrasesPicker
+                  anchor={phrasesBtn}
+                  onInsert={content => copilot.setAuthorRequest(prev => joinPhrase(prev, content))}
+                  onClose={() => setPhrasesOpen(false)}
+                />
+              )}
+            </div>
+            <span className="min-w-0 truncate text-[10px] text-text-muted">
+              Enter 发送 · 记录自动保存在本地 · 撤销/重写按钮在对话末尾
+            </span>
+          </div>
           {copilot.busy ? (
             <button
               type="button"

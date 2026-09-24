@@ -60,6 +60,7 @@ import {
   readAgentWorldGroups,
 } from '../agent/read-sources'
 import { readRagSelectionContext } from '../retrieval/rag-library'
+import { readKnowledgeSelectionContext, searchKnowledgeContext } from '../knowledge/global-knowledge'
 
 async function readWorldview(projectId: number, worldGroupId?: number | null): Promise<Worldview | null> {
   const rows = await db.worldviews.where('projectId').equals(projectId).toArray()
@@ -97,8 +98,9 @@ async function readForeshadows(projectId: number, chapterId?: number | null): Pr
   })
 }
 
-/** FB-5:作者文风画像。仅当画像存在且 enabled 时返回,否则空串(不进上下文)。 */
-async function readUserStyleProfile(projectId: number): Promise<string> {
+/** FB-5:作者文风画像。仅当画像存在且 enabled 时返回,否则空串(不进上下文)。
+ * STYLE-SHORT-PATH:润色/扩写/去 AI 味等改写短链路复用本读取源,不另建旁路。 */
+export async function readUserStyleProfile(projectId: number): Promise<string> {
   const profile = await db.userStyleProfiles.where('projectId').equals(projectId).first()
   if (!profile || !profile.enabled || !profile.profile.trim()) return ''
   const pairExamples = formatStyleFewShotPairs(parseStyleRevisionPairs(profile.revisionPairs))
@@ -615,6 +617,26 @@ export const CONTEXT_SOURCES: ContextSource[] = [
     read: async input => input.manualSourceText || '',
   },
   {
+    // KB-1: 节点/Agent 精确勾选的知识库条目（键 = 字符串化条目 ID）。
+    key: 'knowledgeSelection',
+    label: '勾选的知识库条目',
+    scope: 'manual',
+    layer: 'L0',
+    budgetTokens: 50_000,
+    enabled: input => !!input.knowledgeEntryKeys?.length,
+    read: input => readKnowledgeSelectionContext(input.knowledgeEntryKeys!),
+  },
+  {
+    // KB-1: search_knowledge 工具的定向查询结果；不常驻注入，AI 按需查阅。
+    key: 'knowledgeQuery',
+    label: '知识库查询结果',
+    scope: 'manual',
+    layer: 'L2',
+    budgetTokens: 6000,
+    enabled: input => !!input.knowledgeQuery?.trim(),
+    read: input => searchKnowledgeContext(input.knowledgeQuery!),
+  },
+  {
     key: 'chapterContent',
     label: '章节正文',
     scope: 'chapter',
@@ -766,7 +788,10 @@ export const CONTEXT_SOURCES: ContextSource[] = [
     layer: 'L2',
     budgetTokens: 8000, // 放宽:容下完整世界观设定,超大才软截断(并配合总窗口软裁)
     requiresWorldGroupId: true,
-    read: async input => formatWorldviewBlock(await readWorldview(input.projectId, input.worldGroupId)),
+    read: async input => formatWorldviewBlock(
+      await readWorldview(input.projectId, input.worldGroupId),
+      input.worldviewExcludeKeys,
+    ),
   },
   {
     key: 'storyCore',

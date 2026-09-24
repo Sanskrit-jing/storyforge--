@@ -8,6 +8,12 @@ import { useAIStream } from '../../hooks/useAIStream'
 import { createAISessionKey } from '../../stores/ai-generation-session'
 import { buildRulesGeneratePrompt } from '../../lib/ai/adapters/rules-adapter'
 import { adopt } from '../../lib/registry/adopt'
+import {
+  parseCustomConstraints,
+  serializeCustomConstraints,
+  newConstraintId,
+} from '../../lib/ai/custom-constraints'
+import type { CustomWritingConstraint } from '../../lib/types/creative-rules'
 import AIStreamOutput from '../shared/AIStreamOutput'
 import type { Project, NarrativePOV } from '../../lib/types'
 
@@ -34,6 +40,7 @@ export default function CreativeRulesPanel({ project }: Props) {
   const [specialRequirements, setSpecialRequirements] = useState('')
   const [referenceWorks, setReferenceWorks] = useState<string[]>([])
   const [citedRefIds, setCitedRefIds] = useState<number[]>([])
+  const [customConstraints, setCustomConstraints] = useState<CustomWritingConstraint[]>([])
   const [aiTarget, setAiTarget] = useState<'writingStyle' | 'toneAndMood' | 'specialRequirements' | null>(null)
   const ai = useAIStream(createAISessionKey(project.id!, 'rules.generate'))
   const currentAITarget = (ai.operation as typeof aiTarget) ?? aiTarget
@@ -54,6 +61,7 @@ export default function CreativeRulesPanel({ project }: Props) {
       try { setConsistencyRules(JSON.parse(creativeRules.consistencyRules || '[]')) } catch { setConsistencyRules([]) }
       try { setReferenceWorks(JSON.parse(creativeRules.referenceWorks || '[]')) } catch { setReferenceWorks([]) }
       try { setCitedRefIds(JSON.parse(creativeRules.citedReferenceIds || '[]')) } catch { setCitedRefIds([]) }
+      setCustomConstraints(parseCustomConstraints(creativeRules.customConstraints))
     }
   }, [creativeRules])
 
@@ -138,6 +146,33 @@ export default function CreativeRulesPanel({ project }: Props) {
     saveField({ [field]: JSON.stringify(updated) })
   }
 
+  /* ---- 自定义写法约束（CUSTOM-CONSTRAINT）---- */
+  const persistConstraints = (next: CustomWritingConstraint[]) => {
+    setCustomConstraints(next)
+    saveField({ customConstraints: serializeCustomConstraints(next) })
+  }
+
+  const handleAddConstraint = () => {
+    persistConstraints([...customConstraints, { id: newConstraintId(), title: '', content: '', enabled: true }])
+  }
+
+  const handleUpdateConstraint = (id: string, patch: Partial<CustomWritingConstraint>) => {
+    setCustomConstraints(customConstraints.map(c => (c.id === id ? { ...c, ...patch } : c)))
+  }
+
+  /** 文本编辑用 blur 保存（跟随面板其他列表的交互节奏） */
+  const handleBlurConstraints = () => {
+    saveField({ customConstraints: serializeCustomConstraints(customConstraints) })
+  }
+
+  const handleRemoveConstraint = (id: string) => {
+    persistConstraints(customConstraints.filter(c => c.id !== id))
+  }
+
+  const handleToggleConstraint = (id: string, enabled: boolean) => {
+    persistConstraints(customConstraints.map(c => (c.id === id ? { ...c, enabled } : c)))
+  }
+
   /* ---- 列表渲染 ---- */
   const renderList = (
     title: string,
@@ -160,7 +195,7 @@ export default function CreativeRulesPanel({ project }: Props) {
       {list.length === 0 ? (
         <p className="text-text-muted text-xs py-3 text-center border border-dashed border-border rounded-lg">暂无内容</p>
       ) : (
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 max-h-[50vh] overflow-y-auto">
           {list.map((item, idx) => (
             <div key={idx} className="flex items-center gap-2">
               <input
@@ -277,6 +312,63 @@ export default function CreativeRulesPanel({ project }: Props) {
       {/* 一致性规则 */}
       {renderList('一致性规则', '如：修炼体系必须遵循金木水火土五行', consistencyRules, setConsistencyRules, 'consistencyRules')}
 
+      {/* 自定义写法约束 —— CUSTOM-CONSTRAINT */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-sm font-medium text-text-secondary">自定义写法约束 ({customConstraints.length})</label>
+          <button
+            onClick={handleAddConstraint}
+            className="flex items-center gap-1 px-2 py-1 text-xs text-accent hover:bg-accent/10 rounded transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            添加
+          </button>
+        </div>
+        <p className="text-xs text-text-muted mb-2">
+          写给 AI 的场景级写法规则（如「追逐戏怎么写」），生成/润色/扩写/去AI味时自动注入。内置的情绪外化、画面感、代入感三条在「设置 → 写作偏好」管理。
+        </p>
+        {customConstraints.length === 0 ? (
+          <p className="text-text-muted text-xs py-3 text-center border border-dashed border-border rounded-lg">暂无自定义约束</p>
+        ) : (
+          <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+            {customConstraints.map(constraint => (
+              <div key={constraint.id} className={`p-2.5 rounded-lg border border-border bg-bg-surface ${constraint.enabled ? '' : 'opacity-60'}`}>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <input
+                    type="checkbox"
+                    checked={constraint.enabled}
+                    onChange={e => handleToggleConstraint(constraint.id, e.target.checked)}
+                    className="accent-accent shrink-0"
+                    title={constraint.enabled ? '已启用（点击停用）' : '已停用（点击启用）'}
+                  />
+                  <input
+                    value={constraint.title}
+                    onChange={e => handleUpdateConstraint(constraint.id, { title: e.target.value })}
+                    onBlur={handleBlurConstraints}
+                    placeholder="约束名称（如：追逐戏写法）"
+                    className="flex-1 px-2 py-1 bg-transparent border-b border-border text-sm text-text-primary focus:outline-none focus:border-accent"
+                  />
+                  <button
+                    onClick={() => handleRemoveConstraint(constraint.id)}
+                    className="p-1 text-text-muted hover:text-red-400 transition-colors shrink-0"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <textarea
+                  value={constraint.content}
+                  onChange={e => handleUpdateConstraint(constraint.id, { content: e.target.value })}
+                  onBlur={handleBlurConstraints}
+                  rows={3}
+                  placeholder="约束正文：禁止什么、必须怎么写，可附正反示例…"
+                  className="w-full px-2 py-1.5 bg-bg-surface border border-border rounded text-sm text-text-primary focus:outline-none focus:border-accent resize-y"
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* 参考作品 */}
       {renderList('参考作品', '如：《凡人修仙传》', referenceWorks, setReferenceWorks, 'referenceWorks')}
 
@@ -301,7 +393,7 @@ export default function CreativeRulesPanel({ project }: Props) {
             )
           }
           return (
-            <div className="space-y-1">
+            <div className="space-y-1 max-h-[50vh] overflow-y-auto">
               {analyzedRefs.map(ref => {
                 const checked = citedRefIds.includes(ref.id!)
                 return (

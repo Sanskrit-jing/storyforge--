@@ -100,13 +100,13 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
       {children}
       {dialog && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/55 px-4 pt-[max(1rem,var(--safe-area-inset-top))] pb-[max(1rem,var(--safe-area-inset-bottom))] xl:py-4">
-          <div className="w-full max-w-md rounded-lg border border-border bg-bg-surface shadow-2xl">
-            <div className="flex items-start gap-3 border-b border-border px-4 py-3">
+          <div className="flex max-h-[85dvh] w-full max-w-md flex-col overflow-hidden rounded-lg border border-border bg-bg-surface shadow-2xl">
+            <div className="flex shrink-0 items-start gap-3 border-b border-border px-4 py-3">
               <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${isDanger ? 'text-error' : 'text-accent'}`} />
               <div className="min-w-0 flex-1">
                 <h2 className="text-sm font-semibold text-text-primary">{dialog.title}</h2>
                 {dialog.message && (
-                  <p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-text-muted">{dialog.message}</p>
+                  <p className="mt-1 max-h-56 overflow-y-auto whitespace-pre-wrap text-xs leading-5 text-text-muted">{dialog.message}</p>
                 )}
               </div>
               <button
@@ -120,7 +120,7 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
             </div>
 
             {dialog.mode === 'prompt' && (
-              <div className="px-4 py-3">
+              <div className="shrink-0 px-4 py-3">
                 <input
                   autoFocus
                   value={inputValue}
@@ -135,7 +135,7 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
               </div>
             )}
 
-            <div className="flex justify-end gap-2 px-4 py-3">
+            <div className="flex shrink-0 justify-end gap-2 px-4 py-3">
               {dialog.mode !== 'alert' && (
                 <button
                   type="button"

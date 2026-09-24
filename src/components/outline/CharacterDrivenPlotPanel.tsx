@@ -12,7 +12,9 @@ import {
 import { useCharacterStore } from '../../stores/character'
 import { useOutlineStore } from '../../stores/outline'
 import { useCharacterDrivenPlanStore } from '../../stores/character-driven-plan'
+import { useAIConfigStore } from '../../stores/ai-config'
 import { useAIStream } from '../../hooks/useAIStream'
+import { useFieldRegenerate } from '../../hooks/useFieldRegenerate'
 import { createAISessionKey } from '../../stores/ai-generation-session'
 import {
   buildCharacterDrivenPlotPrompt,
@@ -70,6 +72,8 @@ export default function CharacterDrivenPlotPanel({ project }: Props) {
     deletePlan,
   } = useCharacterDrivenPlanStore()
   const ai = useAIStream(createAISessionKey(project.id!, 'character-driven-plot.generate'))
+  const aiConfig = useAIConfigStore(s => s.config)
+  const fieldRegen = useFieldRegenerate({ aiConfig, projectId: project.id, category: 'outline.character-driven' })
   const dialog = useDialog()
   const generationPlanId = useRef<number | null>(null)
 
@@ -93,6 +97,8 @@ export default function CharacterDrivenPlotPanel({ project }: Props) {
   )
 
   useEffect(() => {
+    // 切换方案：中止上一方案在飞的字段重生成，避免按 key（含 index）串写进新方案
+    fieldRegen.reset()
     if (!currentPlan) {
       setArcs([])
       setUserHint('')
@@ -177,6 +183,8 @@ export default function CharacterDrivenPlotPanel({ project }: Props) {
   // 开始生成
   const handleGenerate = async () => {
     if (!currentPlan?.id || arcs.length === 0 || arcs.some(a => !a.initialState.trim() || !a.targetState.trim())) return
+    // 新一轮生成会整批替换卷列表：先中止在飞的字段重生成，防止旧请求串写新批次
+    fieldRegen.reset()
     setParsedVolumes(null)
     setImportDone(false)
     generationPlanId.current = currentPlan.id
@@ -268,6 +276,7 @@ export default function CharacterDrivenPlotPanel({ project }: Props) {
   // 卷卡片渲染：内嵌与全屏共用（卷标题/摘要/弧光、章节标题/简介全部可编辑）
   const renderVolumeCard = (vol: PlotVolume, vi: number, full: boolean) => {
     const expanded = full || expandedVolumes.has(vi)
+    const volContext = `卷标题：${vol.volumeTitle || '未命名卷'}\n角色：${arcs.map(a => a.name).filter(Boolean).join('、') || '无'}`
     return (
       <div key={vi}>
         {/* 卷标题行 */}
@@ -297,10 +306,14 @@ export default function CharacterDrivenPlotPanel({ project }: Props) {
           <div className="px-4 pb-2 space-y-1">
             <div className="pl-8 space-y-0.5">
               <EditableFieldRow label="卷摘要" value={vol.volumeSummary} placeholder="点击编辑卷摘要…"
-                onChange={v => updateParsedVolume(vi, 'volumeSummary', v)} compact maxRows={full ? 10 : 4} />
+                onChange={v => updateParsedVolume(vi, 'volumeSummary', v)} compact maxRows={full ? 10 : 4}
+                {...fieldRegen.rowProps(`vol-${vi}-volumeSummary`, '卷摘要', vol.volumeSummary,
+                  v => updateParsedVolume(vi, 'volumeSummary', v), volContext)} />
               <EditableFieldRow label="弧光" value={vol.characterArcs} placeholder="点击编辑角色弧光…"
                 onChange={v => updateParsedVolume(vi, 'characterArcs', v)} compact
-                displayClassName="!text-xs !text-text-muted italic" maxRows={full ? 10 : 4} />
+                displayClassName="!text-xs !text-text-muted italic" maxRows={full ? 10 : 4}
+                {...fieldRegen.rowProps(`vol-${vi}-characterArcs`, '弧光', vol.characterArcs,
+                  v => updateParsedVolume(vi, 'characterArcs', v), volContext)} />
             </div>
             <div className="pl-8 space-y-1.5">
               {vol.chapters.map((ch, ci) => (

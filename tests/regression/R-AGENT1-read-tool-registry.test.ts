@@ -19,6 +19,7 @@ const EXPECTED_TOOLS = [
   'read_world_groups',
   'read_inspiration_workspace',
   'search_text',
+  'search_knowledge',
 ]
 
 async function addProject(name: string, enableMultiWorld: boolean) {
@@ -266,6 +267,7 @@ describe('R-AGENT1 · 只读 Tool Registry', () => {
       read_story_timeline: { chapterId },
       read_inspiration_workspace: { fragmentIds: ['idea-1'], mode: 'single' },
       search_text: { query: '铜钥匙' },
+      search_knowledge: { query: '铜钥匙' },
     }
     for (const tool of AGENT_READ_TOOLS) {
       const result = await tool.execute({ projectId }, args[tool.name] ?? {})

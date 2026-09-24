@@ -8,7 +8,11 @@
  * 与 CTextarea 一样内置 IME 组合输入保护，属性与原生 textarea 完全兼容，
  * 因此全项目的 <CTextarea /> / <textarea /> 可直接替换为本组件。
  * 布局说明：外层 wrapper 为 min-w-0 flex-1，无论父级是普通块容器还是
- * label+field 横向 flex 行，都能正确占满剩余宽度。
+ * label+field 横向 flex 行，都能正确占满剩余宽度；内层 relative + flex
+ * 包裹文本框与全屏按钮，高度与文本框完全重合——当外层被 flex 行中更高的
+ * 兄弟列（如「标签 + AI 重写」列）stretch 拉高时，按钮仍贴住文本框自身
+ * 右下角，不会悬到框外空隙里。文本框带 min-h-9 下限，保证最矮的单行字段
+ * （rows=1 约 26px）也容得下按钮的 bottom-2 + h-6 定位（需 32px）。
  */
 import { forwardRef, useRef, useState } from 'react'
 import { Maximize2 } from 'lucide-react'
@@ -40,31 +44,35 @@ const FullScreenTextarea = forwardRef<HTMLTextAreaElement, FullScreenTextareaPro
 
   return (
     <>
-      <div className="relative min-w-0 flex-1">
-        <CTextarea
-          ref={forwardedRef}
-          {...rest}
-          disabled={disabled}
-          onBlur={onBlur}
-          className={`w-full resize-none ${className}`}
-        />
-        {/* 全端统一：右下角内嵌全屏入口，底色与框内一致、无边框，视觉融入文本域 */}
-        {!disabled && (
-          <button
-            type="button"
-            tabIndex={-1}
-            onClick={event => {
-              event.preventDefault()
-              event.stopPropagation()
-              setOpen(true)
-            }}
-            title="点击全屏查看并编辑"
-            aria-label="点击全屏查看并编辑"
-            className="absolute bottom-2 right-2 flex h-6 w-6 items-center justify-center rounded-md bg-bg-base/85 text-text-muted/70 backdrop-blur-[2px] transition-colors hover:bg-bg-hover hover:text-accent"
-          >
-            <Maximize2 className="h-3.5 w-3.5" />
-          </button>
-        )}
+      <div className="min-w-0 flex-1">
+        {/* 内层 relative + flex：高度与文本框完全重合（消除 inline-block 基线下降间隙），
+            保证按钮始终贴住文本框自身右下角（见头部布局说明） */}
+        <div className="relative flex">
+          <CTextarea
+            ref={forwardedRef}
+            {...rest}
+            disabled={disabled}
+            onBlur={onBlur}
+            className={`w-full min-h-9 resize-none ${className}`}
+          />
+          {/* 全端统一：右下角内嵌全屏入口，底色与框内一致、无边框，视觉融入文本域 */}
+          {!disabled && (
+            <button
+              type="button"
+              tabIndex={-1}
+              onClick={event => {
+                event.preventDefault()
+                event.stopPropagation()
+                setOpen(true)
+              }}
+              title="点击全屏查看并编辑"
+              aria-label="点击全屏查看并编辑"
+              className="absolute bottom-2 right-2 flex h-6 w-6 items-center justify-center rounded-md bg-bg-base/85 text-text-muted/70 backdrop-blur-[2px] transition-colors hover:bg-bg-hover hover:text-accent"
+            >
+              <Maximize2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       <FullScreenViewer

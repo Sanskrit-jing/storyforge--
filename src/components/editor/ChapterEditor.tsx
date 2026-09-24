@@ -1,5 +1,6 @@
 import FullScreenTextarea from '../shared/FullScreenTextarea'
 import { lazy, Suspense, useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { FileText, ClipboardList, ChevronDown, ChevronRight } from 'lucide-react'
 import { useChapterStore } from '../../stores/chapter'
 import { useOutlineStore } from '../../stores/outline'
@@ -30,6 +31,8 @@ import { db } from '../../lib/db/schema'
 import { buildGenreConstraintContext } from '../../lib/ai/genre-metadata'
 import { buildStylePromptInjection } from '../../lib/ai/writing-styles'
 import { assembleContext } from '../../lib/registry/assemble-context'
+import { readUserStyleProfile } from '../../lib/registry/context-sources'
+import { readCustomConstraintsGuard } from '../../lib/ai/custom-constraints'
 import { resolveChapterDisplayMeta } from '../../lib/outline/chapter-display'
 import { pickBestChapterForOutline } from '../../lib/chapters/selectors'
 import { useCreativeRulesStore } from '../../stores/project-singletons'
@@ -111,6 +114,8 @@ interface Props {
 }
 
 export default function ChapterEditor({ project, outlineNodeId }: Props) {
+  // 热路径收窄：每个 store 只订阅所需字段（useShallow 浅比较），
+  // 避免任一 store 任意字段变化都触发整树重渲染。
   const {
     chapters,
     currentChapter,
@@ -119,16 +124,59 @@ export default function ChapterEditor({ project, outlineNodeId }: Props) {
     updateChapter,
     refreshChapter,
     loadAll: loadChapters,
-  } = useChapterStore()
-  const { nodes, updateNode } = useOutlineStore()
-  const { cards: stateCards, loadAll: loadStateCards, buildStateContext, buildSelectiveStateContext, applyDiffs } = useStateCardStore()
-  const { characters, loadAll: loadCharacters } = useCharacterStore()
-  const { creativeRules } = useCreativeRulesStore()
-  const { loadAll: loadArcs } = useStoryArcStore()
-  const { buildForeshadowContext, loadAll: loadForeshadows } = useForeshadowStore()
-  const { entries: itemEntries, loadAll: loadItemLedger } = useItemLedgerStore()
-  const { locations, loadAll: loadLocations } = useLocationStore()
-  const { categories: codexCategories, entries: codexEntries, loadExisting: loadCodex } = useCodexStore()
+  } = useChapterStore(useShallow(state => ({
+    chapters: state.chapters,
+    currentChapter: state.currentChapter,
+    selectChapter: state.selectChapter,
+    getOrCreateByOutlineNode: state.getOrCreateByOutlineNode,
+    updateChapter: state.updateChapter,
+    refreshChapter: state.refreshChapter,
+    loadAll: state.loadAll,
+  })))
+  const { nodes, updateNode } = useOutlineStore(useShallow(state => ({
+    nodes: state.nodes,
+    updateNode: state.updateNode,
+  })))
+  const {
+    cards: stateCards,
+    loadAll: loadStateCards,
+    buildStateContext,
+    buildSelectiveStateContext,
+    applyDiffs,
+  } = useStateCardStore(useShallow(state => ({
+    cards: state.cards,
+    loadAll: state.loadAll,
+    buildStateContext: state.buildStateContext,
+    buildSelectiveStateContext: state.buildSelectiveStateContext,
+    applyDiffs: state.applyDiffs,
+  })))
+  const { characters, loadAll: loadCharacters } = useCharacterStore(useShallow(state => ({
+    characters: state.characters,
+    loadAll: state.loadAll,
+  })))
+  const creativeRules = useCreativeRulesStore(state => state.creativeRules)
+  const loadArcs = useStoryArcStore(state => state.loadAll)
+  const { buildForeshadowContext, loadAll: loadForeshadows } = useForeshadowStore(useShallow(state => ({
+    buildForeshadowContext: state.buildForeshadowContext,
+    loadAll: state.loadAll,
+  })))
+  const { entries: itemEntries, loadAll: loadItemLedger } = useItemLedgerStore(useShallow(state => ({
+    entries: state.entries,
+    loadAll: state.loadAll,
+  })))
+  const { locations, loadAll: loadLocations } = useLocationStore(useShallow(state => ({
+    locations: state.locations,
+    loadAll: state.loadAll,
+  })))
+  const {
+    categories: codexCategories,
+    entries: codexEntries,
+    loadExisting: loadCodex,
+  } = useCodexStore(useShallow(state => ({
+    categories: state.categories,
+    entries: state.entries,
+    loadExisting: state.loadExisting,
+  })))
 
   // content 为 HTML 字符串；旧数据是纯文本，RichEditor 内部会自动包装
   const [content, setContent] = useState('')
@@ -313,8 +361,21 @@ export default function ChapterEditor({ project, outlineNodeId }: Props) {
     setPlainText(htmlToPlainText(raw))
   }, [currentChapter])
 
+  // 自动保存
+  const autoSave = useAutoSave(content, useCallback(async (html: string) => {
+    if (currentChapter?.id) {
+      const wc = countWords(htmlToPlainText(html))
+      await updateChapter(currentChapter.id, { content: html, wordCount: wc })
+      setSavedContent(html)
+    }
+  }, [currentChapter?.id, updateChapter]))
+
   // 切换章节时同步 savedContent（只在章节 id 变化时）
   useEffect(() => {
+    // 切章前先把旧章未落盘内容按旧章身份 flush：
+    // 此时 data 尚未重置、saveFn 尚未换绑，flush 的配对语义保证旧内容写回旧章，
+    // 既不丢失也不会经新章 saveFn 写错章节。
+    void autoSave.flush()
     setSavedContent(currentChapter?.content || '')
     setManualSaveError('')
   }, [currentChapter?.id]) // eslint-disable-line react-hooks/exhaustive-deps -- 保存基线只在切章时重置，自动保存不能重置脏状态
@@ -368,15 +429,6 @@ export default function ChapterEditor({ project, outlineNodeId }: Props) {
     })
     return () => { cancelled = true }
   }, [project.id, currentChapter])
-
-  // 自动保存
-  useAutoSave(content, useCallback(async (html: string) => {
-    if (currentChapter?.id) {
-      const wc = countWords(htmlToPlainText(html))
-      await updateChapter(currentChapter.id, { content: html, wordCount: wc })
-      setSavedContent(html)
-    }
-  }, [currentChapter?.id, updateChapter]))
 
   // 朗读开关：未朗读→以当前正文为快照从头朗读；朗读中→切换控制条显示/隐藏（停止用控制条 ×）
   const handleToggleReader = useCallback(() => {
@@ -746,7 +798,7 @@ export default function ChapterEditor({ project, outlineNodeId }: Props) {
       continuity.previousTail,
       worldRulesContext,
       customInstruction.trim() || undefined,
-      { continuity, continuityBudgetTokens },
+      { continuity, continuityBudgetTokens, customConstraints: await readCustomConstraintsGuard(project.id!) },
     )
 
     // Phase 21.3: 计算上下文预算
@@ -777,7 +829,7 @@ export default function ChapterEditor({ project, outlineNodeId }: Props) {
       outlineNode.summary,
       ctxWithChars,
       customInstruction.trim() || undefined,
-      { continuity, continuityBudgetTokens },
+      { continuity, continuityBudgetTokens, customConstraints: await readCustomConstraintsGuard(project.id!) },
     )
     prepareOrRunChapterGeneration(
       'continue',
@@ -787,18 +839,25 @@ export default function ChapterEditor({ project, outlineNodeId }: Props) {
     )
   }
 
-  const handlePolish = () => {
+  const handlePolish = async () => {
     const selected = editorRef.current?.getSelectedText() || plainText.slice(-1000)
     if (!selected) return
-    const messages = buildPolishPrompt(selected, customInstruction || '优化文笔，使表达更生动')
+    // STYLE-SHORT-PATH:改写短链路注入作者文风画像（未启用时为空串，不注入）
+    const messages = buildPolishPrompt(selected, customInstruction || '优化文笔，使表达更生动', {
+      styleContext: await readUserStyleProfile(project.id!),
+      customConstraints: await readCustomConstraintsGuard(project.id!),
+    })
     ai.setOperation('polish')
     ai.start(messages, undefined, { category: 'chapter.polish', projectId: project.id! })
   }
 
-  const handleExpand = () => {
+  const handleExpand = async () => {
     const selected = editorRef.current?.getSelectedText() || plainText.slice(-500)
     if (!selected) return
-    const messages = buildExpandPrompt(selected, customInstruction.trim() || undefined)
+    const messages = buildExpandPrompt(selected, customInstruction.trim() || undefined, {
+      styleContext: await readUserStyleProfile(project.id!),
+      customConstraints: await readCustomConstraintsGuard(project.id!),
+    })
     ai.setOperation('expand')
     ai.start(messages, undefined, { category: 'chapter.expand', projectId: project.id! })
   }
@@ -818,7 +877,10 @@ export default function ChapterEditor({ project, outlineNodeId }: Props) {
       confirmText: '开始改写',
     })
     if (!ok) return
-    const messages = buildDeAIPrompt(target)
+    const messages = buildDeAIPrompt(target, {
+      styleContext: await readUserStyleProfile(project.id!),
+      customConstraints: await readCustomConstraintsGuard(project.id!),
+    })
     ai.setOperation(isFull ? 'deai-full' : 'deai')
     ai.start(messages, undefined, { category: 'chapter.deai', projectId: project.id! })
   }
@@ -1542,6 +1604,8 @@ export default function ChapterEditor({ project, outlineNodeId }: Props) {
       {compareSourceHtml == null && <FloatingToolbar
         getSelectedText={() => editorRef.current?.getSelectedText() || ''}
         getSelectionRect={() => {
+          // 选区必须位于编辑器内：过滤编辑器外选区（如工具栏自身文本）误触发
+          if (!editorRef.current?.containsSelection()) return null
           const sel = window.getSelection()
           if (!sel || sel.isCollapsed || !sel.rangeCount) return null
           return sel.getRangeAt(0).getBoundingClientRect()
@@ -1549,6 +1613,8 @@ export default function ChapterEditor({ project, outlineNodeId }: Props) {
         replaceSelectedText={(text) => {
           editorRef.current?.replaceSelection(text)
         }}
+        getStyleContext={() => readUserStyleProfile(project.id!)}
+        getCustomConstraints={() => readCustomConstraintsGuard(project.id!)}
         disabled={ai.isStreaming}
       />}
 

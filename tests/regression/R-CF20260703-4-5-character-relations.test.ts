@@ -7,8 +7,9 @@ import {
 } from '../../src/lib/relations/relationship-summary'
 import type { Character, CharacterRelation } from '../../src/lib/types'
 
-const panelSource = readFileSync('src/components/relations/CharacterRelationPanel.tsx', 'utf8')
-const graphSource = readFileSync('src/components/relations/RelationGraph.tsx', 'utf8')
+// Windows autocrlf 检出会把工作区文件变成 CRLF；源码文本断言必须与换行符无关。
+const panelSource = readFileSync('src/components/relations/CharacterRelationPanel.tsx', 'utf8').replace(/\r\n/g, '\n')
+const graphSource = readFileSync('src/components/relations/RelationGraph.tsx', 'utf8').replace(/\r\n/g, '\n')
 
 const now = 1_780_000_000_000
 

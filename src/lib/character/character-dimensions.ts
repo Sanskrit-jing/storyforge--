@@ -17,7 +17,7 @@ export type CharacterDimensionKey =
   | 'motivation' | 'goals' | 'innerConflict'
   | 'background' | 'keyEvents'
   | 'abilities' | 'powerLevel'
-  | 'speechStyle' | 'habits' | 'signatureItem'
+  | 'speechStyle' | 'voiceSamples' | 'habits' | 'signatureItem'
   | 'arc' | 'storyRole' | 'ending'
 
 export interface CharacterDimensionSpec {
@@ -56,6 +56,7 @@ export const CHARACTER_DIMENSIONS: CharacterDimensionSpec[] = [
   { key: 'powerLevel', label: '实力定位/境界',    group: '能力', rows: 1, defaultFor: [] },
   // 鲜活细节
   { key: 'speechStyle',  label: '语言风格/口头禅', group: '鲜活细节', rows: 2, defaultFor: ['npc'] },
+  { key: 'voiceSamples', label: '声纹样本/代表性台词', group: '鲜活细节', rows: 3, defaultFor: ['secondary', 'npc'] },
   { key: 'habits',       label: '习惯/小动作/癖好', group: '鲜活细节', rows: 2, defaultFor: [] },
   { key: 'signatureItem', label: '标志性物品/符号', group: '鲜活细节', rows: 1, defaultFor: [] },
   // 成长

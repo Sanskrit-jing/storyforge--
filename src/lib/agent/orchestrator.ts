@@ -397,12 +397,20 @@ export async function executeMasterAgentPlan(input: {
 }): Promise<ExecutedMasterCandidate[]> {
   const candidates: ExecutedMasterCandidate[] = []
   const outputs = new Map<string, string>()
+  const failedTaskIds = new Set<string>()
+  let lastFailure: unknown = null
   const contextProfiles = useAIConfigStore.getState().agentContextProfiles
   const budget = input.budget ?? new AgentTeamBudgetTracker(
     useAIConfigStore.getState().agentTeamBudgetProfile,
   )
   for (const task of topologicalTasks(input.plan)) {
     if (input.signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+    // 依赖任务失败时级联跳过，其余独立任务继续执行——避免单任务失败丢弃全部已成功候选。
+    if (task.dependsOn.some(id => failedTaskIds.has(id))) {
+      failedTaskIds.add(task.id)
+      input.onTask?.(task, 'failed', '依赖任务失败，已跳过')
+      continue
+    }
     input.onTask?.(task, 'running')
     try {
       const upstream = task.dependsOn
@@ -607,9 +615,12 @@ export async function executeMasterAgentPlan(input: {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       input.onTask?.(task, 'failed', message)
-      throw error
+      failedTaskIds.add(task.id)
+      lastFailure = error
     }
   }
+  // 全部任务都失败时保留原有报错路径；部分成功则返回已有候选交由调用方落库展示。
+  if (!candidates.length && lastFailure) throw lastFailure
   const teamBudgetEvidence = budget.snapshot()
   candidates.forEach(candidate => {
     candidate.payload.teamBudgetEvidence = teamBudgetEvidence

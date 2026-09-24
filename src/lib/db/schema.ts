@@ -58,6 +58,8 @@ import type {
   SimulationSession,
   SimulationEvent,
   SimulationCheckpoint,
+  GlobalKnowledgeEntry,
+  CommonPhraseEntry,
 } from '../types'
 import type { AIUsageEntry } from '../ai/usage-log'
 import type { TemporalFact } from '../types/temporal-fact'
@@ -180,6 +182,12 @@ class StoryForgeDB extends Dexie {
   simulationSessions!: Table<SimulationSession, number>
   simulationEvents!: Table<SimulationEvent, number>
   simulationCheckpoints!: Table<SimulationCheckpoint, number>
+
+  // KB-1 —— 作者手写的跨项目全局知识库（AI 只读参考）
+  globalKnowledgeEntries!: Table<GlobalKnowledgeEntry, number>
+
+  // PHRASE-1 —— 作者手写的跨项目全局常用语（各输入入口查找填入/复制）
+  commonPhrases!: Table<CommonPhraseEntry, number>
 
   constructor() {
     super('storyforge')
@@ -496,6 +504,20 @@ class StoryForgeDB extends Dexie {
       simulationSessions: '++id, projectId, worldGroupId, kind, status, parentSessionId, updatedAt',
       simulationEvents: '++id, projectId, worldGroupId, sessionId, &[sessionId+sequence], type, createdAt',
       simulationCheckpoints: '++id, projectId, worldGroupId, sessionId, [sessionId+throughSequence], createdAt',
+    })
+
+    // v49: KB-1 全局知识库。纯新增空表，跨项目 owner='global'（同 promptTemplates），
+    // 删项目/删世界不触及；只新增，不从旧文本或临时面板猜测迁移。
+    // 注：enabled 为 boolean，IndexedDB 不支持 boolean 索引，仅索引 updatedAt。
+    this.version(49).stores({
+      globalKnowledgeEntries: '++id, updatedAt',
+    })
+
+    // v50: PHRASE-1 全局常用语。纯新增空表，跨项目 owner='global'（同 globalKnowledgeEntries），
+    // 删项目/删世界不触及；不注入 AI 上下文，仅作者在各输入入口手动查找、点击填入或复制。
+    // 增删改统一在设置页「常用语」卡片管理，不随项目导出导入。
+    this.version(50).stores({
+      commonPhrases: '++id, updatedAt',
     })
   }
 }

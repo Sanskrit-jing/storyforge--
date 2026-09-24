@@ -209,6 +209,14 @@ export const ADOPTION_SCHEMAS: CollectionAdoptionSpec[] = [
     fkChecks: [{ field: 'lastChapterId', target: 'chapters' }],
   },
   {
+    target: 'emotionBeatCards',
+    identity: { kind: 'composite', fields: ['chapterId'] },
+    duplicatePolicy: 'update',
+    required: ['chapterId', 'chapterTitle', 'beats', 'source'],
+    autoStamps: ['projectId', 'createdAt', 'updatedAt'],
+    fkChecks: [{ field: 'chapterId', target: 'chapters' }],
+  },
+  {
     target: 'references',
     identity: 'id',
     recordOnly: true,

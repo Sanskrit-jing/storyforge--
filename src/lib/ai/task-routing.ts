@@ -82,6 +82,7 @@ const CREATION_PREFIXES = [
   'inspiration.',
   'node.',
   'style.calibrate',
+  'editor.',
 ]
 
 const AGENT_ROLE_CATEGORY_ENTRIES = [

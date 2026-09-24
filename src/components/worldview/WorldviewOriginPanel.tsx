@@ -9,6 +9,7 @@ import { useAIStream } from '../../hooks/useAIStream'
 import { createAISessionKey } from '../../stores/ai-generation-session'
 import { buildWorldviewPrompt } from '../../lib/ai/adapters/worldview-adapter'
 import { assembleContext } from '../../lib/registry/assemble-context'
+import { assembleWorldviewPeerContext } from '../../lib/registry/worldview-peer-context'
 import { streamChat } from '../../lib/ai/client'
 import AIStreamOutput from '../shared/AIStreamOutput'
 import CodexPanel from '../codex/CodexPanel'
@@ -50,6 +51,16 @@ interface Props {
   project: Project
 }
 
+/**
+ * 面板字段 → worldview 源排除键：生成某字段时排除该字段自身，
+ * 其余世界观字段全量走注册表（assembleWorldviewPeerContext）。
+ */
+const ORIGIN_FIELD_EXCLUDE: Record<WorldviewOriginFieldKey, string[]> = {
+  origin: ['worldOrigin'],
+  power: ['powerHierarchy'],
+  divine: ['divineDesign'],
+}
+
 // ── 主面板 ─────────────────────────────────────────────────────
 
 /** v3 §2.1 — 世界观.世界起源（三个子模块） */
@@ -86,25 +97,6 @@ export default function WorldviewOriginPanel({ project }: Props) {
   // 通用保存
   const save = (patch: Partial<typeof worldview>) =>
     saveWorldview({ projectId: project.id!, ...patch })
-
-  // AI 上下文（排除当前字段，并注入自然环境 + 人文环境关键信息）
-  const buildCtx = useCallback((excludeKey: string): string => {
-    const parts: string[] = []
-    // ── 本面板内互参 ──
-    if (excludeKey !== 'origin' && worldOrigin) parts.push(`【世界来源】${worldOrigin.slice(0, 200)}`)
-    if (excludeKey !== 'power'  && powerHierarchy) parts.push(`【力量体系】${powerHierarchy.slice(0, 200)}`)
-    if (excludeKey !== 'divine' && divineDesign.hasDivinity) {
-      parts.push(`【神明与信仰】${divineDesign.divineNames || ''}：${divineDesign.divineRules?.slice(0, 100) || ''}`)
-    }
-    // ── 自然环境面板关键字段 ──
-    if (worldview?.worldStructure)  parts.push(`【世界结构】${worldview.worldStructure.slice(0, 150)}`)
-    if (worldview?.continentLayout) parts.push(`【地貌分布】${worldview.continentLayout.slice(0, 150)}`)
-    if (worldview?.climateByRegion) parts.push(`【气候环境】${worldview.climateByRegion.slice(0, 100)}`)
-    // ── 人文环境面板关键字段 ──
-    if (worldview?.races)           parts.push(`【种族与民族】${worldview.races.slice(0, 100)}`)
-    if (worldview?.factionLayout)   parts.push(`【势力分布】${worldview.factionLayout.slice(0, 100)}`)
-    return parts.join('\n')
-  }, [worldOrigin, powerHierarchy, divineDesign, worldview])
 
   const handleStreamingChange = useCallback((key: string, streaming: boolean) => {
     setStreamingKeys(prev => {
@@ -150,7 +142,6 @@ export default function WorldviewOriginPanel({ project }: Props) {
               value={worldOrigin}
               onChange={v => { setWorldOrigin(v); save({ worldOrigin: v }) }}
               project={project}
-              contextSummary={buildCtx('origin')}
               onStreamingChange={streaming => handleStreamingChange('origin', streaming)}
             />
           </div>
@@ -162,7 +153,6 @@ export default function WorldviewOriginPanel({ project }: Props) {
               value={powerHierarchy}
               onChange={v => { setPowerHierarchy(v); save({ powerHierarchy: v }) }}
               project={project}
-              contextSummary={buildCtx('power')}
               onStreamingChange={streaming => handleStreamingChange('power', streaming)}
             />
             <CultivationSystemsPanel project={project} />
@@ -188,7 +178,6 @@ export default function WorldviewOriginPanel({ project }: Props) {
                 await save({ divineDesign: next })
               }}
               project={project}
-              contextSummary={buildCtx('divine')}
               onStreamingChange={streaming => handleStreamingChange('divine', streaming)}
             />
             <div className="mt-6">
@@ -215,13 +204,12 @@ export default function WorldviewOriginPanel({ project }: Props) {
 // ── 文本字段编辑器（世界来源 / 力量体系） ────────────────────────
 
 function TextFieldEditor({
-  field, value, onChange, project, contextSummary, onStreamingChange,
+  field, value, onChange, project, onStreamingChange,
 }: {
   field: typeof WORLDVIEW_ORIGIN_FIELDS[number]
   value: string
   onChange: (v: string) => void
   project: Project
-  contextSummary: string
   onStreamingChange: (streaming: boolean) => void
 }) {
   const [hint, setHint] = useState('')
@@ -241,11 +229,14 @@ function TextFieldEditor({
   }, [ai.isStreaming, onStreamingChange])
 
   const handleGenerate = async () => {
+    const worldGroupId = project.enableMultiWorld ? activeGroupId : null
     // Phase 32: 注入世界规则
-    const rulesCtx = await buildRulesSourceContext(project.id!, project.enableMultiWorld ? activeGroupId : null)
+    const rulesCtx = await buildRulesSourceContext(project.id!, worldGroupId)
     // 下游 → 上游反推:带上用户已填的故事核心 + 角色 + 故事线,生成世界观时结合反推
-    const downstreamCtx = await buildDownstreamReverseContext(project.id!, project.enableMultiWorld ? activeGroupId : null)
-    const fullContext = [downstreamCtx, contextSummary].filter(Boolean).join('\n\n')
+    const downstreamCtx = await buildDownstreamReverseContext(project.id!, worldGroupId)
+    // 面板互参:其余世界观字段全量走注册表 worldview 源(排除当前字段自身)
+    const peerCtx = await assembleWorldviewPeerContext(project.id!, worldGroupId, ORIGIN_FIELD_EXCLUDE[field.key])
+    const fullContext = [downstreamCtx, peerCtx].filter(Boolean).join('\n\n')
     const opts = {
       parameterValues: {
         ...parameterValues,
@@ -302,13 +293,12 @@ function TextFieldEditor({
 // ── 神明与信仰编辑器（独立 AI 流） ─────────────────────────────────
 
 function DivineFieldEditor({
-  field, divineDesign, onDivineChange, project, contextSummary, onStreamingChange,
+  field, divineDesign, onDivineChange, project, onStreamingChange,
 }: {
   field: typeof WORLDVIEW_ORIGIN_FIELDS[number]
   divineDesign: DivineDesign
   onDivineChange: (next: DivineDesign) => Promise<void>
   project: Project
-  contextSummary: string
   onStreamingChange: (streaming: boolean) => void
 }) {
   const [hint, setHint] = useState('')
@@ -328,10 +318,13 @@ function DivineFieldEditor({
   }, [ai.isStreaming, onStreamingChange])
 
   const handleGenerate = async () => {
-    const rulesCtx = await buildRulesSourceContext(project.id!, project.enableMultiWorld ? activeGroupId : null)
+    const worldGroupId = project.enableMultiWorld ? activeGroupId : null
+    const rulesCtx = await buildRulesSourceContext(project.id!, worldGroupId)
     // 下游 → 上游反推:带上用户已填的故事核心 + 角色 + 故事线,生成世界观时结合反推
-    const downstreamCtx = await buildDownstreamReverseContext(project.id!, project.enableMultiWorld ? activeGroupId : null)
-    const fullContext = [downstreamCtx, contextSummary].filter(Boolean).join('\n\n')
+    const downstreamCtx = await buildDownstreamReverseContext(project.id!, worldGroupId)
+    // 面板互参:其余世界观字段全量走注册表 worldview 源(排除当前字段自身)
+    const peerCtx = await assembleWorldviewPeerContext(project.id!, worldGroupId, ORIGIN_FIELD_EXCLUDE[field.key])
+    const fullContext = [downstreamCtx, peerCtx].filter(Boolean).join('\n\n')
     const opts = {
       parameterValues: {
         ...parameterValues,

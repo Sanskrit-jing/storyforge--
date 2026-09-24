@@ -8,6 +8,7 @@ import { useAIStream } from '../../hooks/useAIStream'
 import { createAISessionKey } from '../../stores/ai-generation-session'
 import { buildWorldviewPrompt } from '../../lib/ai/adapters/worldview-adapter'
 import { assembleContext } from '../../lib/registry/assemble-context'
+import { assembleWorldviewPeerContext } from '../../lib/registry/worldview-peer-context'
 import AIStreamOutput from '../shared/AIStreamOutput'
 import PromptRunPanel from '../shared/PromptRunPanel'
 import FieldGenerationBar from '../shared/FieldGenerationBar'
@@ -98,27 +99,6 @@ export default function WorldviewHumanityPanel({ project, onOpenHistory }: Props
 
   const save = (fieldName: string, v: string) =>
     saveWorldview({ projectId: project.id!, [fieldName]: v })
-
-  /** 拼其他字段（含世界起源 + 自然环境的关键值）做 AI 上下文 */
-  const buildCtx = useCallback((skipKey: string): string => {
-    const parts: string[] = []
-    if (worldview?.worldOrigin) parts.push(`【世界起源】${worldview.worldOrigin.slice(0, 200)}`)
-    if (worldview?.powerHierarchy) parts.push(`【力量体系】${worldview.powerHierarchy.slice(0, 150)}`)
-    if (worldview?.continentLayout) parts.push(`【大陆分布】${worldview.continentLayout.slice(0, 150)}`)
-    const map: [string, string, string][] = [
-      ['races',     '种族与民族',   values.races || ''],
-      ['factions',  '势力分布',     values.factions || ''],
-      ['politics',  '政治制度',     values.politics || ''],
-      ['economy',   '经济制度',     values.economy || ''],
-      ['culture',   '文化制度',     values.culture || ''],
-      ['conflicts', '矛盾冲突',     values.conflicts || ''],
-      ['items',     '道具与器物',   values.items || ''],
-    ]
-    for (const [k, label, val] of map) {
-      if (k !== skipKey && val) parts.push(`【${label}】${val.slice(0, 150)}`)
-    }
-    return parts.join('\n')
-  }, [worldview, values])
 
   const handleStreamingChange = useCallback((key: string, streaming: boolean) => {
     setStreamingKeys(prev => {
@@ -259,7 +239,6 @@ export default function WorldviewHumanityPanel({ project, onOpenHistory }: Props
                   save(f.field, v)
                 }}
                 project={project}
-                contextSummary={buildCtx(f.key)}
                 onStreamingChange={streaming => handleStreamingChange(f.key, streaming)}
               />
               {/* 词条（下）：在全貌之下,把"本方面"细化为一个个具体条目(只显示对应那一类,可打星) */}
@@ -309,13 +288,12 @@ export default function WorldviewHumanityPanel({ project, onOpenHistory }: Props
 // ── 单字段编辑器（各自独立的 AI 流） ──────────────────────────
 
 function HumanityFieldEditor({
-  meta, value, onChange, project, contextSummary, onStreamingChange,
+  meta, value, onChange, project, onStreamingChange,
 }: {
   meta: FieldMeta
   value: string
   onChange: (v: string) => void
   project: Project
-  contextSummary: string
   onStreamingChange: (streaming: boolean) => void
 }) {
   const [hint, setHint] = useState('')
@@ -335,6 +313,10 @@ function HumanityFieldEditor({
   }, [ai.isStreaming, onStreamingChange])
 
   const handleGenerate = async () => {
+    // 面板互参:其余世界观字段全量走注册表 worldview 源(按 meta.field 排除当前字段自身)
+    const peerCtx = await assembleWorldviewPeerContext(
+      project.id!, project.enableMultiWorld ? activeGroupId : null, [meta.field],
+    )
     const rulesCtx = await buildRulesSourceContext(project.id!, project.enableMultiWorld ? activeGroupId : null)
     const opts = {
       parameterValues: {
@@ -347,7 +329,7 @@ function HumanityFieldEditor({
       } : undefined,
     }
     const messages = buildWorldviewPrompt(
-      meta.label, project.name, project.genre || '', contextSummary, hint, opts, value, mode,
+      meta.label, project.name, project.genre || '', peerCtx, hint, opts, value, mode,
     )
     ai.start(messages, undefined, { category: 'worldview.dimension', projectId: project.id! })
   }

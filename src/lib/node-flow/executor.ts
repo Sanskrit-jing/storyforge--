@@ -141,17 +141,22 @@ async function executeNode(input: {
     )
     const sourceKeys = selectionMode === 'registered' ? arrayConfig(node, 'sourceKeys') : []
     const ragEntryKeys = selectionMode === 'registered' ? [] : arrayConfig(node, 'ragEntryKeys')
-    if (!sourceKeys.length && !ragEntryKeys.length) {
+    const knowledgeEntryKeys = selectionMode === 'registered' ? [] : arrayConfig(node, 'knowledgeEntryKeys')
+    if (!sourceKeys.length && !ragEntryKeys.length && !knowledgeEntryKeys.length) {
       throw new Error('项目元素节点尚未选择任何资料字段或注册来源。')
     }
     const ragTrace = createRagSelectionTrace()
+    const explicitSourceKeys = [...sourceKeys]
+    if (ragEntryKeys.length) explicitSourceKeys.push('ragSelection')
+    if (knowledgeEntryKeys.length) explicitSourceKeys.push('knowledgeSelection')
     const assembled = await assembleContext({
       projectId: input.projectId,
       worldGroupId: input.worldGroupId,
       chapterId: numberConfig(node, 'chapterId', 0) || undefined,
       outlineNodeId: numberConfig(node, 'outlineNodeId', 0) || undefined,
-      sourceKeys: ragEntryKeys.length ? ['ragSelection'] : sourceKeys,
+      sourceKeys: explicitSourceKeys,
       ragEntryKeys,
+      knowledgeEntryKeys,
       ragSelectionTrace: ragTrace,
       provider: config.provider,
       model: config.model,

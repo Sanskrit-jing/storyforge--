@@ -9,6 +9,7 @@ import PromptTemplateEditor from './PromptTemplateEditor'
 import PromptWorkflowsPanel from './PromptWorkflowsPanel'
 import { useToast } from '../../shared/Toast'
 import { saveText } from '../../../lib/export/save-file'
+import { buildTemplatesExportFile, parseTemplatesImportFile } from '../../../lib/prompt/template-io'
 import { useIsNarrow } from '../../../hooks/useIsNarrow'
 
 type ScopeFilter = 'all' | 'system' | 'user'
@@ -90,10 +91,10 @@ export default function PromptManagerPanel({ project }: Props = {}) {
     setSelectedId(newId)
   }
 
-  /** 导出全部模板为 JSON */
+  /** 导出全部模板为 JSON（带 format 标识包裹，导入侧兼容旧裸数组） */
   const handleExportAll = async () => {
     await saveText(
-      JSON.stringify(templates, null, 2),
+      JSON.stringify(buildTemplatesExportFile(templates), null, 2),
       `storyforge-prompts-${new Date().toISOString().slice(0, 10)}.json`,
       'application/json',
     )
@@ -108,7 +109,8 @@ export default function PromptManagerPanel({ project }: Props = {}) {
     try {
       const text = await file.text()
       const data = JSON.parse(text)
-      const items: unknown[] = Array.isArray(data) ? data : [data]
+      // 新格式（带 format 包裹）取 templates 节；旧格式裸数组/单对象原样兼容
+      const items: unknown[] = parseTemplatesImportFile(data)
       let count = 0
       const now = Date.now()
       for (const raw of items) {

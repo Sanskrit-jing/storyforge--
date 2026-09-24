@@ -206,6 +206,27 @@ const READ_TOOL_SPECS: readonly ReadToolSpec[] = [
     inputBudgetTokens: 2600,
     argRules: { allowed: ['query', 'limit', 'kinds'], required: ['query'] },
   },
+  {
+    name: 'search_knowledge',
+    description: '在全局知识库按主题或触发词查询作者积累的写作范例与约定；写到相关情节前先查这里，例如查「喜欢」获取描写的参考范例。',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          minLength: 2,
+          maxLength: 100,
+          description: '主题或触发词，例如：喜欢、告白、文风',
+        },
+        limit: { type: 'integer', minimum: 1, maximum: 10, description: '最多返回条数' },
+      },
+      required: ['query'],
+      additionalProperties: false,
+    },
+    sourceKeys: ['knowledgeQuery'],
+    inputBudgetTokens: 6000,
+    argRules: { allowed: ['query', 'limit'], required: ['query'] },
+  },
 ] as const
 
 function emptyMeta(toolName: string, sourceKeys: readonly string[], budget: number): AgentToolResult['meta'] {
@@ -371,6 +392,7 @@ async function resolveScope(
     searchQuery: args.query as string | undefined,
     searchLimit: args.limit as number | undefined,
     searchKinds: args.kinds as string[] | undefined,
+    knowledgeQuery: args.query as string | undefined,
     inspirationFragmentIds: fragmentIds,
     inspirationMode,
     provider: context.provider,
@@ -391,7 +413,9 @@ async function executeReadTool(
 ): Promise<AgentToolResult> {
   try {
     const args = validateArgs(spec, rawArgs)
-    const assembled = await assembleContext(await resolveScope(spec, context, args))
+    const assembled = await assembleContext({
+      ...await resolveScope(spec, context, args),
+    })
     return {
       ok: true,
       content: assembled.text || '当前作用域内没有可用数据。',

@@ -212,6 +212,7 @@ export const FIELD_REGISTRY: FieldSpec[] = [
   longtext('characters', 'keyEvents', ['关键经历', '转折事件', '重要经历']),
   text('characters', 'powerLevel', ['实力定位', '境界', '等级', '战力']),
   longtext('characters', 'speechStyle', ['语言风格', '口头禅', '说话方式']),
+  longtext('characters', 'voiceSamples', ['声纹样本', '代表性台词', '声音样本', '台词摘录']),
   longtext('characters', 'habits', ['习惯', '小动作', '癖好']),
   text('characters', 'signatureItem', ['标志性物品', '形象符号', '标志物']),
   text('characters', 'location', ['常驻地点']),
@@ -511,6 +512,13 @@ export const FIELD_REGISTRY: FieldSpec[] = [
   text('stateCards', 'entityName', ['角色名', '实体名']),
   json('stateCards', 'fields', ['状态字段']),
   num('stateCards', 'lastChapterId'),
+
+  // 情感节拍卡（AI 生成唯一写回入口；运行时 beats 为数组，DB 存 JSON string，见 emotion-beat store 转换层）
+  num('emotionBeatCards', 'chapterId'),
+  text('emotionBeatCards', 'chapterTitle'),
+  longtext('emotionBeatCards', 'overallArc'),
+  json('emotionBeatCards', 'beats'),
+  enumeration('emotionBeatCards', 'source', ['ai', 'manual']),
 ]
 
 export const FIELD_BY_TARGET: ReadonlyMap<string, FieldSpec[]> = new Map(
